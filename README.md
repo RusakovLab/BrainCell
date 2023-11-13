@@ -109,7 +109,7 @@ When building a realistic cell model, consider the following essential elements:
 - Design and simulate intracellular and extracellular ionic dynamics.
 - Use cluster/cloud-based parallel computing for longer-term simulations.
 
-Documentation and API details can be found [here](https://github.com/LeonidSavtchenko/BrainCellNew).
+Documentation and API details can be found [here](https://github.com/RusakovLab/BrainCell).
 
 ## Contact Information
 
@@ -119,5 +119,6 @@ Documentation and API details can be found [here](https://github.com/LeonidSavtc
 - Visit us at:
 [Department of Clinical and Experimental Epilepsy](http://www.ucl.ac.uk/ion/departments/epilepsy/themes/synaptic-imaging)
 
-- Institute of Neurology
-- University College London, UK
+- UCL Queen Square Institute of Neurology
+- University College London
+- Queen Square, London WC1N 3BG
