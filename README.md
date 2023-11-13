@@ -13,15 +13,18 @@ Welcome to **BRAINCELL 1.0**, your gateway to understanding the intricate world 
 
 To ensure a smooth experience with BrainCell, please make sure your system meets the following requirements:
 
-1. **PYTHON** (version 3.2 or later) - [Python Downloads](https://www.python.org/downloads/)
-2. **NEURON** (version 7.2 or later) - [NEURON Downloads](https://neuron.yale.edu/neuron/download)
-3. Installed Neuron on Windows.
+
+1. **NEURON** (version 7.2 or later) - [NEURON Downloads](https://neuron.yale.edu/neuron/download)
+2. **ANACONDA** (version 3.2 or later) - [ANACONDA Downloads](https://www.anaconda.com/download)
+3. Installed Neuron then ANACONDA (last version)on Windows.
 
 ### Preparing BRAINCELL System Files
 
 #### Step 1: Update File Properties for Windows 11 Users
 
-For Windows 11 users, ensure that any `*.exe` file in the NEURON directory, specifically located at `c:\nrn\bin\`, operates with administrative rights. However, for users with a version of Windows < 11, this step is not required. To achieve this, follow the steps outlined below:
+For Windows 11 users, ensure that any `*.exe` file in the NEURON directory, located at `c:\nrn\bin\`, operates with administrative rights.
+**UPDATE 13/11/2023**: The latest version of NEURON already operates with administrative rights.  
+For users with a version of Windows < 11, this step is not required. To achieve this, follow the steps outlined below:
 - **Updating File Properties:** Navigate to the NEURON directory `c:\nrn\bin\` and locate the `*.exe` files. Adjust the properties of each `*.exe` with an administrative right.
  Here's a step-by-step guide to change administrative rights for a file in Windows 11:
 
