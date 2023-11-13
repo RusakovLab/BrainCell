@@ -123,8 +123,9 @@ Queen Square, London WC1N 3BG
 
 ******************************************************************************************************
 
+### Extra Information
 
-## Contact Information <a name="contact"></a>
+## Administrative rights <a name="contact"></a>
 
 ##### File Modification and Administrative Rights
 
