@@ -29,7 +29,7 @@ For users with a version of Windows < 11, this step is not required. To achieve 
 - **Updating File Properties:** Navigate to the NEURON directory `c:\nrn\bin\` and locate the `*.exe` files. Adjust the properties of each `*.exe` with an administrative right.
  Here's a step-by-step guide to change administrative rights for a file in Windows 11:
 
-#### File Modification and Administrative Rights
+##### File Modification and Administrative Rights
 
 - **Locate the File**: Navigate to the location of the file for which you want to modify administrative rights.
 - **Right-Click on the File**: Right-click on the file to open the context menu.
