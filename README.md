@@ -18,7 +18,7 @@ To ensure a smooth experience with BrainCell, please make sure your system meets
 1. **NEURON** (version 7.2 or later) - [NEURON Downloads](https://neuron.yale.edu/neuron/download)
 2. **ANACONDA** (version 3.2 or later) - [ANACONDA Downloads](https://www.anaconda.com/download)
 3. First, install **NEURON** and, second, **ANACONDA** (the latest version) on Windows.
-4. Video - [Video format on you tube](https://www.youtube.com/watch?v=sCMdTD4Q2OA)
+4. How to start BrainCell  - [Video format on you tube](https://www.youtube.com/watch?v=sCMdTD4Q2OA)
 
 ### Preparing BRAINCELL System Files
 
