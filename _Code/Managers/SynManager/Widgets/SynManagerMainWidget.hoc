@@ -129,7 +129,7 @@ begintemplate SynManagerMainWidget
                             srcChoices.select_action("srcChoicesSelectHandler(hoc_ac_)")
                         }
                         vBox3.intercept(0)
-                        vBox3.map("", 0, 0, 1, listBoxHeight)
+                        vBox3.map("", -1, -1, 1, listBoxHeight)
                         vBox4 = new VBox()
                         vBox4.intercept(1)
                         {
@@ -141,7 +141,7 @@ begintemplate SynManagerMainWidget
                             trgChoices.select_action("trgChoicesSelectHandler(hoc_ac_)")
                         }
                         vBox4.intercept(0)
-                        vBox4.map("", 0, 0, 1, listBoxHeight)
+                        vBox4.map("", -1, -1, 1, listBoxHeight)
                     }
                     hBox2.intercept(0)
                     hBox2.map()
@@ -165,7 +165,7 @@ begintemplate SynManagerMainWidget
                             sngChoices.select_action("sngChoicesSelectHandler(hoc_ac_)")
                         }
                         vBox6.intercept(0)
-                        vBox6.map("", 0, 0, 1, listBoxHeight)
+                        vBox6.map("", -1, -1, 1, listBoxHeight)
                         vBox7 = new VBox()
                         vBox7.intercept(1)
                         {
@@ -173,7 +173,7 @@ begintemplate SynManagerMainWidget
                             createElasticSpacer()
                         }
                         vBox7.intercept(0)
-                        vBox7.map("", 0, 0, 1, listBoxHeight)
+                        vBox7.map("", -1, -1, 1, listBoxHeight)
                     }
                     hBox3.intercept(0)
                     hBox3.map()

@@ -4,7 +4,7 @@ begintemplate MechOpWidgetBase
 
     external mmAllComps
     external mwh, mth, mcu, mechsDllUtils
-    external stringEmpty
+    external stringEmpty, addEmptyLabels
     external eachItemInList
     
     public isDirty, lastMechOpIdx
@@ -249,7 +249,7 @@ begintemplate MechOpWidgetBase
                         // !! BUG: when user makes the window width too small, this spacer "pushes" the left-hand panel(s) too much
                         for colIdx = colIdx + 1, numCols - 1 {
                             spacerBox = new VBox()
-                            spacerBox.map("", 0, 0, colWidth, rowHeight)
+                            spacerBox.map("", -1, -1, colWidth, rowHeight)
                         }
                         // We could use a single wide VBox here of width "colWidth * (numCols - 1 - colIdx)" instead of many narrow ones of width "colWidth",
                         // and it would look nicer, but it wouldn't scale horizontally when user resized the window
@@ -290,7 +290,7 @@ begintemplate MechOpWidgetBase
                 xpanel()
             }
             hBox.intercept(0)
-            hBox.map("", 0, 0, w, fh)
+            hBox.map("", -1, -1, w, fh)
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
@@ -358,7 +358,7 @@ begintemplate MechOpWidgetBase
             vBox2.map()
         }
         vBox1.intercept(0)
-        vBox1.map("", 0, 0, colWidth, rowHeight)
+        vBox1.map("", -1, -1, colWidth, rowHeight)
     }
     
     proc populateMechCentricPanelHelper() { local mechOpIdx, mechIdx, compIdx, numInsertedItems, isSkipItem localobj mechOpHelper, vBox1, vBox2
@@ -401,7 +401,7 @@ begintemplate MechOpWidgetBase
             vBox2.map()
         }
         vBox1.intercept(0)
-        vBox1.map("", 0, 0, colWidth, rowHeight)
+        vBox1.map("", -1, -1, colWidth, rowHeight)
     }
     
     proc insertSpacers() { local numInsertedItems, itemHeight, allItemsHeight localobj mechOpHelper
@@ -422,16 +422,14 @@ begintemplate MechOpWidgetBase
         // If allItemsHeight > sliderMinHeight, then NEURON adds the slider itself
     }
     
-    proc insertSpacersCore() { local allItemsHeight, requiredHeight, numSpacers, spacerIdx
+    proc insertSpacersCore() { local allItemsHeight, requiredHeight, numSpacers
         allItemsHeight = $1
         requiredHeight = $2
         if (allItemsHeight >= requiredHeight) {
             codeContractViolation()
         }
         numSpacers = int((requiredHeight - allItemsHeight) / spacerHeight) + 1
-        for spacerIdx = 0, numSpacers - 1 {
-            xlabel("")
-        }
+        addEmptyLabels(numSpacers)
     }
     
     proc psectionHandler() { local compIdx, status

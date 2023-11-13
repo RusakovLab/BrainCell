@@ -5,7 +5,7 @@ begintemplate CreateListOfInputVarsWidget
     public show, onVarAddHandler, onVarCorrectHandler, onDefineVarGridOkHandler, dismissHandler
     
     external exportOptions
-    external enterVarExpression, isVarExprUnique, replaceItemInList, deleteSelectedItemFromBrowsedList, openDeck, closeDeck, unmapIfNotNil, codeContractViolation
+    external enterVarExpression, isVarExprUnique, replaceItemInList, deleteSelectedItemFromBrowsedList, openDeck, closeDeck, addEmptyLabels, unmapIfNotNil, codeContractViolation
     external isAstrocyteOrNeuron
     
     objref mainBox, exprsList
@@ -46,7 +46,7 @@ begintemplate CreateListOfInputVarsWidget
         slotHeight = 190
     }
     
-    proc show() { local numSpacers, spacerIdx localobj hBox, deck
+    proc show() { local numSpacers localobj hBox, deck
         strdef label, title, field
         
         if (isExposedOrSwept) {
@@ -94,9 +94,7 @@ begintemplate CreateListOfInputVarsWidget
                         xbutton("Define var grid", "defineVarGridHandler()")
                     }
                     numSpacers = 1 + 2 * isExposedOrSwept + isAstrocyteOrNeuron
-                    for spacerIdx = 1, numSpacers {
-                        xlabel("")
-                    }
+                    addEmptyLabels(numSpacers)
                     xbutton("Delete var", "deleteVarHandler()")
                     xpanel()
                 }

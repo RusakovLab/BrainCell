@@ -55,7 +55,10 @@ begintemplate ECSCapacityInfo
             }
             delta_oOrMinus1 = $2
             if (delta_oOrMinus1 == -1) {
-                codeContractViolation()
+                // !!! the negative values can actually make some sense,
+                //     but be careful using negatives here in combination with another source of type "point + on-off + uptake"
+                //     because it's possible to hit codeContractViolation in _ECDCalcAndConsHelper.mod -> updateOutConcGivenECSAndImp
+                // codeContractViolation()
             }
         } else {
             codeContractViolation()

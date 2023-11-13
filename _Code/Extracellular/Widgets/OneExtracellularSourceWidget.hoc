@@ -8,13 +8,13 @@ begintemplate OneExtracellularSourceWidget
 
     public show, onApplyInParentWidget, dismissHandler
     
-    external stringsEqual, findItemInListByString, removeItemFromList, getGlobalVarsHint, createEmptyPanel, codeContractViolation
+    external stringsEqual, findItemInListByString, removeItemFromList, getGlobalVarsHint, createEmptyPanel, addEmptyLabels, codeContractViolation
     external mwh, math, ecsLibrary, speciesLibrary, graphUtils
     external eachItemInList
     external soma_ref
     external fast_flush_list
     
-    objref mainBox, deck1, deck2, deck3, decks4[1], deck5, deck6, decks7[1], deck8, plotShape
+    objref mainBox, deck1, deck2, deck3, decks4[1], deck5, deck6, decks7[1], decks8[1], deck9, plotShape
     objref parentWidget, ionGlobalsWidget, netStimParamsWidget
     
     objref spcCatsList, spcNamesList, srcShapesList, srcDynamicsList
@@ -33,7 +33,7 @@ begintemplate OneExtracellularSourceWidget
     duration = -1
     isSeries = -1
     
-    isDiffDependOnTemp = -1
+    isDiffDependOnTemp = -1     // !!!! move this inside speciesInfo
     
     ss = -1
     pointCapacityRadius = -1    // !!! maybe use the same UI as for "radius": show below "shapes" list and edit with mouse
@@ -54,7 +54,7 @@ begintemplate OneExtracellularSourceWidget
     slotIdx4GraphUtils = -1
     
     
-    proc init() { local inf
+    proc init() { local numSpcCats, inf
         strdef unitsStr
         
         parentWidget = $o1
@@ -62,7 +62,9 @@ begintemplate OneExtracellularSourceWidget
         objref decks4[2]
         
         spcCatsList = speciesLibrary.spcCatsList
-        objref decks7[spcCatsList.count()]
+        numSpcCats = spcCatsList.count()
+        objref decks7[numSpcCats]
+        objref decks8[numSpcCats]
         
         srcShapesList = new List()
         srcShapesList.append(new String("Conc. outside point source"))
@@ -112,8 +114,8 @@ begintemplate OneExtracellularSourceWidget
         slotIdx4GraphUtils = 1
     }
     
-    proc show() { local numArg, spcCatIdx, speciesIdx, shapeIdx, enumStaticSwitchSpike, thisSpcCatIdx localobj oldECS, oldSpatialInfo, oldTemporalInfo, oldCapacityInfo, spcCat, thisSpcNamesList, speciesInfo, hBox, vBox, thisDeck, hBox2
-        strdef text, diffVarName, pesMenuToolName
+    proc show() { local numArg, spcCatIdx, speciesIdx, shapeIdx, enumStaticSwitchSpike, thisSpcCatIdx, thisSpcIdx localobj oldECS, oldSpatialInfo, oldTemporalInfo, oldCapacityInfo, spcCat, thisSpcNamesList, spcInfoList, speciesInfo, hBox, vBox, vBox2, thisDeck7, theseDecks8, thisDeck8, hBox2
+        strdef text, diffVarName, handlerHocCommand, pesMenuToolName
         
         numArg = numarg()
         if (numArg > 2) {
@@ -161,7 +163,7 @@ begintemplate OneExtracellularSourceWidget
             
             spcCatIdx = oldECS.spcCatIdx
             spcNamesList = spcCatsList.o(spcCatIdx).spcNamesList    // !!!! the same line appears three times in this file
-            speciesIdx = findItemInListByString(spcNamesList, oldECS.species)   // !!! maybe use SpeciesLibrary.getSpeciesInsideCatIdxForColouring
+            speciesIdx = findItemInListByString(spcNamesList, oldECS.species)   // !!! maybe use SpeciesLibrary.getSpeciesInsideCatIdx
             if (speciesIdx == -1) {
                 codeContractViolation()
             }
@@ -257,7 +259,7 @@ begintemplate OneExtracellularSourceWidget
                     xpanel()
                 }
                 vBox.intercept(0)
-                vBox.map("", 0, 0, 150, 50)     // !!!
+                vBox.map("", -1, -1, 150, 50)   // !!!
                 vBox = new VBox()
                 vBox.intercept(1)
                 {
@@ -324,38 +326,72 @@ begintemplate OneExtracellularSourceWidget
                     deck6 = new Deck()
                     deck6.intercept(1)
                     {
-                        xpanel("")
-                        createEditBaseConcButtonAndHint()
-                        xpanel()
+                        vBox2 = new VBox()
+                        vBox2.intercept(1)
+                        {
+                            xpanel("")
+                            createEditBaseConcButtonAndHint()
+                            addEmptyLabels(5)
+                            xpanel()
+                        }
+                        vBox2.intercept(0)
+                        vBox2.map()
                         for thisSpcCatIdx = 0, spcCatsList.count() - 1 {
                             spcCat = spcCatsList.o(thisSpcCatIdx)
-                            thisDeck = new Deck()
-                            thisDeck.intercept(1)
+                            spcInfoList = spcCat.spcInfoList
+                            thisSpcNamesList = spcCat.spcNamesList
+                            thisDeck7 = new Deck()
+                            thisDeck7.intercept(1)
                             {
-                                for eachItemInList(speciesInfo, spcCat.spcInfoList) {
-                                    xpanel("")
-                                    createEditBaseConcButtonAndHint()
-                                    sprint(diffVarName, "Diff_%s", speciesInfo.suffix)
-                                    xpvalue(diffVarName, &speciesInfo.diff, 1)
-                                    sprint(text, "Make %s depend on temperature", diffVarName)
-                                    xcheckbox(text, &isDiffDependOnTemp, "isDiffDependOnTempChangedHandler()")
-                                    xpanel()
+                                theseDecks8 = new List()
+                                for thisSpcIdx = 0, spcInfoList.count() - 1 {
+                                    speciesInfo = spcInfoList.o(thisSpcIdx)
+                                    vBox2 = new VBox()
+                                    vBox2.intercept(1)
+                                    {
+                                        xpanel("")
+                                        createEditBaseConcButtonAndHint()
+                                        sprint(diffVarName, "Diff_%s", speciesInfo.suffix)
+                                        xpvalue(diffVarName, &speciesInfo.diff, 1)
+                                        sprint(text, "Make %s depend on temperature", diffVarName)
+                                        xcheckbox(text, &isDiffDependOnTemp, "isDiffDependOnTempChangedHandler()")
+                                        sprint(text, "Enable uptake for %s", thisSpcNamesList.o(thisSpcIdx).s)
+                                        sprint(handlerHocCommand, "isEnableUptakeChangedHandler(%d, %d)", thisSpcCatIdx, thisSpcIdx)
+                                        xcheckbox(text, &speciesInfo.isEnableUptake, handlerHocCommand)
+                                        xpanel()
+                                        thisDeck8 = new Deck()
+                                        thisDeck8.intercept(1)
+                                        {
+                                            createEmptyPanel()
+                                            xpanel("")
+                                            sprint(text, "t_alpha_%s", speciesInfo.suffix)
+                                            xpvalue(text, &speciesInfo.t_alpha, 1)
+                                            xpanel()
+                                        }
+                                        thisDeck8.intercept(0)
+                                        // thisDeck8.flip_to(*)     // Will be done below in updateDecks678
+                                        thisDeck8.map()
+                                        theseDecks8.append(thisDeck8)
+                                    }
+                                    vBox2.intercept(0)
+                                    vBox2.map()
                                 }
+                                decks8[thisSpcCatIdx] = theseDecks8
                             }
-                            thisDeck.intercept(0)
-                            // thisDeck.flip_to(*)      // Will be done below in updateDecks67
-                            thisDeck.map("", 0, 0, 1, 138)  // !!!
-                            decks7[thisSpcCatIdx] = thisDeck
+                            thisDeck7.intercept(0)
+                            // thisDeck7.flip_to(*)     // Will be done below in updateDecks678
+                            thisDeck7.map("", -1, -1, 1, 184)
+                            decks7[thisSpcCatIdx] = thisDeck7
                         }
                     }
                     deck6.intercept(0)
-                    deck6.map()
-                    // deck6.flip_to(*)     // Will be done below in updateDecks67
+                    deck6.map("", -1, -1, 218, 132)     // The width was chosen to fit "FRAP+"
+                    // deck6.flip_to(*)     // Will be done below in updateDecks678
                     xpanel("")
                     xlabel("Source capacity:")
                     xpanel()
-                    deck8 = new Deck()
-                    deck8.intercept(1)
+                    deck9 = new Deck()
+                    deck9.intercept(1)
                     {
                         createEmptyPanel()
                         xpanel("")
@@ -373,9 +409,9 @@ begintemplate OneExtracellularSourceWidget
                         xpvalue("Delta of conc.", &delta_o, 1)
                         xpanel()
                     }
-                    deck8.intercept(0)
-                    deck8.map()
-                    // deck8.flip_to(*)     // Will be done below in srcDynamicsSelectHandler
+                    deck9.intercept(0)
+                    deck9.map()
+                    // deck9.flip_to(*)     // Will be done below in srcDynamicsSelectHandler
                 }
                 vBox.intercept(0)
                 vBox.map()
@@ -412,8 +448,6 @@ begintemplate OneExtracellularSourceWidget
                     
                     // plotShape.menu_remove("3D Rotate")       // !!! error here: menu_remove not a public member of PlotShape
                     
-                    // !!!! maybe add a hint label: "Please don't use \"3D Rotate\""
-                    
                     pesMenuToolName = "Position Extracellular Source"
                     plotShape.menu_tool(pesMenuToolName, "mouseEventsHandler")
                     graphUtils.addPlotDynamicsMenuItem(plotShape, slotIdx4GraphUtils, "Extracellular Concentration", "", 0)
@@ -445,8 +479,8 @@ begintemplate OneExtracellularSourceWidget
                     xbutton("Calculate the overlapping area/volume and other stats", "calcStatsHandler()")
                     xlabel("")
                     xlabel("Hints: Click on the PlotShape to move the source,")
-                    xlabel("           hold \"Shift\" to resize the sphere;")
-                    xlabel("           don't use \"3D Rotate\" when positioning sources (toggle \"XY/ZY/XZ projection\" instead).")
+                    xlabel("           hold \"Shift\" to resize the sphere.")
+                    xlabel("Warning: Don't use \"3D Rotate\" when positioning sources (toggle \"XY/ZY/XZ projection\" instead).")
                     xpanel()
                 }
                 vBox.intercept(0)
@@ -596,7 +630,7 @@ begintemplate OneExtracellularSourceWidget
         
         ionGlobalsWidget.dismissHandler()
         
-        updateDecks67()
+        updateDecks678()
         
         rangeVarName = spcNamesList.o(spcNameIdx).rangeVarName
         
@@ -659,7 +693,7 @@ begintemplate OneExtracellularSourceWidget
         cardIdx = enumPointSphere
         deck2.flip_to(cardIdx)
         
-        srcDynamicsSelectHandler(srcDynamicsList.selected())    // -> updateDecks34(), updateDecks67()
+        srcDynamicsSelectHandler(srcDynamicsList.selected())    // -> updateDecks34(), updateDecks678()
         
         if (enumPointSphere == 0) {
             if (!isCalledFromShow) {
@@ -695,7 +729,7 @@ begintemplate OneExtracellularSourceWidget
             netStimParamsWidget.show(seriesInfo.mechStd)
         }
         
-        updateDecks67()
+        updateDecks678()
         
         if (enumPointSphere == 0) {
             cardIdx = 1 + (enumStaticSwitchSpike == 2)
@@ -704,7 +738,7 @@ begintemplate OneExtracellularSourceWidget
         } else {
             codeContractViolation()
         }
-        deck8.flip_to(cardIdx)
+        deck9.flip_to(cardIdx)
     }
     
     proc isSeriesChangedHandler() {
@@ -733,6 +767,15 @@ begintemplate OneExtracellularSourceWidget
         if (isDiffDependOnTemp) {
             mwh.showNotImplementedWarning()
         }
+    }
+    
+    proc isEnableUptakeChangedHandler() { local spcCatIdx, spcIdx, isEnableUptake, cardIdx
+        spcCatIdx = $1
+        spcIdx = $2
+        
+        isEnableUptake = spcCatsList.o(spcCatIdx).spcInfoList.o(spcIdx).isEnableUptake
+        cardIdx = isEnableUptake
+        decks8[spcCatIdx].o(spcIdx).flip_to(cardIdx)
     }
     
     proc viewDirectionChangedHandler() { local numArg, isCalledFromShow
@@ -988,7 +1031,7 @@ begintemplate OneExtracellularSourceWidget
         decks4[isSeries].flip_to(enumStaticSwitchSpike)
     }
     
-    proc updateDecks67() { local enumStaticSwitchSpike, spcCatIdx, cardIdx, spcNameIdx
+    proc updateDecks678() { local enumStaticSwitchSpike, spcCatIdx, cardIdx, spcNameIdx
         strdef species
         
         enumStaticSwitchSpike = srcDynamicsList.selected()
@@ -1004,6 +1047,8 @@ begintemplate OneExtracellularSourceWidget
         spcNameIdx = spcNamesList.selected()
         cardIdx = spcNameIdx
         decks7[spcCatIdx].flip_to(cardIdx)
+        
+        isEnableUptakeChangedHandler(spcCatIdx, spcNameIdx)     // This flips decks8
     }
     
     proc updateSrcMark() { local x_screen, y_screen
@@ -1173,7 +1218,7 @@ begintemplate OneExtracellularSourceWidget
         otherSpecies = $s1
         if (1) {
             // !!! other category - same colours
-            otherSpeciesIdx = speciesLibrary.getSpeciesInsideCatIdxForColouring(otherSpecies)
+            otherSpeciesIdx = speciesLibrary.getSpeciesInsideCatIdx(otherSpecies)
             return 2 + otherSpeciesIdx  // 2: Red
         } else {
             // !!! other category - other colours

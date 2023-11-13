@@ -106,7 +106,7 @@ begintemplate VarsEditorWidget
                             xpanel()
                         }
                         vBox1.intercept(0)
-                        vBox1.map("", 0, 0, 255, slotHeight)    // The width was chosen to fit cadifus -> PARAMETER
+                        vBox1.map("", -1, -1, 255, slotHeight)  // The width was chosen to fit cadifus -> PARAMETER
                         vBox2 = new VBox()
                         vBox2.intercept(1)
                         {
@@ -116,7 +116,7 @@ begintemplate VarsEditorWidget
                             xpanel()
                         }
                         vBox2.intercept(0)
-                        vBox2.map("", 0, 0, 121, slotHeight)
+                        vBox2.map("", -1, -1, 121, slotHeight)
                         vBox3 = new VBox()
                         vBox3.intercept(1)
                         {
@@ -130,7 +130,7 @@ begintemplate VarsEditorWidget
                             }
                         }
                         vBox3.intercept(0)
-                        vBox3.map("", 0, 0, 122, slotHeight)
+                        vBox3.map("", -1, -1, 122, slotHeight)
                     }
                     hBox.intercept(0)
                     hBox.map()

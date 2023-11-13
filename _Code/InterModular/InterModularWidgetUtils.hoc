@@ -24,7 +24,14 @@ proc oneZeroToEnabledDisabled() { local oneOrZero
     }
 }
 
-proc createEmptyPanel() { local numArg, numLabels, labelIdx
+proc addEmptyLabels() { local numLabels, labelIdx
+    numLabels = $1
+    for labelIdx = 1, numLabels {
+        xlabel("")
+    }
+}
+
+proc createEmptyPanel() { local numArg, numLabels
     numArg = numarg()
     if (numArg == 0) {
         numLabels = 0
@@ -34,9 +41,7 @@ proc createEmptyPanel() { local numArg, numLabels, labelIdx
         codeContractViolation()
     }
     xpanel("")
-    for labelIdx = 0, numLabels - 1 {
-        xlabel("")
-    }
+    addEmptyLabels(numLabels)
     xpanel()
 }
 
@@ -71,12 +76,27 @@ proc closeDeck() { local cardIdx, width, height localobj deck
     height = $4
     deck.intercept(0)
     deck.flip_to(cardIdx)
-    deck.map("", 0, 0, width, height)
+    deck.map("", -1, -1, width, height)
 }
 
 proc createMetaVarHint() {
     xlabel("* \"@\" means a meta variable; it's not a part of the standard \"NetCon\" class,")
     xlabel("   but rather used by our program to filter events emitted by \"NetCon\"-s")
+}
+
+proc createRecordingPeriodHint() {
+    xlabel("set \"-1\" to make one record per one iteration;")
+    xlabel("when \"Dt\" is not a multiple of \"dt\", the performance drops;")
+    xlabel("when CVode is ACTIVE, this happens for any \"Dt\" except \"-1\"")
+    xlabel("")
+}
+
+proc createExtracellularGeneratorHintsPanel() {
+    xpanel("")
+    xlabel("Hints: Checking \"Make a series\" and setting \"noise\" > 0 for the initial source results in")
+    xlabel("           different behaviour for each copy;")
+    xlabel("           click \"Edit\" -> \"Show all srcs for this species\" to review the generated sources.")
+    xpanel()
 }
 
 proc dismissIfNotNil() { localobj widget, nil

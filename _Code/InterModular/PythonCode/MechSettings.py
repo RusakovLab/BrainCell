@@ -76,10 +76,10 @@ def ms_isActIonInThisCat(actIonName, spcCatName):
     return any(value['ionMechName'] == actIonName for value in _ms_jsonDict2[spcCatName].values())
     
 def ms_getDiff(spcCatName, actIonName):
-    for value in _ms_jsonDict2[spcCatName].values():
-        if value['ionMechName'] == actIonName:
-            return value['Diff (um2/ms)']
-    raise Exception         # !!! replace with either codeContractViolation or an error saying that the JSON file is malformed
+    return _ms_getVar(spcCatName, actIonName, 'Diff (um2/ms)')
+    
+def ms_gett_alpha(spcCatName, actIonName):
+    return _ms_getVar(spcCatName, actIonName, 't_alpha (ms)')
     
     
 # !!! maybe move to some intermodular utils
@@ -88,4 +88,11 @@ def ms_ionMechNameToSuffix(ionMechName):
     if not ionMechName.endswith(ionSuffix):
         raise Exception     # !!! replace with either codeContractViolation or an error saying that the JSON file is malformed
     return ionMechName[: -len(ionSuffix)]
+    
+    
+def _ms_getVar(spcCatName, actIonName, varKey):
+    for value in _ms_jsonDict2[spcCatName].values():
+        if value['ionMechName'] == actIonName:
+            return value[varKey]
+    raise Exception         # !!! replace with either codeContractViolation or an error saying that the JSON file is malformed
     

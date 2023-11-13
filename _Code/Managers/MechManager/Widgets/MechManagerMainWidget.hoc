@@ -150,7 +150,7 @@ begintemplate MechManagerMainWidget
         }
         deck.intercept(0)
         deck.flip_to(0)
-        deck.map("", 0, 0, width, 1)
+        deck.map("", -1, -1, width, 1)
     }
     
     proc compOpChangedHandler() { local isCalledAfterCompOp localobj nil

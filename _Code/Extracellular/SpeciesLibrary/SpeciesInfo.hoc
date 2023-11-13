@@ -3,12 +3,14 @@
 begintemplate SpeciesInfo
 
     public packToVec, unpackFromVec
-    public suffix, diff
+    public suffix, diff, isEnableUptake, t_alpha
     
     external pyObj, math
     
     strdef suffix
-    diff = -1       // For "point" shape and ("on-off" or "spike") dynamics only
+    diff = -1               //
+    isEnableUptake = -1     // For "point" shape and ("on-off" or "spike") dynamics only
+    t_alpha = -1            //
     
     // !!! think about storing flat speciesIdx here
     
@@ -18,19 +20,25 @@ begintemplate SpeciesInfo
         
         ionMechName = $s1
         diff = $2               // !!! was: 1 (Deff in legacy Diffusion3D.hoc)
+        isEnableUptake = $3
+        t_alpha = $4
         
         // !!! move this util to a better place
         suffix = pyObj.ms_ionMechNameToSuffix(ionMechName)
         
         units(&diff, "um2/ms")
+        units(&t_alpha, "ms")
         
         inf = math.inf
         variable_domain(&diff, 0, inf)
+        variable_domain(&t_alpha, float_epsilon, inf)
     }
     
     obfunc packToVec() { localobj vec
-        vec = new Vector(1)
+        vec = new Vector(3)
         vec.x(0) = diff
+        vec.x(1) = isEnableUptake
+        vec.x(2) = t_alpha
         return vec
     }
     
@@ -38,7 +46,9 @@ begintemplate SpeciesInfo
         vec = $o1
         idx = $2
         diff = vec.x(idx)
-        idx += 1
+        isEnableUptake = vec.x(idx + 1)
+        t_alpha = vec.x(idx + 2)
+        idx += 3
         return idx
     }
     

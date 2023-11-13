@@ -4,24 +4,28 @@
             "ionMechName": "na_ion",
             "baseOuterConc (mM)": 140,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 10
         },
         "K": {
             "ionMechName": "k_ion",
             "baseOuterConc (mM)": 2.5,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 54.4
         },
         "Ca": {
             "ionMechName": "ca_ion",
             "baseOuterConc (mM)": 1,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1e-4
         },
         "Cl": {
             "ionMechName": "cl_ion",
             "baseOuterConc (mM)": 120,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 5
         }
     },
@@ -30,18 +34,21 @@
             "ionMechName": "ach_ion",
             "baseOuterConc (mM)": 1e-5,
             "Diff (um2/ms)": 0.5,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1
         },
         "GLU": {
             "ionMechName": "glu_ion",
             "baseOuterConc (mM)": 1e-5,
             "Diff (um2/ms)": 0.5,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1
         },
         "GABA": {
             "ionMechName": "gaba_ion",
             "baseOuterConc (mM)": 1e-5,
             "Diff (um2/ms)": 0.5,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1
         }
     },
@@ -50,12 +57,14 @@
             "ionMechName": "frapion_ion",
             "baseOuterConc (mM)": 1,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1
         },
         "Ins3P": {
             "ionMechName": "ip3_ion",
             "baseOuterConc (mM)": 1,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 1
         }
     },
@@ -64,12 +73,14 @@
             "ionMechName": "extra1_ion",
             "baseOuterConc (mM)": 0,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 0
         },
         "Extra2Ion": {
             "ionMechName": "extra2_ion",
             "baseOuterConc (mM)": 0,
             "Diff (um2/ms)": 1,
+            "t_alpha (ms)": 1234.5,
             "baseInnerConc (mM)": 0
         }
     },
@@ -79,6 +90,7 @@
             "ionMechName": "The ion mechanism name for this species (ending with '_ion'). Only 'na_ion' and 'k_ion' are defined in NEURON by default. All others are custom MOD- or HOC-based mechanisms.",
             "baseOuterConc (mM)": "The base concentration outside the cell. It is used as a default value assigned to the GLOBAL var named '{name}o0_{name}_ion'.",
             "Diff (um2/ms)": "The diffusion coefficient in the extracellular space. It is used only in 'point + on-off' and 'point + spike' diffusion models.",
+            "t_alpha (ms)": "The membrane uptake coefficient: the higher value, the slower uptake. It is used only in 'point + on-off' and 'point + spike' diffusion models.",
             "baseInnerConc (mM)": "Like the 'Outer' var, but inside the cell, and the GLOBAL var is named '{name}i0_{name}_ion'."
         }
     }

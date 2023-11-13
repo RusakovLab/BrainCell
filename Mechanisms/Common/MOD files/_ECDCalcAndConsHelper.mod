@@ -165,6 +165,8 @@ VERBATIM
     
     struct SpeciesInfo {
         double diff;
+        double isEnableUptake;
+        double t_alpha;
     };
     
     struct SpeciesLibrary {
@@ -397,6 +399,10 @@ VERBATIM
         
         int spcIdx = ptr_ecSrc->speciesIdx;
         
+        struct SpeciesInfo *ptr_spcInfo = &ptr_spcLib->speciesInfo[spcIdx];
+        
+        double *ptr_o = ptr_vec_o[spcIdx];
+        
         switch ((int)ptr_ecSrc->spatialInfo.enumPointSphere) {
             case 0: {   // "point" shape
                 
@@ -407,7 +413,7 @@ VERBATIM
                     case 0: {       // "static" dynamics
                         // !!! I can pass one product var instead of two factor vars into this MOD file
                         // !!! very similar to "on-off" dynamics
-                        *ptr_vec_o[spcIdx] += ptr_ecSrc->capacityInfo.ssOrMinus1 * ptr_ecSrc->capacityInfo.pointCapacityRadiusOrMinus1 / distance;
+                        *ptr_o += ptr_ecSrc->capacityInfo.ssOrMinus1 * ptr_ecSrc->capacityInfo.pointCapacityRadiusOrMinus1 / distance;
                         
                         break;
                     } case 1: {     // "on-off" dynamics
@@ -426,15 +432,23 @@ VERBATIM
                         }
                         
                         // !!! think about creating a cache matrix to save all the constants in INITIAL block (not to calc. on each BREAKPOINT)
-                        double diffFactor = 4.0 * ptr_spcLib->speciesInfo[spcIdx].diff;
+                        double diffFactor = 4.0 * ptr_spcInfo->diff;
                         
-                        double timeFactor = erfc(distance / sqrt(diffFactor * (t - offsetTime)));   // !! make a func and reuse
+                        double delta_t = t - offsetTime;
+                        double timeFactor = erfc(distance / sqrt(diffFactor * delta_t));    //
+                        if (ptr_spcInfo->isEnableUptake) {                                  // !! make a func and reuse
+                            timeFactor *= exp(-delta_t / ptr_spcInfo->t_alpha);             //
+                        }                                                                   //
                         
                         double endTime = offsetTime + ptr_ecSrc->temporalInfo.durationOrMinus1;
                         
                         // For t == endTime, we would have 1/0 in timeFactor below
                         if (t > endTime) {
-                            timeFactor -= erfc(distance / sqrt(diffFactor * (t - endTime)));        // !! make a func and reuse
+                            delta_t = t - endTime;
+                            timeFactor -= erfc(distance / sqrt(diffFactor * delta_t));      //
+                            if (ptr_spcInfo->isEnableUptake) {                              // !! make a func and reuse
+                                timeFactor *= exp(-delta_t / ptr_spcInfo->t_alpha);         //
+                            }                                                               //
                             
                             // !!! to achieve better performance, investigate if we can express the difference of two "erfc"
                             //     with some single special function available in <math.h>, e.g. "lgamma" or "tgamma":
@@ -444,7 +458,15 @@ VERBATIM
                         // !!! very similar to "static" dynamics
                         double delta_o = ptr_ecSrc->capacityInfo.ssOrMinus1 * ptr_ecSrc->capacityInfo.pointCapacityRadiusOrMinus1 * timeFactor / distance;
                         
-                        *ptr_vec_o[spcIdx] += delta_o;
+                        *ptr_o += delta_o;
+                        
+                        if (*ptr_o < 0) {
+                            if (ptr_spcInfo->isEnableUptake && t > endTime) {
+                                *ptr_o = 0;
+                            } else {
+                                codeContractViolation();
+                            }
+                        }
                         
                         break;
                     } case 2: {     // "spike" dynamics
@@ -463,10 +485,14 @@ VERBATIM
                         // !!! optimize the equation:
                         // -pow(Distance, 2.0) / (4.0 * Diff) -> use Distance*Distance and cache before 1st iteration
                         
-                        double prod = 4.0 * ptr_spcLib->speciesInfo[spcIdx].diff * delta_t;
+                        double prod = 4.0 * ptr_spcInfo->diff * delta_t;
                         double delta_o = ptr_ecSrc->capacityInfo.numMoleculesOrMinus1 / pow(PI * prod, 1.5) * exp(-pow(distance, 2.0) / prod);
                         
-                        *ptr_vec_o[spcIdx] += delta_o;
+                        if (ptr_spcInfo->isEnableUptake) {
+                            delta_o *= exp(-delta_t / ptr_spcInfo->t_alpha);
+                        }
+                        
+                        *ptr_o += delta_o;
                         
                         break;
                     } default: {
@@ -537,7 +563,7 @@ VERBATIM
                 }
                 
                 if (isOnOrOff) {
-                    *ptr_vec_o[spcIdx] += ptr_ecSrc->capacityInfo.delta_oOrMinus1;
+                    *ptr_o += ptr_ecSrc->capacityInfo.delta_oOrMinus1;
                 }
                 
                 break;

@@ -1,7 +1,7 @@
 
 begintemplate SpeciesLibrary
 
-    public validateAndWarnUser, copyGlobalVarsToModParams, packToVec, getSpeciesFlatIdxForModInterface, getSpeciesFlatIdxForColouring, getSpeciesInsideCatIdxForColouring
+    public validateAndWarnUser, copyGlobalVarsToModParams, packToVec, getSpeciesFlatIdxForModInterface, getSpeciesFlatIdxForColouring, getSpeciesInsideCatIdx
     public spcCatsList
     
     external mwh, mechSettings
@@ -14,7 +14,7 @@ begintemplate SpeciesLibrary
     
     
     // !!! maybe rename spcNamesList to smth more clear
-    proc init() { local spcCatIdx, diff localobj impRedObjOrNil, spcCatNames, spcNamesList, spcInfoList, nil
+    proc init() { local spcCatIdx, diff, t_alpha localobj impRedObjOrNil, spcCatNames, spcNamesList, spcInfoList, nil
         strdef spcCatName, expIonName, actIonName
         
         impRedObjOrNil = $o1
@@ -25,9 +25,9 @@ begintemplate SpeciesLibrary
             spcNamesList = new List()
             spcInfoList = new List()
             spcCatName = spcCatNames.o(spcCatIdx).s
-            for mechSettings.getExpIonNameAndDiffIter(spcCatName, expIonName, &diff) {
+            for mechSettings.getExpIonNameAndDiffIter(spcCatName, expIonName, &diff, &t_alpha) {
                 spcNamesList.append(new SpeciesListItem(expIonName))
-                spcInfoList.append(new SpeciesInfo(expIonName, diff))
+                spcInfoList.append(new SpeciesInfo(expIonName, diff, 0, t_alpha))
             }
             if (spcNamesList.count() != 0) {
                 spcCatsList.append(new SpeciesCategory(spcCatName, spcNamesList, spcInfoList))
@@ -37,7 +37,7 @@ begintemplate SpeciesLibrary
         spcInfoList = new List()
         for mechSettings.getUnrecActIonNameIter(actIonName) {
             spcNamesList.append(new SpeciesListItem(actIonName))
-            spcInfoList.append(new SpeciesInfo(actIonName, -1))     // !!!! this "-1" will be cropped immediately by "variable_domain". UPD: actually, no
+            spcInfoList.append(new SpeciesInfo(actIonName, -1, 0, -1))  // !!! these "-1" values are out of bounds for "variable_domain"-s, but actually not cropped (and that's fine)
         }
         if (spcNamesList.count() != 0) {
             spcCatsList.append(new SpeciesCategory(mechSettings.unrecSpcCatName, spcNamesList, spcInfoList))
@@ -130,7 +130,7 @@ begintemplate SpeciesLibrary
     
     // !!! unify with the prev 2 funcs
     // !!! think about moving it to SpeciesCategory or !!! storing spcIdx inside SpeciesListItem
-    func getSpeciesInsideCatIdxForColouring() { local spcCatIdx, spcIdx localobj spcNamesList
+    func getSpeciesInsideCatIdx() { local spcCatIdx, spcIdx localobj spcNamesList
         strdef species
         
         species = $s1

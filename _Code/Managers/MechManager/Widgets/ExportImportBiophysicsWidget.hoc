@@ -103,7 +103,7 @@ begintemplate ExportImportBiophysicsWidget
                     deckSpacerSlider.intercept(0)
                     
                     // !!! must be done only before "deckSpacerSlider.flip_to(0)" to force creation of a slider rather than stretching the widget in vertical direction
-                    deckSpacerSlider.map("", 0, 0, 120, 1)
+                    deckSpacerSlider.map("", -1, -1, 120, 1)
                     
                     deckSpacerSlider.flip_to(0)
                 }

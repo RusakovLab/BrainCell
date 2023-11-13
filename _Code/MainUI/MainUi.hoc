@@ -240,7 +240,7 @@ proc createNanoGeomAndBiophysDeck() { local w, h localobj deckNanoGeomAndBiophys
     }
     deckNanoGeomAndBiophys.intercept(0)
     deckNanoGeomAndBiophys.flip_to(0)
-    deckNanoGeomAndBiophys.map("", 0, 0, w, h)
+    deckNanoGeomAndBiophys.map("", -1, -1, w, h)
 }
 
 proc showRunControlPanel() {
