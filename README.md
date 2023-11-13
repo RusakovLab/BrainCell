@@ -30,9 +30,6 @@ For users with a version of Windows < 11, this step is not required. To achieve 
  Here's a step-by-step guide to change administrative rights for a file in Windows 11: [Go to a step-by-step guide](#contact)
 
 
-
-
-
 #### Step 2: Execute the init.hoc File
 
 Run the `init.hoc` file from the host computer directory. You can find this file in the directory path `...\init.hoc`. Alternatively, you can use the 'NEURON simulations' button accessible from the start menu panel.
@@ -125,9 +122,7 @@ Queen Square, London WC1N 3BG
 
 ### Extra Information
 
-## Administrative rights <a name="contact"></a>
-
-##### File Modification and Administrative Rights
+##### File Modification and Administrative Rights <a name="contact"></a>
 
 - **Locate the File**: Navigate to the location of the file for which you want to modify administrative rights.
 - **Right-Click on the File**: Right-click on the file to open the context menu.
