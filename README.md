@@ -20,7 +20,7 @@ To ensure a smooth experience with BrainCell, please make sure your system meets
 3. First, install **NEURON** and, second, **ANACONDA** (the latest version) on Windows.
 
 ### Preparing BRAINCELL System Files
-[Video format on you tube] (https://www.youtube.com/watch?v=sCMdTD4Q2OA)
+Video - [Video format on you tube] (https://www.youtube.com/watch?v=sCMdTD4Q2OA)
 
 #### Step 1: Update File Properties for Windows 11 Users
 
