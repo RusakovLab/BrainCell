@@ -113,12 +113,19 @@ Documentation and API details can be found [here](https://github.com/RusakovLab/
 
 ## Contact Information
 
+### Key Contacts
 
-- **Prof. Dmitri Rusakov**   [Email](mailto:d.rusakov#ucl.ac.uk)
-- **Dr. Leonid Savtchenko**: [Email](mailto:savtchenko#yahoo.com)
-- Visit us at:
-[Department of Clinical and Experimental Epilepsy](http://www.ucl.ac.uk/ion/departments/epilepsy/themes/synaptic-imaging)
+- **Prof. Dmitri Rusakov**
+  - Email: [d.rusakov@ucl.ac.uk](mailto:d.rusakov#ucl.ac.uk)
 
-- UCL Queen Square Institute of Neurology
-- University College London
-- Queen Square, London WC1N 3BG
+- **Dr. Leonid Savtchenko**
+  - Email: [savtchenko@yahoo.com](mailto:savtchenko#yahoo.com)
+
+### Visit Us
+Explore more at the [Department of Clinical and Experimental Epilepsy](http://www.ucl.ac.uk/ion/departments/epilepsy/themes/synaptic-imaging)
+
+### Address
+**UCL Queen Square Institute of Neurology**  
+University College London  
+Queen Square, London WC1N 3BG
+
