@@ -1,8 +1,4 @@
 # BRAINCELL 1.0. - Modeling and Simulating Brain Cells
-# 📊 Metrics [<img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=280144&theme=dark" alt="" align="right" width="190" height="41">](https://www.producthunt.com/posts/github-metrics?utm_source=badge-featured&utm_medium=badge&utm_source=badge-github-metrics)
-
-[![Continuous integration](https://github.com/lowlighter/metrics/actions/workflows/ci.yml/badge.svg)](https://github.com/lowlighter/metrics/actions/workflows/ci.yml)
-
 
 *Explore the Wonders of the Brain*
 
@@ -117,8 +113,9 @@ Documentation and API details can be found [here](https://github.com/LeonidSavtc
 
 ## Contact Information
 
+
+- **Prof. Dmitri Rusakov**   [Email](mailto:d.rusakov#ucl.ac.uk)
 - **Dr. Leonid Savtchenko**: [Email](mailto:savtchenko#yahoo.com)
-- **Prof. Dmitri Rusakov**
 - Visit us at:
 [Department of Clinical and Experimental Epilepsy](http://www.ucl.ac.uk/ion/departments/epilepsy/themes/synaptic-imaging)
 
