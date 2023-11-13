@@ -116,10 +116,10 @@ Documentation and API details can be found [here](https://github.com/RusakovLab/
 ### Key Contacts
 
 - **Prof. Dmitri Rusakov**
-  - Email: [d.rusakov@ucl.ac.uk](mailto:d.rusakov#ucl.ac.uk)
+  - Email: [d.rusakov#ucl.ac.uk](mailto:d.rusakov#ucl.ac.uk)
 
 - **Dr. Leonid Savtchenko**
-  - Email: [savtchenko@yahoo.com](mailto:savtchenko#yahoo.com)
+  - Email: [savtchenko#yahoo.com](mailto:savtchenko#yahoo.com)
 
 ### Visit Us
 Explore more at the [Department of Clinical and Experimental Epilepsy](http://www.ucl.ac.uk/ion/departments/epilepsy/themes/synaptic-imaging)
