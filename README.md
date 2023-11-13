@@ -63,10 +63,10 @@ This ensures smooth execution of PowerShell scripts for enhanced efficiency.
 
 ## Setting Up and Running BRAINCELL
 
-### 1. Constructing Cell Morphology (Nano-geometry)
+### 1. Constructing Cell Morphology 
 
 - Import the 3D main-branch morphology of cells from [neuromorpho.org](https://neuromorpho.org/).
-- Generate nanoscopic cell protrusions within the NEURON environment.
+- Generate nanoscopic cell protrusions within the BrainCell environment.
 
 ## Key Features
 
