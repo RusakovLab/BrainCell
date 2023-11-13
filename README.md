@@ -27,18 +27,10 @@ For Windows 11 users, ensure that any `*.exe` file in the NEURON directory, loca
 **UPDATE 13/11/2023**: The latest version of NEURON already operates with administrative rights.  
 For users with a version of Windows < 11, this step is not required. To achieve this, follow the steps outlined below:
 - **Updating File Properties:** Navigate to the NEURON directory `c:\nrn\bin\` and locate the `*.exe` files. Adjust the properties of each `*.exe` with an administrative right.
- Here's a step-by-step guide to change administrative rights for a file in Windows 11:
+ Here's a step-by-step guide to change administrative rights for a file in Windows 11: ## Contact Information <a name="contact"></a>
 
-##### File Modification and Administrative Rights
 
-- **Locate the File**: Navigate to the location of the file for which you want to modify administrative rights.
-- **Right-Click on the File**: Right-click on the file to open the context menu.
-- **Select "Properties"**: From the context menu, select **"Properties."** This will open the Properties window for the file.
-- **Go to the "Security" Tab**: In the Properties window, go to the **"Security"** tab.
-- **Click "Edit"**: Click the **"Edit"** button to modify the file's permissions.
-- **Modify Permissions** : In the Permissions window, you can modify the permissions for various users and groups. To grant administrative rights, you would typically select or add a user or group and grant them the appropriate permissions, such as "Full control."
-- **Apply Changes**: After modifying the permissions, click **"Apply"** to apply the changes.
-- **Confirm Administrative Rights**: Confirm that the necessary administrative rights have been granted to the user or group.
+
 
 
 #### Step 2: Execute the init.hoc File
@@ -128,4 +120,19 @@ Explore more at the [Department of Clinical and Experimental Epilepsy](http://ww
 **UCL Queen Square Institute of Neurology**  
 University College London  
 Queen Square, London WC1N 3BG
+
+******************************************************************************************************
+
+[Go to Contact Information](#contact)
+
+##### File Modification and Administrative Rights
+
+- **Locate the File**: Navigate to the location of the file for which you want to modify administrative rights.
+- **Right-Click on the File**: Right-click on the file to open the context menu.
+- **Select "Properties"**: From the context menu, select **"Properties."** This will open the Properties window for the file.
+- **Go to the "Security" Tab**: In the Properties window, go to the **"Security"** tab.
+- **Click "Edit"**: Click the **"Edit"** button to modify the file's permissions.
+- **Modify Permissions** : In the Permissions window, you can modify the permissions for various users and groups. To grant administrative rights, you would typically select or add a user or group and grant them the appropriate permissions, such as "Full control."
+- **Apply Changes**: After modifying the permissions, click **"Apply"** to apply the changes.
+- **Confirm Administrative Rights**: Confirm that the necessary administrative rights have been granted to the user or group.
 
