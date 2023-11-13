@@ -98,7 +98,7 @@ When building a realistic cell model, consider the following essential elements:
 - Design and simulate intracellular and extracellular ionic dynamics.
 - Use cluster/cloud-based parallel computing for longer-term simulations.
 
-Documentation and API details can be found [here](https://github.com/RusakovLab/BrainCell).
+Documentation and API details can be found [here](https://github.com/RusakovLab/BrainCell/blob/main/User%20Manual.pdf).
 
 ## Contact Information
 
