@@ -27,7 +27,7 @@ For Windows 11 users, ensure that any `*.exe` file in the NEURON directory, loca
 **UPDATE 13/11/2023**: The latest version of NEURON already operates with administrative rights.  
 For users with a version of Windows < 11, this step is not required. To achieve this, follow the steps outlined below:
 - **Updating File Properties:** Navigate to the NEURON directory `c:\nrn\bin\` and locate the `*.exe` files. Adjust the properties of each `*.exe` with an administrative right.
- Here's a step-by-step guide to change administrative rights for a file in Windows 11: ## Contact Information <a name="contact"></a>
+ Here's a step-by-step guide to change administrative rights for a file in Windows 11: [Go to a step-by-step guide](#contact)
 
 
 
@@ -123,7 +123,8 @@ Queen Square, London WC1N 3BG
 
 ******************************************************************************************************
 
-[Go to Contact Information](#contact)
+
+## Contact Information <a name="contact"></a>
 
 ##### File Modification and Administrative Rights
 
