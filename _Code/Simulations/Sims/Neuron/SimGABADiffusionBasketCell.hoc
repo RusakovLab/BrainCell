@@ -39,6 +39,7 @@ begintemplate SimGABADiffusionBasketCell
     
     isCreateOrLoad = -1
     frontEndIdx = -1
+    isUseOpacitiesOrColours = -1
     numSrcs = -1
     radiusGen = -1
     DtOrMinus1 = -1
@@ -66,6 +67,7 @@ begintemplate SimGABADiffusionBasketCell
         
         isCreateOrLoad = 1
         frontEndIdx = 1
+        isUseOpacitiesOrColours = 1
         numSrcs = 100
         radiusGen = 50      // um
         // DtOrMinus1 will be set in proc show because we adjust "dt" after calling this ctor
@@ -144,6 +146,11 @@ begintemplate SimGABADiffusionBasketCell
                 xradiobutton("Plotly (browser)", "frontEndIdx = 0", frontEndIdx == 0)
                 xradiobutton("Pyplot (desktop)", "frontEndIdx = 1", frontEndIdx == 1)
                 xradiobutton("Pyplot (browser)", "frontEndIdx = 2", frontEndIdx == 2)
+                xpanel()
+                xpanel("")
+                xlabel("What to animate:")
+                xradiobutton("Opacities", "isUseOpacitiesOrColours = 1", isUseOpacitiesOrColours == 1)
+                xradiobutton("Colours", "isUseOpacitiesOrColours = 0", isUseOpacitiesOrColours == 0)
                 xpanel()
                 xpanel("")
                 // !!!!!!!!!!!! just for test
@@ -236,7 +243,7 @@ begintemplate SimGABADiffusionBasketCell
     
     // !!!!!!!!!!!!!!!! just for test
     proc playerTestHandler() {
-        player.play(frontEndIdx, 1)
+        player.play(frontEndIdx, isUseOpacitiesOrColours, 1)
     }
     
     proc showLastHandler() {
@@ -245,7 +252,7 @@ begintemplate SimGABADiffusionBasketCell
             return
         }
         
-        player.play(frontEndIdx, 0)
+        player.play(frontEndIdx, isUseOpacitiesOrColours, 0)
     }
     
     proc generateHandler() { local numECSs, isCancel, numSects, srcIdx, secIdx, numPts, ptIdx, x_secPt, y_secPt, z_secPt, radius, theta, phi, x_src, y_src, z_src localobj ecsList, baseECS, list_ref, newECS
@@ -380,7 +387,7 @@ begintemplate SimGABADiffusionBasketCell
         record.onJustAfterRun(binFilePathNameOrEmpty, txtFilePathNameOrEmpty)
         isSmthRecordedOrLoaded = 1
         
-        player.play(frontEndIdx, 0)
+        player.play(frontEndIdx, isUseOpacitiesOrColours, 0)
     }
     
     proc loadBinFileHandler() { local isCancel
@@ -392,7 +399,7 @@ begintemplate SimGABADiffusionBasketCell
         record.loadFromBinFile(binFilePathName)
         isSmthRecordedOrLoaded = 1
         
-        player.play(frontEndIdx, 0)
+        player.play(frontEndIdx, isUseOpacitiesOrColours, 0)
     }
     
 endtemplate SimGABADiffusionBasketCell

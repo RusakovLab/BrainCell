@@ -1,37 +1,46 @@
 
 # !!! BUGs:
-#     * when _isUseOpacitiesOrColours == True and rotating the scene, the points disappear randomly
+#     * when the first pyplot figure is created, all NEURON widgets become smaller;
+#       this happens only when "Size of text, apps, and other items" parameter in Display settings of Windows OS is greater than 100%;
+#       the root cause is that the command "plt.figure()" changes the DPI awareness of the process from False to True and increases its DPI from 96 to a higher value
 #     * when creating the second animation using "Pyplot (desktop)" front end, it stops shortly, the button and the slider become unresponsive and the next message is printed to console:
 #           QCoreApplication::exec: The event loop is already running
+#     * when _isUseOpacitiesOrColours is True and rotating the scene, the markers disappear randomly
 #     * when resizing the figure to full screen, the "Max" TextBox obstructs the RangeSlider label
 #       (and the same problem when showing the default random test data)
 
 # https://matplotlib.org/stable/gallery/animation/random_walk.html
 
+import webbrowser
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, Slider, RangeSlider, TextBox
-import webbrowser
+
 from scipy.special import logit, expit
 import numpy as np
-from neuron import h
 
 
 class PyplotPlayer:
     
     _defaultMarkerSize = 500
-    _animationEmbedLimit = 300  # MB    # For browser mode only
-    _tempHtmlFileName = 'temp.html'     #
     
-    _isUseOpacitiesOrColours = True
-    _defaultBalance = 0     # Used only when the flag above is True
-    _markerColour = 'c'     # Used only when the flag above is True
-    _alpha = 0.1            # Used only when the flag above is False
-    _palette = 'Blues'      # Used only when the flag above is False
+    # Used only when isDesktopOrBrowser is False
+    _animationEmbedLimit = 300  # MB
+    _tempHtmlFileName = 'temp.html'
+    
+    # Used only when _isUseOpacitiesOrColours is True
+    _defaultBalance = 0
+    _markerColour = 'c'
+    
+    # Used only when _isUseOpacitiesOrColours is False
+    _alpha = 0.25
+    _palette = 'viridis'
     
     
     _rangeVar = None
     _numFrames = None
+    _isUseOpacitiesOrColours = None
     _isDesktopOrBrowser = None
     
     _rangeVar0To1 = None
@@ -49,6 +58,7 @@ class PyplotPlayer:
     _frameIdx = -1
     _isRunning = True
     _isProgrammaticSliderFrameChange = False
+    _isProgrammaticTextBoxMinMaxChange = False
     
     _balance = 0            #
     _min = None             #
@@ -57,15 +67,18 @@ class PyplotPlayer:
     _rangeVar_range = None  #
     
     
-    def __init__(self, x, y, z, rangeVar, numFrames, isDesktopOrBrowser, varNameWithIndexAndUnits):
+    def __init__(self, x, y, z, rangeVar, numFrames, varNameWithIndexAndUnits, isUseOpacitiesOrColours, isDesktopOrBrowser, rangeVar_min, rangeVar_max):
         
         # !!! not enough to avoid "QCoreApplication::exec: The event loop is already running" message and hanging
         # plt.close('all')
         
-        if self._isUseOpacitiesOrColours:
+        self._numFrames = numFrames
+        self._isUseOpacitiesOrColours = isUseOpacitiesOrColours
+        self._isDesktopOrBrowser = isDesktopOrBrowser
+        
+        if isUseOpacitiesOrColours:
             # Make a linear transformation of the data to fit [0, 1] range
-            rangeVar_min = self._getRangeVarMin(rangeVar, varNameWithIndexAndUnits)
-            rangeVar_max = rangeVar.max()
+            # !!! code dup. with PlotlyPlayer._initForOpacities
             rangeVar_range = rangeVar_max - rangeVar_min
             self._rangeVar0To1 = (rangeVar - rangeVar_min) / rangeVar_range
             
@@ -79,30 +92,33 @@ class PyplotPlayer:
         else:
             self._rangeVar = rangeVar
             
-        self._numFrames = numFrames
-        self._isDesktopOrBrowser = isDesktopOrBrowser
-        
         # Create a 3D plot
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         
-        if isDesktopOrBrowser and self._isUseOpacitiesOrColours:
+        if isDesktopOrBrowser and isUseOpacitiesOrColours:
             # Reserve some space for sliders and title
             ax.set_position([0.2, 0.2, 0.6, 0.6])
             
-        if self._isUseOpacitiesOrColours:
+        if isUseOpacitiesOrColours:
             # Plot the 3D point cloud
             self._scatter = ax.scatter(x, y, z, alpha=self._rangeVar0To1Balanced[0], s=self._defaultMarkerSize, c=self._markerColour, linewidths=0)
         else:
             # Create a colormap
             cmap = plt.get_cmap(self._palette)
             
+            # Set the colormap normalization based on the global min and max
+            norm = plt.Normalize(vmin=rangeVar_min, vmax=rangeVar_max)
+            
             # Plot the 3D point cloud
-            self._scatter = ax.scatter(x, y, z, c=self._rangeVar[0], alpha=self._alpha, cmap=cmap, s=self._defaultMarkerSize, linewidths=0)
+            self._scatter = ax.scatter(x, y, z, c=self._rangeVar[0], alpha=self._alpha, cmap=cmap, norm=norm, s=self._defaultMarkerSize, linewidths=0)
             
             # Add a color bar to indicate the values
             colorBar = plt.colorbar(self._scatter)
             colorBar.ax.set_title(varNameWithIndexAndUnits)
+            
+            # Adjust the margins of the entire figure to bring the colorbar closer to the edge
+            fig.subplots_adjust(right=1)
             
         # Set the aspect ratio to be equal (preserve proportions)
         ax.set_aspect('equal')
@@ -140,7 +156,7 @@ class PyplotPlayer:
             self._sliderSize = Slider(ax, 'Size', orientation='vertical', valmin=10, valmax=2000, valinit=self._defaultMarkerSize)
             self._sliderSize.on_changed(self._onSliderSizeChange)
             
-            if self._isUseOpacitiesOrColours:
+            if isUseOpacitiesOrColours:
                 ax = plt.axes([0.1, 0.25, sw, 0.65])
                 self._sliderOpacity = Slider(ax, 'Opacity', orientation='vertical', valmin=-10, valmax=10, valinit=self._balance)
                 self._sliderOpacity.on_changed(self._onSliderOpacityChange)
@@ -192,7 +208,7 @@ class PyplotPlayer:
             return
             
         self._isProgrammaticSliderFrameChange = True
-        self._sliderFrame.set_val(frameIdx)
+        self._sliderFrame.set_val(frameIdx)             # --> _onSliderFrameChange
         self._isProgrammaticSliderFrameChange = False
         
     def _onButtonStartStopClick(self, _):
@@ -234,27 +250,33 @@ class PyplotPlayer:
     def _onSliderRangeChange(self, val):
         self._min = val[0]
         self._max = val[1]
-        self._textBoxMin.set_val(self._formatForTextBox(val[0]))
-        self._textBoxMax.set_val(self._formatForTextBox(val[1]))
+        self._isProgrammaticTextBoxMinMaxChange = True
+        self._textBoxMin.set_val(self._formatForTextBox(val[0]))    # --> _onTextBoxMinChange
+        self._textBoxMax.set_val(self._formatForTextBox(val[1]))    # --> _onTextBoxMaxChange
+        self._isProgrammaticTextBoxMinMaxChange = False
         self._transformRangeVarToOpacities()
         
     def _onTextBoxMaxChange(self, val):
+        if self._isProgrammaticTextBoxMinMaxChange:
+            return
         try:
             val = float(val)
         except ValueError:
             return
         self._max = val
         val = (self._min, val)
-        self._sliderRange.set_val(val)
+        self._sliderRange.set_val(val)      # --> _onSliderRangeChange
         
     def _onTextBoxMinChange(self, val):
+        if self._isProgrammaticTextBoxMinMaxChange:
+            return
         try:
             val = float(val)
         except ValueError:
             return
         self._min = val
         val = (val, self._max)
-        self._sliderRange.set_val(val)
+        self._sliderRange.set_val(val)      # --> _onSliderRangeChange
         
         
     def _formatForTextBox(self, val):
@@ -265,27 +287,6 @@ class PyplotPlayer:
             self._frameIdx = (self._frameIdx + 1) % self._numFrames
             yield self._frameIdx
             
-    def _getRangeVarMin(self, rangeVar, varNameWithIndexAndUnits):
-        fallbackMin = rangeVar.min()
-        varNameWithIndex = varNameWithIndexAndUnits.split(' ')[0]
-        if varNameWithIndex[-1] == 'o':
-            # This is probably an out concentration range var - we want to see some opacity even for the lowest value point
-            # when it's higher than the base out concentration (e.g. when we have a static point source)
-            ionName = varNameWithIndex[:-1]                     # e.g. "gaba"
-            baseOutConcVarName = f'{ionName}o0_{ionName}_ion'   # e.g. "gabao0_gaba_ion"
-            try:
-                rangeVar_min = getattr(h, baseOutConcVarName)
-                if fallbackMin < rangeVar_min:
-                    # A case when we have some segment(s) where "{ionName}o < {ionName}o0_{ionName}_ion" - use full transparency for the lowest value point
-                    rangeVar_min = fallbackMin
-            except AttributeError:
-                # Not an out concentration range var - use full transparency for the lowest value point
-                rangeVar_min = fallbackMin
-        else:
-            # Not an out concentration range var - use full transparency for the lowest value point
-            rangeVar_min = fallbackMin
-        return rangeVar_min
-        
     def _transformRangeVarToOpacities(self):
         temp = logit(self._rangeVar0To1)            # Mapping [0, 1] to (-inf, inf)
         temp += self._balance                       # Balancing opacities
