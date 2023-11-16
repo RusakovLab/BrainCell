@@ -1,30 +1,52 @@
 
 // Finds sections within a line and sets initial FRAP concentration on them.
-// $1 - AlphaX - line equation parameter
-// $2 - Y_Coor - line equation parameter
+// $1 - xVec - two X coords on the screen
+// $2 - yVec - two Y coords on the screen
 // $3 - Line width
 // $4 - Basic concentration. The parameter can modulate the initial concentration of interest.
 // $5 - Alpha - affects speed of the bleaching
 // $6 - DFree
+// $7 - viewDirIdx - the view direction (0 to 2)
 // Returns: Sections affected by FRAP
-obfunc setInitialLineConcentration() { localobj frapLineSectionsList
+obfunc setInitialLineConcentration() { local LineWidth, BasicConc, Alpha, DFree, viewDirIdx, u1, u2, ptToLineDist localobj xVec, yVec, frapLineSecList
     
-    frapLineSectionsList = new List()
+    xVec = $o1
+    yVec = $o2
+    LineWidth = $3
+    BasicConc = $4
+    Alpha = $5
+    DFree = $6
+    viewDirIdx = $7
+    
+    frapLineSecList = new List()
     
     forall {
-        frapion0_FRAP = $4      // mM, The concentration of molecules used for the FRAP
-        DFree_FRAP = $6
+        frapion0_FRAP = BasicConc   // mM, The concentration of molecules used for the FRAP
+        DFree_FRAP = DFree
         
-        // Find sections within a line
-        if (($1*x3d(1)+$2 < y3d(1)) && (($1*x3d(1)+$2+$3*sqrt(1+$1^2)) > y3d(1))) {
-        //print x3d(1)
-            frapLineSectionsList.append(new SectionRef())
-            
-            Alpha_FRAP = $5*$4
+        if (viewDirIdx == 0) {          // XY plane
+            u1 = x3d(1)
+            u2 = y3d(1)
+        } else if (viewDirIdx == 1) {   // ZY plane
+            u1 = z3d(1)
+            u2 = y3d(1)
+        } else if (viewDirIdx == 2) {   // XZ plane
+            u1 = x3d(1)
+            u2 = z3d(1)
+        } else {
+            codeContractViolation()
+        }
+        
+        // !!! for slightly better performance, we can implement a custom func that returns the square of the distance
+        ptToLineDist = math.distFromPointToLine(u1, u2, xVec, yVec)
+        
+        if (ptToLineDist < LineWidth / 2) {
+            frapLineSecList.append(new SectionRef())
+            Alpha_FRAP = Alpha * BasicConc
         }
     }
     
-    return frapLineSectionsList
+    return frapLineSecList
 }
 
 begintemplate SimFrapLine
@@ -33,11 +55,12 @@ begintemplate SimFrapLine
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance
     
     external setInitialLineConcentration, closeFileAndShowCompleteMsg
-    external run
-    external tstop
-    external removeItemFromList, unmapIfNotNil
+    external createVector, listOfSecRefToSecList, removeItemFromList, createEmptyPanel, unmapIfNotNil, codeContractViolation
+    external math, plotShapeUtils, mwh
     external eachSecInList
     external dendrite_ref
+    external run
+    external tstop
     external flush_list, fast_flush_list
     
     strdef biophysJsonFileNameOrEmpty
@@ -46,13 +69,20 @@ begintemplate SimFrapLine
     strdef outTxtFileRelPathName
     
     // UI
-    objref hBoxFrapLine, graphFrapLine, plotShapeFrapioniLine
+    objref mainBox, selectedSectionsBox, watchedPathBox
+    objref deck, graph, plotShapeFrapioniLine
+    objref plotShapeSelectedSections
     
     // Concentration file
     objref fileFrapLineConcentration
     
     // Sections affected by FRAP
-    objref frapLineSectionsList
+    objref frapLineSecList
+    
+    objref xVec, yVec
+    viewDirIdx = -1
+    apIdx_last = -1
+    enumLockLevel = -1
     
     
     proc init() {
@@ -60,6 +90,9 @@ begintemplate SimFrapLine
         isCustomProcAdvance = 1
         
         outTxtFileRelPathName = "Text results/TimeFRAP.txt"
+        
+        viewDirIdx = 0      // XY plane
+        enumLockLevel = 0
     }
     
     func check() {
@@ -90,7 +123,7 @@ begintemplate SimFrapLine
             recoveryBleaching = 0
         }
         
-        for eachSecInList(frapLineSectionsList) {
+        for eachSecInList(frapLineSecList) {
             cylinderVolume = L*PI*diam^2/4
             FraRec += frapioni(0.5)*cylinderVolume
             FraBasic += cylinderVolume
@@ -111,6 +144,8 @@ begintemplate SimFrapLine
             //     because otherwise it's not guaranteed that the last lines are flushed to the file
             fileFrapLineConcentration.aopen(outTxtFileRelPathName)
         }
+        
+        // "division by zero" would happen here if frapLineSecList was empty, but we have prevented this case in proc runFrapLine
         fileFrapLineConcentration.printf("%-6.5g\t%-6.5g\n", t, FraRec/FraBasic)
         
         if (t < tstop) {
@@ -124,10 +159,13 @@ begintemplate SimFrapLine
     
     proc dismissHandler() {
         
-        removeItemFromList(flush_list, graphFrapLine)
+        removeItemFromList(flush_list, graph)
         removeItemFromList(fast_flush_list, plotShapeFrapioniLine)
+        removeItemFromList(fast_flush_list, plotShapeSelectedSections)
         
-        unmapIfNotNil(hBoxFrapLine)
+        unmapIfNotNil(selectedSectionsBox)
+        unmapIfNotNil(watchedPathBox)
+        unmapIfNotNil(mainBox)
         
         /* !!!
         closeFileAndShowCompleteMsg(fileFrapLineConcentration)
@@ -140,14 +178,51 @@ begintemplate SimFrapLine
     // Runs FRAP Line simulation.
     // Bleaching during iterationTime with a constant Alpha_FRAP and recovery during the same time.
     proc runFrapLine() {
+        
+        frapLineSecList = setInitialLineConcentration(xVec, yVec, LineWidth, BasicFRAP, AlphaFRAP, DFreeFRAP, viewDirIdx)
+        if (frapLineSecList.count() == 0) {
+            mwh.showWarningBox("Cannot start the simulation because the FRAP line doesn't touch any sections.")
+            return
+        }
+        
+        enumLockLevel = 1
+        deck.flip_to(0)
+        
         fileFrapLineConcentration = new File()
         fileFrapLineConcentration.aopen(outTxtFileRelPathName)
         fileFrapLineConcentration.printf("Time\tConcentration\n")
         
-        frapLineSectionsList = setInitialLineConcentration(AlphaX, Y_Coor, LineWidth, BasicFRAP, AlphaFRAP, DFreeFRAP)
+        selectedSectionsBox = new VBox()
+        selectedSectionsBox.intercept(1)
+        {
+            plotShapeSelectedSections = new PlotShape(listOfSecRefToSecList(frapLineSecList))
+            fast_flush_list.append(plotShapeSelectedSections)
+        }
+        selectedSectionsBox.intercept(0)
+        selectedSectionsBox.map("Selected sections")
+        
         run()
         
         closeFileAndShowCompleteMsg(fileFrapLineConcentration)
+        
+        enumLockLevel = 0
+        deck.flip_to(1)
+    }
+    
+    // Inits UI and simulation parameters.
+    proc initParamsFrapLine() { local defaultAlphaX, defaultY_Coor
+        LineWidth = 1.5     // um, bleaching line width
+        defaultAlphaX = 2   // um, the angle of inclination of a straight line
+        defaultY_Coor = -20 // y = Alpha*x+ defaultY_Coor
+        BasicFRAP = 0.2
+        DFreeFRAP = 0.3     // (um2/ms)
+        AlphaFRAP = 0.0001  // mM/ms
+        iterations = 4
+        iterationTime = 1000  // ms, This time parameter is necessary to reproduce the experimental course (Figure 2)
+        
+        updateTstop()
+        
+        setDefaultAnchorPoints(defaultAlphaX, defaultY_Coor)
     }
     
     // Updates simulation time according to the number of iterations and their time.
@@ -155,38 +230,30 @@ begintemplate SimFrapLine
         tstop = iterations*iterationTime*2
     }
     
-    // Inits UI and simulation parameters.
-    proc initParamsFrapLine() {
-        LineWidth = 1.5     // um, bleaching line width
-        AlphaX = 2          // um, the angle of inclination of a straight line
-        Y_Coor = -20        // y = Alpha*x+ Y_Coor
-        BasicFRAP = 0.2
-        DFreeFRAP = 0.3     // (um2/ms)
-        AlphaFRAP = 0.0001  // mM/ms
-        iterations = 4
-        iterationTime = 1000  // ms, This time parameter is necessary to reproduce the experimental course (Figure 2)
-        updateTstop()
+    proc setDefaultAnchorPoints() { local defaultAlphaX, defaultY_Coor, ptIdx
+        defaultAlphaX = $1
+        defaultY_Coor = $2
+        xVec = createVector(-50, 50)    // !!! hardcode (keep in sync with defaultAlphaX and defaultY_Coor)
+        yVec = new Vector(2)
+        for ptIdx = 0, 1 {
+            yVec.x[ptIdx] = defaultAlphaX * xVec.x[ptIdx] + defaultY_Coor
+        }
     }
     
     // Shows FRAP Line UI.
-    proc showFrapLineUi() { localobj vBoxFrapLineControls, frapioniPlot
-        hBoxFrapLine = new HBox()
-        hBoxFrapLine.intercept(1)
+    proc showFrapLineUi() { localobj vBox, rangeVarPlot, hBox, watchedPathPlotShape, pathSecList
+        strdef menuToolName
+        
+        mainBox = new HBox()
+        mainBox.intercept(1)
         {
-            vBoxFrapLineControls = new VBox()
-            vBoxFrapLineControls.intercept(1)
+            vBox = new VBox()
+            vBox.intercept(1)
             {
                 xpanel("")
                 xlabel("====================== Initial parameters ======================")
-                xlabel("Coordinates of first bleaching linear area are calculated")
-                xlabel("accourding to formula y = Alpha * x + Y_Coor")
-                xlabel("---------------------------------------------------------------------------------------------------------------------")
                 xlabel("Width of linear bleaching area in um")
-                xvalue("Line width (um) ","LineWidth", 1, "", 0, 1)
-                xlabel("Angle of incidence of linear bleaching in tan X-Y coordinate")
-                xvalue("Alpha (um)","AlphaX", 1, "", 0, 1)
-                xlabel("Position of bleaching at x = 0")
-                xvalue("Y-axis intersect, Y(X=0) (um)","Y_Coor", 1, "", 0, 1)
+                xvalue("Line width (um) ","LineWidth", 1, "updateStripMarker()", 0, 1)
                 xlabel("---------------------------------------------------------------------------------------------------------------------")
                 xlabel("Initial indicator  concentration")
                 xvalue("Indicator concentration (mM)","BasicFRAP", 1, "", 0, 1)
@@ -210,37 +277,236 @@ begintemplate SimFrapLine
                 xlabel("===========================================================")
                 xpanel()
                 
-                removeItemFromList(flush_list, graphFrapLine)
-                graphFrapLine = new Graph()
-                flush_list.append(graphFrapLine)
-                graphFrapLine.size(-40, 40, 0.85*BasicFRAP, 1*BasicFRAP)
-                graphFrapLine.xaxis()
-                graphFrapLine.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
-                 graphFrapLine.label(0.45, 0.01, "Distance (um)", 2, 1, 0, 0, 1)
-                frapioniPlot = new RangeVarPlot("frapioni")
-                dendrite_ref.o(10).sec frapioniPlot.begin(0)
-                dendrite_ref.o(1).sec frapioniPlot.end(1)
+                removeItemFromList(flush_list, graph)
+                graph = new Graph()
+                flush_list.append(graph)
+                graph.size(-40, 40, 0.85*BasicFRAP, 1*BasicFRAP)
+                graph.xaxis()
+                graph.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
+                 graph.label(0.45, 0.01, "Distance (um)", 2, 1, 0, 0, 1)
+                rangeVarPlot = new RangeVarPlot("frapioni")
+                dendrite_ref.o(10).sec rangeVarPlot.begin(0)        // !!! this can be imporved
+                dendrite_ref.o(1).sec rangeVarPlot.end(1)           //
                 
-                graphFrapLine.addobject(frapioniPlot, 1, 1, 1, 1)
+                graph.addobject(rangeVarPlot, 2, 1)
             }
-            vBoxFrapLineControls.intercept(0)
-            vBoxFrapLineControls.map()
+            vBox.intercept(0)
+            vBox.map()
             
-            removeItemFromList(fast_flush_list, plotShapeFrapioniLine)
-            plotShapeFrapioniLine = new PlotShape(0)
-            fast_flush_list.append(plotShapeFrapioniLine)
-            plotShapeFrapioniLine.size(-50,50,-50,50)
-            plotShapeFrapioniLine.view(-50, -50, 100, 100, 165, 169, 400.64, 400.32)
-            plotShapeFrapioniLine.exec_menu("Shape Plot")
-            plotShapeFrapioniLine.exec_menu("View = plot")
-            plotShapeFrapioniLine.variable("frapioni")
-            plotShapeFrapioniLine.show(0)
-            plotShapeFrapioniLine.scale(0.8*BasicFRAP, 1.0*BasicFRAP)
-            plotShapeFrapioniLine.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
-            
+            vBox = new VBox()
+            vBox.intercept(1)
+            {
+                hBox = new HBox()
+                hBox.intercept(1)
+                {
+                    deck = new Deck()
+                    deck.intercept(1)
+                    {
+                        createEmptyPanel()
+                        xpanel("")
+                        xlabel("")
+                        xradiobutton("XY projection", "viewDirectionChangedHandler(0)", viewDirIdx == 0)
+                        xradiobutton("ZY projection", "viewDirectionChangedHandler(1)", viewDirIdx == 1)
+                        xradiobutton("XZ projection", "viewDirectionChangedHandler(2)", viewDirIdx == 2)
+                        xpanel()
+                    }
+                    deck.intercept(0)
+                    deck.flip_to(1)
+                    deck.map()
+                    xpanel("")
+                    xlabel("Hints: Drag 3 anchor points to rotate or shift the FRAP line,")
+                    xlabel("           hold \"Shift\" to adjust its width.")
+                    xlabel("Warning: Don't use \"3D Rotate\" when editing the line")
+                    xlabel("                (toggle \"XY/ZY/XZ projection\" instead).")
+                    xpanel()
+                }
+                hBox.intercept(0)
+                hBox.map("", -1, -1, 1, -26)
+                
+                removeItemFromList(fast_flush_list, plotShapeFrapioniLine)
+                plotShapeFrapioniLine = new PlotShape(0)
+                fast_flush_list.append(plotShapeFrapioniLine)
+                plotShapeFrapioniLine.size(-50,50,-50,50)
+                plotShapeFrapioniLine.view(-50, -50, 100, 100, 165, 169, 400.64, 400.32)
+                plotShapeFrapioniLine.exec_menu("Shape Plot")
+                plotShapeFrapioniLine.exec_menu("View = plot")
+                menuToolName = "Edit FRAP Line"
+                plotShapeFrapioniLine.menu_tool(menuToolName, "mouseEventsHandler")
+                plotShapeFrapioniLine.variable("frapioni")
+                plotShapeFrapioniLine.show(0)
+                plotShapeFrapioniLine.scale(0.8*BasicFRAP, 1.0*BasicFRAP)
+                plotShapeFrapioniLine.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
+                
+                viewDirectionChangedHandler(viewDirIdx, 1)
+            }
+            vBox.intercept(0)
+            vBox.map()
         }
-        hBoxFrapLine.intercept(0)
-        hBoxFrapLine.map("Frap In Line")
+        mainBox.intercept(0)
+        mainBox.map("FRAP in Line")
+        
+        plotShapeFrapioniLine.exec_menu(menuToolName)
+        
+        watchedPathBox = new VBox()
+        watchedPathBox.intercept(1)
+        {
+            watchedPathPlotShape = new PlotShape()
+            watchedPathPlotShape.color_all(9)               // Grey
+            pathSecList = new SectionList()
+            rangeVarPlot.list(pathSecList)
+            watchedPathPlotShape.color_list(pathSecList, 2) // Red
+        }
+        watchedPathBox.intercept(0)
+        watchedPathBox.map("Watched path")
+    }
+    
+    proc viewDirectionChangedHandler() { local numArg, isCalledFromShow
+        numArg = numarg()
+        if (numArg < 1 || numArg > 2) {
+            codeContractViolation()
+        }
+        
+        viewDirIdx = $1
+        if (numArg == 2) {
+            isCalledFromShow = $2
+            if (isCalledFromShow != 1) {
+                codeContractViolation()
+            }
+        } else {
+            isCalledFromShow = 0
+        }
+        
+        plotShapeUtils.setViewDir(plotShapeFrapioniLine, viewDirIdx)
+        
+        updateStripMarker()
+        
+        if (!isCalledFromShow) {
+            plotShapeFrapioniLine.exec_menu("View = plot")
+        }
+    }
+    
+    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isDrag, isMoveOrResize, xc_screen, yc_screen, radius_screen
+        eventType = $1
+        x_screen = $2
+        y_screen = $3
+        keystate = $4
+        
+        // !!! BUG: we don't lock it when user uses RunControl or AltRunControl
+        if (enumLockLevel > 0) {
+            isPress = (eventType == 2)
+            if (!isPress || enumLockLevel == 2) {
+                return
+            }
+            // Just to prevent "Didn't close the previous panel" error
+            enumLockLevel = 2
+            // !!! BUG: we still can hit "Segmentation violation" when clicking fast, but it seems to be a different error
+            mwh.showWarningBox("Cannot edit the FRAP line when the simulation is running.")
+            enumLockLevel = 1
+            return
+        }
+        
+        isDrag = (eventType == 1)
+        isMoveOrResize = (keystate != 2)    // 2: Shift
+        
+        if (isMoveOrResize) {
+            moveOneOrBothAnchorPoints(x_screen, y_screen, isDrag)
+            updateStripMarker()
+        } else {
+            changeStripWidth(x_screen, y_screen)
+            updateStripMarker()
+        }
+    }
+    
+    proc moveOneOrBothAnchorPoints() { local x_screen, y_screen, isDrag, apIdx, delta_x, delta_y, ptIdx
+        x_screen = $1
+        y_screen = $2
+        isDrag = $3
+        
+        if (!isDrag) {
+            apIdx = findNearestAnchorPoint(x_screen, y_screen)
+            apIdx_last = apIdx
+        } else {
+            apIdx = apIdx_last
+        }
+        
+        if (apIdx == 0 || apIdx == 1) {
+            xVec.x[apIdx] = x_screen
+            yVec.x[apIdx] = y_screen
+        } else if (apIdx == 2) {
+            delta_x = x_screen - xVec.mean()
+            delta_y = y_screen - yVec.mean()
+            for ptIdx = 0, 1 {
+                xVec.x[ptIdx] += delta_x
+                yVec.x[ptIdx] += delta_y
+            }
+        } else {
+            codeContractViolation()
+        }
+    }
+    
+    func findNearestAnchorPoint() { local x_screen, y_screen, distSq1, distSq2, distSq3 localobj distSqVec
+        x_screen = $1
+        y_screen = $2
+        
+        distSq1 = getDistanceSquare(x_screen, y_screen, xVec.x[0], yVec.x[0])
+        distSq2 = getDistanceSquare(x_screen, y_screen, xVec.x[1], yVec.x[1])
+        distSq3 = getDistanceSquare(x_screen, y_screen, xVec.mean(), yVec.mean())
+        
+        distSqVec = createVector(distSq1, distSq2, distSq3)
+        
+        return distSqVec.min_ind()
+    }
+    
+    // Following the visual style of: NEURON Main Menu -> Vector -> Draw: "%NEURONHOME%\lib\hoc\mkcurve.hoc"
+    proc updateStripMarker() { local pdx, pdy, ptIdx, x, y, factor, ndx, ndy
+        
+        plotShapeFrapioniLine.erase()
+        
+        // The central line and the anchors
+        pdx = xVec.x[1] - xVec.x[0]
+        pdy = yVec.x[1] - yVec.x[0]
+        createLineMarker(pdx, pdy, 0, 0)
+        for ptIdx = 0, 1 {
+            plotShapeFrapioniLine.mark(xVec.x[ptIdx], yVec.x[ptIdx], "s", 8)
+        }
+        plotShapeFrapioniLine.mark(xVec.mean(), yVec.mean(), "S", 4, 2, 1)
+        
+        // The edge lines
+        factor = LineWidth / sqrt(pdx^2 + pdy^2) / 2    // !!! error here if len == 0
+        ndx = -pdy * factor
+        ndy = pdx * factor
+        createLineMarker(pdx, pdy, ndx, ndy)    // !!! maybe use dash style or other color
+        createLineMarker(pdx, pdy, -ndx, -ndy)  //
+        
+        plotShapeFrapioniLine.flush()
+    }
+    
+    proc createLineMarker() { local pdx, pdy, ndx, ndy, factor, ptIdx, sign
+        pdx = $1
+        pdy = $2
+        ndx = $3
+        ndy = $4
+        
+        factor = 1000   // !!! hardcode; it would be better to stick to the view boundaries, but there is no guarantee that user doesn't use pan (MMB press + move)
+        pdx *= factor
+        pdy *= factor
+        
+        plotShapeFrapioniLine.beginline()
+        sign = -1
+        for ptIdx = 0, 1 {
+            plotShapeFrapioniLine.line(xVec.x[ptIdx] + sign * pdx + ndx, yVec.x[ptIdx] + sign * pdy + ndy)
+            sign = 1
+        }
+    }
+    
+    proc changeStripWidth() { local x_screen, y_screen
+        x_screen = $1
+        y_screen = $2
+        LineWidth = 2 * math.distFromPointToLine(x_screen, y_screen, xVec, yVec)
+    }
+    
+    func getDistanceSquare() {
+        return ($1 - $3) ^ 2 + ($2 - $4) ^ 2
     }
     
 endtemplate SimFrapLine

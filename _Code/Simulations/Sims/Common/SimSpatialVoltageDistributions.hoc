@@ -114,7 +114,7 @@ begintemplate SimSpatialVoltageDistributions
                 soma_ref.o(0).sec voltagePlot.begin(0)
                 dendrite_ref.o(i).sec voltagePlot.end(1)
                 
-                graphDendrogramm.addobject(voltagePlot, 1, 1, 1, 1)
+                graphDendrogramm.addobject(voltagePlot, 1, 1)
             }
         }
         vBoxSpatialVoltage.intercept(0) //ends intercept mode

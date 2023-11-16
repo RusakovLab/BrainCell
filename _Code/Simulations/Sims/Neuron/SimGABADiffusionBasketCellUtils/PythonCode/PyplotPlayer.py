@@ -25,7 +25,7 @@ class PyplotPlayer:
     
     _defaultMarkerSize = 500
     
-    # Used only when isDesktopOrBrowser is False
+    # Used only when _isDesktopOrBrowser is False
     _animationEmbedLimit = 300  # MB
     _tempHtmlFileName = 'temp.html'
     
@@ -45,8 +45,10 @@ class PyplotPlayer:
     
     _rangeVar0To1 = None
     _rangeVar0To1Balanced = None
-    _numSegms = None
     _scatter = None
+
+    # Used only when _isDesktopOrBrowser is True
+    _numSegms = None
     _buttonStartStop = None
     _sliderFrame = None
     _sliderOpacity = None
@@ -60,11 +62,12 @@ class PyplotPlayer:
     _isProgrammaticSliderFrameChange = False
     _isProgrammaticTextBoxMinMaxChange = False
     
-    _balance = 0            #
-    _min = None             #
-    _max = None             # Used only when _isUseOpacitiesOrColours is True
-    _rangeVar_min = None    #
-    _rangeVar_range = None  #
+    # Used only when _isUseOpacitiesOrColours is True
+    _balance = 0
+    _min = None
+    _max = None
+    _rangeVar_min = None
+    _rangeVar_range = None
     
     
     def __init__(self, x, y, z, rangeVar, numFrames, varNameWithIndexAndUnits, isUseOpacitiesOrColours, isDesktopOrBrowser, rangeVar_min, rangeVar_max):
@@ -76,6 +79,9 @@ class PyplotPlayer:
         self._isUseOpacitiesOrColours = isUseOpacitiesOrColours
         self._isDesktopOrBrowser = isDesktopOrBrowser
         
+        if isDesktopOrBrowser:
+            self._numSegms = len(x)
+            
         if isUseOpacitiesOrColours:
             # Make a linear transformation of the data to fit [0, 1] range
             # !!! code dup. with PlotlyPlayer._initForOpacities
@@ -152,6 +158,20 @@ class PyplotPlayer:
             self._buttonStartStop = Button(ax, 'Stop')
             self._buttonStartStop.on_clicked(self._onButtonStartStopClick)
             
+            ax = plt.axes([0.1, 0.02, 0.8, 0.03])
+            x = np.linspace(0, numFrames - 1, numFrames)
+            if isUseOpacitiesOrColours:
+                data = self._rangeVar0To1Balanced
+            else:
+                data = self._rangeVar
+            y = [row.mean() for row in data]
+            ax.plot(x, y)
+            plt.xlim(0, numFrames - 1)
+            plt.ylim(np.min(y), np.max(y))
+            plt.xticks([])
+            plt.yticks([])
+            ax.fill_between(x, y, color='skyblue', alpha=0.4)
+            
             ax = plt.axes([0.025, 0.25, sw, 0.65])
             self._sliderSize = Slider(ax, 'Size', orientation='vertical', valmin=10, valmax=2000, valinit=self._defaultMarkerSize)
             self._sliderSize.on_changed(self._onSliderSizeChange)
@@ -181,7 +201,6 @@ class PyplotPlayer:
                 self._textBoxMin = TextBox(ax, 'Min: ', initial=self._formatForTextBox(self._min))
                 self._textBoxMin.on_submit(self._onTextBoxMinChange)
                 
-            self._numSegms = len(x)
         else:
             
             # Increase the animation size limit

@@ -24,6 +24,7 @@ proc makeSureSynCompsCreatedOrImported() { codeContractViolation() }
 { load_file("InterModularCompUtils.hoc") }
 { load_file("InterModularUnitsUtils.hoc") }
 { load_file("InterModularGraphUtils.hoc") }
+{ load_file("InterModularPlotShapeUtils.hoc") }
 { load_file("InterModularWidgetUtils.hoc") }
 { load_file("InterModularOtherUtils.hoc") }
 objref mmcoWidget

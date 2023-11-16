@@ -9,7 +9,7 @@ begintemplate OneExtracellularSourceWidget
     public show, onApplyInParentWidget, dismissHandler
     
     external stringsEqual, findItemInListByString, removeItemFromList, getGlobalVarsHint, createEmptyPanel, addEmptyLabels, codeContractViolation
-    external mwh, math, ecsLibrary, speciesLibrary, graphUtils
+    external mwh, math, ecsLibrary, speciesLibrary, graphUtils, plotShapeUtils
     external eachItemInList
     external soma_ref
     external fast_flush_list
@@ -794,17 +794,7 @@ begintemplate OneExtracellularSourceWidget
             isCalledFromShow = 0
         }
         
-        plotShape.rotate()                              // XY
-        
-        if (viewDirIdx == 0) {
-            // Empty by design
-        } else if (viewDirIdx == 1) {
-            plotShape.rotate(0, 0, 0, 0, PI / 2, 0)     // ZY
-        } else if (viewDirIdx == 2) {
-            plotShape.rotate(0, 0, 0, PI / 2, 0, 0)     // XZ
-        } else {
-            codeContractViolation()
-        }
+        plotShapeUtils.setViewDir(plotShape, viewDirIdx)
         
         if (!isCalledFromShow) {
             updatePlotShape()

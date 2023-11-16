@@ -1,0 +1,30 @@
+
+begintemplate InterModularPlotShapeUtils
+    
+    public setViewDir
+    
+    external codeContractViolation
+    
+    
+    proc setViewDir() { local viewDirIdx localobj plotShape
+        
+        plotShape = $o1
+        viewDirIdx = $2
+        
+        plotShape.rotate()                              // XY
+        
+        if (viewDirIdx == 0) {
+            // Empty by design
+        } else if (viewDirIdx == 1) {
+            plotShape.rotate(0, 0, 0, 0, PI / 2, 0)     // ZY
+        } else if (viewDirIdx == 2) {
+            plotShape.rotate(0, 0, 0, PI / 2, 0, 0)     // XZ
+        } else {
+            codeContractViolation()
+        }
+    }
+    
+endtemplate InterModularPlotShapeUtils
+
+objref plotShapeUtils
+plotShapeUtils = new InterModularPlotShapeUtils()
