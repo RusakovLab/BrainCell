@@ -1,16 +1,17 @@
 
 begintemplate SimConstantElectricalSimulations
     
-    public check, show, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
-    external run
+    external altRunControlWidget
     external tstop
     external unmapIfNotNil
     external soma_ref
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     // UI
     objref vBoxConstantStimulations
@@ -22,9 +23,10 @@ begintemplate SimConstantElectricalSimulations
     proc init() {
         biophysJsonFileNameOrEmpty = ""
         isCustomProcAdvance = 0
+        isAltRunControl = 1
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -34,14 +36,28 @@ begintemplate SimConstantElectricalSimulations
         showConstantUi()
     }
     
+    func preRun() {
+        // !! it would be better to split "proc stimulateConstant" into two parts and move the first one to "proc show":
+        //    part 1 - creation of all the objects (they will be destroyed in "proc dismissHandler")
+        //    part 2 - initialization of the objects based on GUI
+        stimulateConstant(CIDel, CIDur, CIAmpl, SynTau1, SynTau2, SynE, SynAmp, NumberStimulus, IntervalBetweenStimul)
+        return 0
+    }
+    
+    func preContinue() {
+        return 0
+    }
+    
+    proc postRun() {
+        // Empty by design
+    }
+    
     proc dismissHandler() {
         
         unmapIfNotNil(vBoxConstantStimulations)
         
-        /* !!!
         // Remove point processes after simulation
         objref electricalStim, current, synapticInput, NetInput
-        */
     }
     
     // All next staff is private
@@ -83,15 +99,6 @@ begintemplate SimConstantElectricalSimulations
         NetInput = new NetCon(electricalStim, synapticInput, 0, 0, $7)
     }
     
-    // Sets soma params and starts the simulation.
-    proc runConstant() {
-        stimulateConstant(CIDel, CIDur, CIAmpl, SynTau1, SynTau2, SynE, SynAmp, NumberStimulus, IntervalBetweenStimul)
-        run()
-        
-        // Remove point processes after simulation
-        objref electricalStim, current, synapticInput, NetInput
-    }
-    
     // Inits UI and simulation parameters.
     proc initParamsConstantStimulation() {
         CIDel = 0
@@ -122,11 +129,11 @@ begintemplate SimConstantElectricalSimulations
             xvalue("Alpha current decay  time (ms)","SynTau2", 1,"", 0, 1  )
             xvalue("Alpha current reverse potential (mV)","SynE", 1,"", 0, 1  )
             xvalue("Alpha conductande (nS)","SynAmp", 1,"", 0, 1  )
-            xvalue("Number stimuli of Alpha currents","NumberStimulus", 1,"", 0, 1  ) 
-            xvalue("Interval between stimuli (ms)","IntervalBetweenStimul", 1,"", 0, 1  ) 
+            xvalue("Number stimuli of Alpha currents","NumberStimulus", 1,"", 0, 1  )
+            xvalue("Interval between stimuli (ms)","IntervalBetweenStimul", 1,"", 0, 1  )
             xlabel("---------------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1  ) 
-            xbutton("Run simulation", "runConstant()")
+            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1  )
+            xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel(0)
         }
         vBoxConstantStimulations.intercept(0)

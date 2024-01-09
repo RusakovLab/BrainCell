@@ -1,89 +1,61 @@
 
-// Updates Gluout/Gluin values on the cell.
-// $1 - X coordinate circle center
-// $2 - Y coordinate circle center
-// $3 - Radius of a circle
-// $4 - TimeBegin
-// $5 - Time of rise
-// $6 - Maximum Glu
-// $7 - PX2
-// $8 - Gluin
-// $9 - Time decay
-// $10 - - Z coordinate circle center
-// !! BUG 1: For neurons, this proc fails with error "GluTrans mechanism not inserted in section axon[0]"
-// !! BUG 2: For astrocytes, this proc fails with similar error if user left some sections unspecified during the import (neither marked as soma nor as dendrite)
-proc GluIteration () { local tau1, tau2
-    tau1 = $5
-    tau2 = $9
-    InitialGlutamateConcentration = 20e-6
-    forall {
-        if (( (($1-x3d(1))^2 + ($2-y3d(1))^2  < $3^2) || (($1+$7-x3d(1))^2+($2-y3d(1))^2  < $3^2))  && (($10-z3d(1))^2 < 100) && (t > $4)) {
-            Gluout_GluTrans = InitialGlutamateConcentration + $6*(tau2/(tau2-tau1)*(-exp(-(t-$4)/tau1) + exp(-(t-$4)/tau2)))
-        } else  {
-            Gluout_GluTrans = InitialGlutamateConcentration
-        }
-        Gluin_GluTrans = $8
-    }
-}
+{ load_file("../../../Clamps/SEClampHelper.hoc") }
+
+proc GluIteration() { codeContractViolation() }
 
 begintemplate SimGlutamate
     
-    public check, show, advance, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, advance, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
-    external OnlySingleGluSimulations
     external GluIteration
-    external vBoxPointProcessWindow
-    external run
+    external seClampHelper
+    external altRunControlWidget
     external tstop
     external removeItemFromList, unmapIfNotNil
-    // external soma_ref
+    external soma_ref
     external graphList, fast_flush_list
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     // UI
     objref vBoxGluMain, vBoxGraphSEClamp, /* vBoxGraphGluout, */ vBoxPlotShapeVoltage, vBoxPlotShapeGluOut, vBoxPlotShapeitrans, graphSEClamp, graphGluout, plotShapeVoltage, plotShapeGluOut, plotShapeitrans
-    
-    // SEClamp on the soma
-    objref seClamp
     
     
     proc init() {
         biophysJsonFileNameOrEmpty = "SimGlutamate.json"
         isCustomProcAdvance = 1
+        isAltRunControl = 0
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
     // Opens Glutamate simulation window.
     proc show() {
-        if (OnlySingleGluSimulations) {
-            load_file(1, "_Code/Simulations/Sims/Common/Utils/PointProcessManager.hoc")
-            OnlySingleGluSimulations = 0
-        } else {
-            print "New trials"
-        }
         initParamsGlutamate()
+        seClampHelper.deployClamp()
         showGlutamateUi()
     }
     
-    // Updates Gluout/Gluin values on the cell.
+    // Updates gluo/glui values on the cell.
     proc advance() {
         fadvance()
         GluIteration(PX, PY, R_FRAP, TimeBegin, Tau1, MaxGlu, PX2, Gluin, Tau2, PZ)
+        // graphGluout.exec_menu("View = plot")
+        graphSEClamp.exec_menu("View = plot")
     }
     
     proc dismissHandler() {
         
-        removeItemFromList(graphList[1], graphGluout)
+        // removeItemFromList(graphList[1], graphGluout)
         removeItemFromList(graphList[1], graphSEClamp)
         removeItemFromList(fast_flush_list, plotShapeGluOut)
         removeItemFromList(fast_flush_list, plotShapeVoltage)
-        // !!!?? removeItemFromList(fast_flush_list, plotShapeitrans)
+        removeItemFromList(fast_flush_list, plotShapeitrans)
         
         unmapIfNotNil(vBoxGluMain)
         unmapIfNotNil(vBoxGraphSEClamp)
@@ -92,46 +64,14 @@ begintemplate SimGlutamate
         unmapIfNotNil(vBoxPlotShapeGluOut)
         unmapIfNotNil(vBoxPlotShapeitrans)
         
-        unmapIfNotNil(vBoxPointProcessWindow)
-        
-        /* !!!
-        // Remove point processes after simulation
-        objref seClamp
-        */
+        seClampHelper.removeClamp()
     }
     
     // All next staff is private
     
     
-    // Sets SEClamp params on the soma.
-    // $1 - Amplitude
-    // $2 - Duration
-    // !! the only call of this proc is commented
-    /*
-    proc stimulGlu() {
-        soma_ref.o(0).sec {
-            seClamp = new SEClamp(0.5)
-            seClamp.amp1 = $1   // nA
-            seClamp.dur1 = $2
-        }
-    }
-    */
-    
-    // Runs Glutamate simulation.
-    proc runGlutamate() {
-        //stimulGlu(Amplitude, Duration)
-        run()
-        // Remove point processes after simulation
-        objref seClamp
-    }
-    
     // Sets initial UI and simulation parameters.
     proc initParamsGlutamate() {
-        // Voltage Clamp of Soma, set of parameters
-        Amplitude = -85       // Voltage clamp in mV
-        Duration = 20000      // Duration of Voltage Clamp in mV
-        DelayStim = 0
-        
         // Parameter of Glutamate release in two places
         PX = 0                // X- Coordinate of the place
         PY = -20              // Y - coordinate of the place
@@ -167,10 +107,11 @@ begintemplate SimGlutamate
             
             xpanel("")
             xlabel("================== Voltage clamp of soma==================")
-            xvalue("Somatic voltage clamp (mV)","Amplitude", 1,"", 0, 1)
-            xvalue("Clamp duration (ms) ","Duration", 1,"", 0, 1)
+            xpvalue("Somatic voltage clamp", &seClampHelper.seClamp.amp1, 1, "", 0, 1)
+            xpvalue("Clamp duration", &seClampHelper.seClamp.dur1, 1, "", 0, 1)
+            xlabel("----------------------------------------------------------------------------------------------------------")
             xvalue("Simulation time (ms)","tstop", 1,"", 0, 1)
-            xbutton("Run simulation", "runGlutamate()")
+            xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel(328,129)
         }
         vBoxGluMain.intercept(0)
@@ -179,60 +120,53 @@ begintemplate SimGlutamate
         // vBoxGraphGluout = new VBox()
         // vBoxGraphGluout.intercept(1)
         // {
-        //     removeItemFromList(graphList[1], graphGluout)
         //     graphGluout = new Graph(0)
         //     graphList[1].append(graphGluout)
         //     graphGluout.size(0,150,-3.49246e-010,0.0101)
         //     graphGluout.view(0, -3.49246e-010, 150, 0.0101, 602, 705, 400, 200)
-        //     graphGluout.addvar("soma_ref.o(0).sec.Gluout_GluTrans( 0.05 )", 1, 1, 0.8, 0.9, 2)
+        //     graphGluout.addvar("soma_ref.o(0).sec.gluo( 0.05 )", 1, 1, 0.8, 0.9, 2)
         //     graphGluout.yaxis(0)
         //     graphGluout.label(0.5, 0.09, "Time (ms)", 2, 1, 0, 1, 1)
         //     graphGluout.label(0.1, 0.9, "[Glu]0 (mM)", 2, 1, 0, 1, 1)
         // }
         // vBoxGraphGluout.intercept(0)
-        // vBoxGraphGluout.map("!!!", 602, 705, 400, 200)
+        // vBoxGraphGluout.map("[Glu]0 vs Time", 602, 705, 400, 200)
         
         vBoxGraphSEClamp = new VBox()
         vBoxGraphSEClamp.intercept(1)
         {
-            removeItemFromList(graphList[1], graphSEClamp)
             graphSEClamp = new Graph(0)
             graphList[1].append(graphSEClamp)
             graphSEClamp.size(0,150,0.015,0.025)
             graphSEClamp.view(0, 0.015, 150, 0.01, 1145, 705, 400, 200)
-            // !!! BUG: Segmentation violation
-            //          No backtrace info available.
-            //          Graph:: presently invalid expression: seClamp.i
-            // graphSEClamp.addexpr("seClamp.i", 1, 1, 0.8, 0.9, 2)
+            graphSEClamp.addexpr("seClampHelper.seClamp.i", 1, 1, 0.8, 0.9, 2)
             graphSEClamp.yaxis(0)
             graphSEClamp.label(0.5, 0.9, "Time (ms)", 2, 1, 0, 1, 1)
             graphSEClamp.label(0.1, 0.09, "Clamp current (nA)", 2, 1, 0, 1, 1)
         }
         vBoxGraphSEClamp.intercept(0)
-        vBoxGraphSEClamp.map("!!!", 1145, 705, 400, 200)
+        vBoxGraphSEClamp.map("Clamp current vs Time", 1145, 705, 400, 200)
         
         vBoxPlotShapeGluOut = new VBox()
         vBoxPlotShapeGluOut.intercept(1)
         {
-            removeItemFromList(fast_flush_list, plotShapeGluOut)
             plotShapeGluOut = new PlotShape(0)
             fast_flush_list.append(plotShapeGluOut)
             plotShapeGluOut.size(-50,50,-50,50)
             plotShapeGluOut.view(-50, -49.9003, 100, 100, 601, 102, 400.64, 400.32)
             plotShapeGluOut.exec_menu("Shape Plot")
             plotShapeGluOut.exec_menu("View = plot")
-            plotShapeGluOut.variable("Gluout_GluTrans")
+            plotShapeGluOut.variable("gluo")
             plotShapeGluOut.label(0.5, 0.09, "[Glutamate]0 (mM)", 2, 1, 0, 1, 1)
             plotShapeGluOut.show(0)
             plotShapeGluOut.scale(0,0.005)
         }
         vBoxPlotShapeGluOut.intercept(0)
-        vBoxPlotShapeGluOut.map("!!!", 601, 102, 400.64, 400.32)
+        vBoxPlotShapeGluOut.map("[Glutamate]0", 601, 102, 400.64, 400.32)
         
         vBoxPlotShapeVoltage = new VBox()
         vBoxPlotShapeVoltage.intercept(1)
         {
-            removeItemFromList(fast_flush_list, plotShapeVoltage)
             plotShapeVoltage = new PlotShape(0)
             fast_flush_list.append(plotShapeVoltage)
             plotShapeVoltage.size(-50,50,-50,50)
@@ -245,12 +179,11 @@ begintemplate SimGlutamate
             plotShapeVoltage.scale(-85,-83)
         }
         vBoxPlotShapeVoltage.intercept(0)
-        vBoxPlotShapeVoltage.map("!!!", 1145, 102, 400.64, 400.32)
+        vBoxPlotShapeVoltage.map("Transmembrane Voltage", 1145, 102, 400.64, 400.32)
         
         vBoxPlotShapeitrans = new VBox()
         vBoxPlotShapeitrans.intercept(1)
         {
-            // !!!?? removeItemFromList(fast_flush_list, plotShapeitrans)
             plotShapeitrans = new PlotShape(0)
             fast_flush_list.append(plotShapeitrans)
             plotShapeitrans.size(-50,50,-50,50)
@@ -263,7 +196,35 @@ begintemplate SimGlutamate
             plotShapeitrans.scale(-0.07,0.07)
         }
         vBoxPlotShapeitrans.intercept(0)
-        vBoxPlotShapeitrans.map("!!!", 1245, 202, 400.64, 400.32)
+        vBoxPlotShapeitrans.map("I", 1245, 202, 400.64, 400.32)
     }
     
 endtemplate SimGlutamate
+
+
+// Updates gluo/glui values on the cell.
+// $1 - X coordinate circle center
+// $2 - Y coordinate circle center
+// $3 - Radius of a circle
+// $4 - TimeBegin
+// $5 - Time of rise
+// $6 - Maximum Glu
+// $7 - PX2
+// $8 - Gluin
+// $9 - Time decay
+// $10 - Z coordinate circle center
+// !! BUG: in some cases, this proc fails with error "glu_ion mechanism not inserted in section *",
+//         e.g. for EndFoot in astrocyte or for the sections left unspecified during the basic import (neither marked as soma, dendrite nor axon)
+proc GluIteration() { local tau1, tau2
+    tau1 = $5
+    tau2 = $9
+    InitialGlutamateConcentration = 20e-6
+    forall {
+        if (( (geomMath.dist2D_PtToPt_squared($1, $2, x3d(1), y3d(1))  < $3^2) || (geomMath.dist2D_PtToPt_squared($1+$7, $2, x3d(1), y3d(1))  < $3^2))  && (abs($10-z3d(1)) < 10) && (t > $4)) {
+            gluo = InitialGlutamateConcentration + $6*(tau2/(tau2-tau1)*(-exp(-(t-$4)/tau1) + exp(-(t-$4)/tau2)))
+        } else  {
+            gluo = InitialGlutamateConcentration
+        }
+        glui = $8
+    }
+}

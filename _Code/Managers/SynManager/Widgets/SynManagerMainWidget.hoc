@@ -1,14 +1,14 @@
 
+// !!! major code dup. with GapJuncManagerMainWidget
 begintemplate SynManagerMainWidget
 
     public show, onSynLocChangedHandler, onListsFilterLevelChangedHandler, warnIfUserHasNotSelectedPPs, applyChangesToSynStrucIfNeeded, applyChangesToDirtyHomogenVarsIfNeeded, updateNumInhomVarsLabel, updateNumStochVarsLabel, dismissHandler
     
     external smAllSyns, synGroup, smAllComps
-    external slw, smlfw
-    external mwh, mth, inhomAndStochLibrary, mechsDllUtils
-    external createEmptyPanel, createElasticSpacer, getGlobalVarsHint, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, dismissIfNotNil, codeContractViolation
+    external mwh, mth, mcu4t, inhomAndStochLibrary, mechsDllUtils
+    external createEmptyPanel, createElasticSpacer, getGlobalVarsHint, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, unmapIfNotNil, dismissIfNotNil, codeContractViolation
     external enumSynCompIdxs
-    external varsEditorSubWidget
+    external slw, smlfw, varsEditorSubWidget
     
     objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7
     objref srcChoices, trgChoices, sngChoices
@@ -261,7 +261,7 @@ begintemplate SynManagerMainWidget
         } else {
             list = sngChoices
         }
-        getSelMechNameOrEmptyString(list, selMechName)
+        mcu4t.getSelMechNameOrEmptyString(list, selMechName)
         if (!stringEmpty(selMechName)) {
             pb = new PointBrowser(selMechName)
         }
@@ -277,9 +277,9 @@ begintemplate SynManagerMainWidget
         isCalledFromInit = $1
         
         if (!isCalledFromInit) {
-            getSelMechNameOrEmptyString(srcChoices, oldSrcSelMechName)
-            getSelMechNameOrEmptyString(trgChoices, oldTrgSelMechName)
-            getSelMechNameOrEmptyString(sngChoices, oldSngSelMechName)
+            mcu4t.getSelMechNameOrEmptyString(srcChoices, oldSrcSelMechName)
+            mcu4t.getSelMechNameOrEmptyString(trgChoices, oldTrgSelMechName)
+            mcu4t.getSelMechNameOrEmptyString(sngChoices, oldSngSelMechName)
         } else {
             oldSrcSelMechName = ""
             oldTrgSelMechName = ""
@@ -341,13 +341,13 @@ begintemplate SynManagerMainWidget
             newItem = new ItemOfFilteredBrowsedList(mechIdx, mechName)
             
             if (isAddToSrcList) {
-                appendAndSelectIfMechNameEqual(srcChoices, newItem, oldSrcSelMechName, &srcChoiceIdx)
+                mcu4t.appendAndSelectIfMechNameEqual(srcChoices, newItem, oldSrcSelMechName, &srcChoiceIdx)
             }
             if (isAddToTrgList) {
-                appendAndSelectIfMechNameEqual(trgChoices, newItem, oldTrgSelMechName, &trgChoiceIdx)
+                mcu4t.appendAndSelectIfMechNameEqual(trgChoices, newItem, oldTrgSelMechName, &trgChoiceIdx)
             }
             if (isAddToSngList) {
-                appendAndSelectIfMechNameEqual(sngChoices, newItem, oldSngSelMechName, &sngChoiceIdx)
+                mcu4t.appendAndSelectIfMechNameEqual(sngChoices, newItem, oldSngSelMechName, &sngChoiceIdx)
             }
         }
         
@@ -370,18 +370,18 @@ begintemplate SynManagerMainWidget
             mwh.startIntercepting()
             {
                 if (srcChoices.selected() == -1) {
-                    showPleaseSelectMsg(enumSynCompIdxs.srcPp)
+                    mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.srcPp)
                     isOK = 0
                 }
                 if (trgChoices.selected() == -1) {
-                    showPleaseSelectMsg(enumSynCompIdxs.trgPp)
+                    mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.trgPp)
                     isOK = 0
                 }
             }
             mwh.endIntercepting()
         } else {
             if (sngChoices.selected() == -1) {
-                showPleaseSelectMsg(enumSynCompIdxs.sngPp)
+                mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.sngPp)
                 isOK = 0
             }
         }
@@ -400,12 +400,12 @@ begintemplate SynManagerMainWidget
             codeContractViolation()
         }
         
-        srcMechIdx = getSelMechIdxOrMinusOne(srcChoices)
-        trgMechIdx = getSelMechIdxOrMinusOne(trgChoices)
-        sngMechIdx = getSelMechIdxOrMinusOne(sngChoices)
-        getSelMechNameOrEmptyString(srcChoices, srcMechName)
-        getSelMechNameOrEmptyString(trgChoices, trgMechName)
-        getSelMechNameOrEmptyString(sngChoices, sngMechName)
+        srcMechIdx = mcu4t.getSelMechIdxOrMinusOne(srcChoices)
+        trgMechIdx = mcu4t.getSelMechIdxOrMinusOne(trgChoices)
+        sngMechIdx = mcu4t.getSelMechIdxOrMinusOne(sngChoices)
+        mcu4t.getSelMechNameOrEmptyString(srcChoices, srcMechName)
+        mcu4t.getSelMechNameOrEmptyString(trgChoices, trgMechName)
+        mcu4t.getSelMechNameOrEmptyString(sngChoices, sngMechName)
         
         mwh.showPleaseWaitBox("Changing synapse structure.")
         {
@@ -422,9 +422,9 @@ begintemplate SynManagerMainWidget
     }
     
     func applyChangesToDirtyHomogenVarsIfNeeded() { local srcMechIdx, trgMechIdx, sngMechIdx, isSmthChanged
-        srcMechIdx = getSelMechIdxOrMinusOne(srcChoices)
-        trgMechIdx = getSelMechIdxOrMinusOne(trgChoices)
-        sngMechIdx = getSelMechIdxOrMinusOne(sngChoices)
+        srcMechIdx = mcu4t.getSelMechIdxOrMinusOne(srcChoices)
+        trgMechIdx = mcu4t.getSelMechIdxOrMinusOne(trgChoices)
+        sngMechIdx = mcu4t.getSelMechIdxOrMinusOne(sngChoices)
         mwh.showPleaseWaitBox("Changing synapse homogen vars.")
         {
             isSmthChanged = synGroup.applyChangesToDirtyHomogenVars(srcMechIdx, trgMechIdx, sngMechIdx)
@@ -434,9 +434,17 @@ begintemplate SynManagerMainWidget
         return isSmthChanged
     }
     
+    proc updateNumInhomVarsLabel() {
+        mcu4t.updateNumInhomVarsLabel(numInhomVarsVarLabel)
+    }
+    
+    proc updateNumStochVarsLabel() {
+        mcu4t.updateNumStochVarsLabel(numStochVarsVarLabel)
+    }
+    
     proc dismissHandler() {
         dismissChilds()
-        mainBox.unmap()
+        unmapIfNotNil(mainBox)
     }
     
     // All next staff is private
@@ -448,52 +456,11 @@ begintemplate SynManagerMainWidget
         sprint(distRangeVarLabel, "Distance range: %g ... %g (%s)", distMin, distMax, units("L"))
     }
     
-    proc updateNumInhomVarsLabel() { local numInhomVars
-        numInhomVars = inhomAndStochLibrary.getNumInhomVarsForSyns()
-        sprint(numInhomVarsVarLabel, "Number of inhom vars: %d", numInhomVars)
-    }
-    
-    proc updateNumStochVarsLabel() { local numStochVars
-        numStochVars = inhomAndStochLibrary.getNumStochVarsForSyns()
-        sprint(numStochVarsVarLabel, "Number of stoch vars: %d", numStochVars)
-    }
-    
     proc setSynLocVarLabel() {
         slw.getSynLocName(synLocVarLabel)
     }
     
-    func getSelMechIdxOrMinusOne() { local selIdx localobj list
-        list = $o1
-        selIdx = list.selected()
-        if (selIdx != -1) {
-            return list.o(selIdx).idx
-        } else {
-            return -1
-        }
-    }
-    
-    proc getSelMechNameOrEmptyString() { local selIdx localobj list
-        list = $o1
-        selIdx = list.selected()
-        if (selIdx != -1) {
-            $s2 = list.o(selIdx).s
-        } else {
-            $s2 = ""
-        }
-    }
-    
-    proc appendAndSelectIfMechNameEqual() { local selIdx localobj list, item
-        strdef oldSelMechName
-        list = $o1
-        item = $o2
-        oldSelMechName = $s3
-        list.append(item)
-        if (stringsEqual(item.s, oldSelMechName)) {
-            selIdx = list.count() - 1
-            $&4 = selIdx
-        }
-    }
-    
+    // !!! code dup. with GapJuncManagerMainWidget
     func chooseDefSelItemIdx() { local enumPpRole, idx localobj list
         strdef ppName
         
@@ -526,10 +493,10 @@ begintemplate SynManagerMainWidget
         deck1.flip_to(cardIdx)
         deck2.flip_to(cardIdx)
         if (is3Or1PartInSynStruc) {
-            scroll(srcChoices)
-            scroll(trgChoices)
+            mcu4t.scroll(srcChoices)
+            mcu4t.scroll(trgChoices)
         } else {
-            scroll(sngChoices)
+            mcu4t.scroll(sngChoices)
         }
         deck5.flip_to(cardIdx)
         deck7.flip_to(cardIdx)
@@ -538,35 +505,20 @@ begintemplate SynManagerMainWidget
     
     proc selectNewSrc() { local srcChoiceIdx
         srcChoiceIdx = $1
-        selectAndScroll(srcChoices, srcChoiceIdx)
+        mcu4t.selectAndScroll(srcChoices, srcChoiceIdx)
         srcChoicesSelectHandler(srcChoiceIdx)
     }
     
     proc selectNewTrg() { local trgChoiceIdx
         trgChoiceIdx = $1
-        selectAndScroll(trgChoices, trgChoiceIdx)
+        mcu4t.selectAndScroll(trgChoices, trgChoiceIdx)
         trgChoicesSelectHandler(trgChoiceIdx)
     }
     
     proc selectNewSng() { local sngChoiceIdx
         sngChoiceIdx = $1
-        selectAndScroll(sngChoices, sngChoiceIdx)
+        mcu4t.selectAndScroll(sngChoices, sngChoiceIdx)
         sngChoicesSelectHandler(sngChoiceIdx)
-    }
-    
-    proc selectAndScroll() { local choiceIdx localobj choices
-        choices = $o1
-        choiceIdx = $2
-        choices.select(choiceIdx)
-        scroll(choices)
-    }
-    
-    proc scroll() { local choiceIdx localobj choices
-        choices = $o1
-        choiceIdx = choices.selected()
-        if (choiceIdx != -1) {
-            choices.scroll_pos(choiceIdx)
-        }
     }
     
     proc srcChoicesSelectHandler() {
@@ -584,6 +536,7 @@ begintemplate SynManagerMainWidget
         flipEditPPVarsDeckAndDismissChilds(deck4, sngChoices, defSngChoiceIdx, enumSynCompIdxs.sngPp)
     }
     
+    // !!! try to move this to ManagersCommonUtilsForTaps
     proc flipEditPPVarsDeckAndDismissChilds() { local choiceIdx, synCompIdx, mechIdx, cardIdx localobj deck, choices
         deck = $o1
         choices = $o2
@@ -599,6 +552,7 @@ begintemplate SynManagerMainWidget
         dismissChilds(1, 1, synCompIdx)
     }
     
+    // !!! try to move this to ManagersCommonUtilsForTaps
     obfunc createEditPPVarsDeck() { local ppCompIdx, mechIdx localobj deck
         
         ppCompIdx = $1
@@ -749,22 +703,10 @@ begintemplate SynManagerMainWidget
         if (isCalledOnSynLocChange) {
             // All inhomogeneities in PPs and NetCon-s applied earlier get a bit inconsistent with their models due to a small change in "dist",
             // so we apply them again
-            inhomAndStochLibrary.onSynLocChange()
+            inhomAndStochLibrary.onTapLocChange()
         }
         
-        if (isSmthChanged) {
-            mwh.showMessageBox("All the changes were applied to synapses.", "Applied")
-        } else {
-            mwh.showMessageBox("There are no changes in synapses to apply.", "No changes")
-        }
-    }
-    
-    proc showPleaseSelectMsg() { local ppCompIdx
-        strdef msgTempl, msg
-        ppCompIdx = $1
-        msgTempl = "Please select an item in \"%s\" list."
-        sprint(msg, msgTempl, smAllComps.o(ppCompIdx).name)
-        mwh.showWarningBox(msg)
+        mcu4t.showApplyMsg(isSmthChanged, "synapses")
     }
     
     proc adjustListsFilterHandler() {
@@ -772,7 +714,7 @@ begintemplate SynManagerMainWidget
         smlfw.show(this)
     }
     
-    proc dismissChilds() { local numArg, isIgnoreListsFilterWidget, isCondIgnoreVarsEditorWidget, synCompIdx localobj nil
+    proc dismissChilds() { local numArg, isIgnoreListsFilterWidget, isCondIgnoreVarsEditorWidget, synCompIdx
         numArg = numarg()
         if (numArg > 3) {
             codeContractViolation()
@@ -794,20 +736,7 @@ begintemplate SynManagerMainWidget
         
         dismissIfNotNil(slw)
         
-        if (!isIgnoreListsFilterWidget) {
-            dismissIfNotNil(smlfw)
-        }
-        
-        if (!isCondIgnoreVarsEditorWidget) {
-            dismissIfNotNil(varsEditorSubWidget)
-        } else if (varsEditorSubWidget != nil) {
-            // !!!! BUG: error here: "compIdx not a public member of GlobalsEditorWidget"
-            if (varsEditorSubWidget.compIdx == synCompIdx) {
-                varsEditorSubWidget.dismissHandler()
-            }
-        }
-        
-        // Notice that here we cannot dismiss the widgets created with nrnglobalmechmenu
+        mcu4t.dismissChilds(isIgnoreListsFilterWidget, isCondIgnoreVarsEditorWidget, synCompIdx, smlfw, varsEditorSubWidget)
     }
     
 endtemplate SynManagerMainWidget

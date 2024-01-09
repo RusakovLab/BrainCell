@@ -1,5 +1,5 @@
 
-// !!!! can I merge this template with SpeciesListItem?
+// !! can I merge this template with SpeciesListItem?
 begintemplate SpeciesInfo
 
     public packToVec, unpackFromVec
@@ -12,18 +12,18 @@ begintemplate SpeciesInfo
     isEnableUptake = -1     // For "point" shape and ("on-off" or "spike") dynamics only
     t_alpha = -1            //
     
-    // !!! think about storing flat speciesIdx here
+    // !! think about storing flat speciesIdx here
     
     
     proc init() { local inf
         strdef ionMechName
         
         ionMechName = $s1
-        diff = $2               // !!! was: 1 (Deff in legacy Diffusion3D.hoc)
+        diff = $2               // !! was: 1 (Deff in legacy Diffusion3D.hoc)
         isEnableUptake = $3
         t_alpha = $4
         
-        // !!! move this util to a better place
+        // !! move this util to a better place
         suffix = pyObj.ms_ionMechNameToSuffix(ionMechName)
         
         units(&diff, "um2/ms")

@@ -17,15 +17,15 @@ class GensForExtracellularDiffusion:
         
         hocCommand1Templ = '{} = {}    // ({})'
         
-        # !!!! just a temp solution: these GLOBAL-s will be exported as a part of biophysics once we implement it
-        # !!!! but even before this, maybe move this initialization of GLOBAL-s to a separate paragraph for carity
+        # !! just a temp solution: these GLOBAL-s will be exported as a part of biophysics once we implement it
+        # !! but even before this, maybe move this initialization of GLOBAL-s to a separate paragraph for carity
         
-        # !!! make sure py:ms_setIonGlobalVars or legacy code don't rewrite them just after import in "start with nano" mode
-        #     UPD: py:ms_setIonGlobalVars is called before the exported HOC file starts assigning the new values
+        # !! make sure py:ms_setIonGlobalVars or legacy code don't rewrite them just after import in "start with BrainCell export" mode
+        #    UPD: py:ms_setIonGlobalVars is called before the exported HOC file starts assigning the new values
         for (globalVarName, _) in self._eachSpcInfoInLibExceptUnrecCat():
             value = getattr(hocObj, globalVarName)
             
-            # !!! maybe use some other util or at least rename this one
+            # !! maybe use some other util or at least rename this one
             units = UnitsUtils.getUnitsForWatchedVar(globalVarName)
             
             lines.append(hocCommand1Templ.format(globalVarName, value, units))
@@ -53,8 +53,8 @@ class GensForExtracellularDiffusion:
         n = len(spcLibPackedToVec)
         lines.append(f'        vec = new Vector({n})')
         for idx in range(n):
-            # !!! think about creating a common util for exporting vectors (use it here, for spineNeckDiamCache and maybe for DistFunc-s and StochFunc-s)
-            lines.append(f'        vec.x[{idx}] = {spcLibPackedToVec[idx]}')    # !!! maybe use int(*) for the first value
+            # !! think about creating a common util for exporting vectors (use it here, for spineNeckDiamCache and maybe for DistFunc-s and StochFunc-s)
+            lines.append(f'        vec.x[{idx}] = {spcLibPackedToVec[idx]}')    # !! maybe use int(*) for the first value
         lines.append('        return vec')
         lines.append('    }')
         lines.append('    ')
@@ -105,12 +105,12 @@ class GensForExtracellularDiffusion:
             'ECSSpatialInfo',
             'ECSTemporalInfo',
             'ECSCapacityInfo',
-            'ECSSeriesInfo',        # !!! maybe don't export if no series
+            'ECSSeriesInfo',        # !! maybe don't export if no series
             'ExtracellularSource',
             'ExtracellularSourcesLibrary']
         exportTheseTemplatesFromThisDir(lines, relDirPath, ecslTemplNames)
         
-        # !!! the order of export is not the same as in "ExtracellularManagerLoads.hoc" -- need to test
+        # !! the order of export is not the same as in "ExtracellularManagerLoads.hoc" -- need to test
         lines.append('')
         newLines = getAllLinesFromFile('_Code\\Extracellular\\Utils\\ExtracellularApplicatorUtils_Exported.hoc')
         lines.extend(newLines)
@@ -143,13 +143,13 @@ class GensForExtracellularDiffusion:
         return lines
         
         
-    # !!!! make them @classmethod ?
+    # !! make them @classmethod ?
     
     def _eachSpcInfoInLibExceptUnrecCat(self):
-        globalVarNameTempl = '{}o0_{}_ion'  # !!! do I need to export "io" vars as well?
-        # !!! it looks like we cannot use HOC iterators from Python, but need to double check
+        globalVarNameTempl = '{}o0_{}_ion'  # !! do I need to export "io" vars as well?
+        # !! it looks like we cannot use HOC iterators from Python, but need to double check
         #       for spcInfo? in hocObj.speciesLibrary.eachSpcInfoInLibExceptUnrecCat(spcInfo?):
-        # !!! Keep in sync with hoc:SpeciesLibrary.eachSpcInfoInLibExceptUnrecCat
+        # !! Keep in sync with hoc:SpeciesLibrary.eachSpcInfoInLibExceptUnrecCat
         for spcCat in hocObj.speciesLibrary.spcCatsList:
             if spcCat.isUnrecSpcCat:
                 continue
@@ -209,7 +209,7 @@ class GensForExtracellularDiffusion:
         
         ssOrMinus1 = capacityInfo.ssOrMinus1
         pointCapacityRadiusOrMinus1 = capacityInfo.pointCapacityRadiusOrMinus1
-        numMoleculesOrMinus1 = capacityInfo.numMoleculesOrMinus1    # !!! int(*) ?
+        numMoleculesOrMinus1 = capacityInfo.numMoleculesOrMinus1    # !! int(*) ?
         delta_oOrMinus1 = capacityInfo.delta_oOrMinus1
         
         args = [enumPointSphere]
@@ -235,7 +235,7 @@ class GensForExtracellularDiffusion:
         mechStd = seriesInfo.mechStd
         
         interval = mechStd.get('interval')
-        number = mechStd.get('number')  # !!! maybe need to use int(*) here, but NEURON is OK with a fractional value
+        number = mechStd.get('number')  # !! maybe need to use int(*) here, but NEURON is OK with a fractional value
         start = mechStd.get('start')
         noise = mechStd.get('noise')    # Don't add int(*) here
         

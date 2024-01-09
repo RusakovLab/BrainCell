@@ -4,7 +4,7 @@
 // $s2 - "*.hoc", "*.py", "*.txt" or "*.xlsx"
 // $s3 (output) - The selected file path and name (only if selected)
 // Returns: 0/1 flag indicating that the file was selected
-// !!!!! deprecated in favour of FileBrowserHelper.showLoadFileDialog
+// !! deprecated in favour of FileBrowserHelper.showLoadFileDialog
 func selectDistFuncInputFile_deprecated() { localobj file
     strdef hint, defaultDirPath
     

@@ -3,12 +3,10 @@ begintemplate ReducedSynGroup
 
     public createSynStruc, initAllHomogenVars, applyInhomogeneityIter
     
-    external smAllSyns, smAllComps
+    external tapGroup, smAllSyns, smAllComps
     external seh, rngUtils
     external eachItemInList
     external enumSynCompIdxs
-    
-    objref this
     
     
     // Keep in sync with SynGroup.applyChangesToStrucIfNeeded
@@ -26,7 +24,7 @@ begintemplate ReducedSynGroup
             
             for eachItemInList(syn, smAllSyns) {
                 srcPp = createNewSrcPp(syn, srcMechIdx, srcMechName)
-                trgPp = createNewPpAttachedToSection(trgMechName, syn.sec_ref, syn.connectionPoint)
+                trgPp = tapGroup.createNewPpAttachedToSection(trgMechName, syn.sec_ref, syn.connectionPoint)
                 if (!isSefwEnabled) {
                     netCon = new NetCon(srcPp, trgPp)
                     syn.changeStructure(srcPp, netCon, trgPp)
@@ -43,7 +41,7 @@ begintemplate ReducedSynGroup
             }
         } else {
             for eachItemInList(syn, smAllSyns) {
-                sngPp = createNewPpAttachedToSection(sngMechName, syn.sec_ref, syn.connectionPoint)
+                sngPp = tapGroup.createNewPpAttachedToSection(sngMechName, syn.sec_ref, syn.connectionPoint)
                 syn.changeStructure(sngPp)
             }
         }
@@ -104,29 +102,8 @@ begintemplate ReducedSynGroup
             mechType.make(pp)   // Not located in any section
             return pp
         } else {
-            return createNewPpAttachedToSection(mechName, syn.sec_ref, syn.connectionPoint)
+            return tapGroup.createNewPpAttachedToSection(mechName, syn.sec_ref, syn.connectionPoint)
         }
-    }
-    
-    objref _tempPp
-    
-    // Keep in sync with SynGroup.createNewPpAttachedToSectionButTryToInherit
-    obfunc createNewPpAttachedToSection() { local x localobj sec_ref, pp, nil
-        strdef mechName, hocCommand
-        
-        mechName = $s1
-        sec_ref = $o2
-        x = $3
-        
-        sprint(hocCommand, "_tempPp = new %s(%.15e)", mechName, x)
-        sec_ref.sec {
-            execute(hocCommand, this)
-        }
-        
-        pp = _tempPp
-        _tempPp = nil
-        
-        return pp
     }
     
     // Keep in sync with SynGroup.ifMechDirtyThenApplyHomogenChanges

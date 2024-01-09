@@ -1,8 +1,8 @@
 
-# !!! Ideas:
-#     * think about the usage of log colourbar (if supported) or explicit expressions for the watched var, e.g. "log(gabao)"
-#     * maybe make "z" axis normal to the screen by default to be consistent with PlotShape default view direction
-#     * maybe cache data in Python to make the wait time for "Show the last record once again" shorter
+# !! Ideas:
+#    * think about the usage of log colourbar (if supported) or explicit expressions for the watched var, e.g. "log(gabao)"
+#    * maybe make "z" axis normal to the screen by default to be consistent with PlotShape default view direction
+#    * maybe cache data in Python to make the wait time for "Show the last record once again" shorter
 
 from PlotlyPlayer import PlotlyPlayer
 from PyplotPlayer import PyplotPlayer
@@ -38,7 +38,7 @@ class RangeVarAnimationPlayer:
         numFrames = len(t)
         
         if isTestMode:
-            # !!! just some random test data here
+            # !! just some random test data here
             rangeVar = np.random.rand(numFrames, numSegms)
         else:
             rangeVar = np.empty(numSegms * numFrames)

@@ -1,8 +1,9 @@
 
 begintemplate InterModularPlotShapeUtils
     
-    public setViewDir
+    public setViewDir, addCircleMarker
     
+    external enumColours
     external codeContractViolation
     
     
@@ -22,6 +23,38 @@ begintemplate InterModularPlotShapeUtils
         } else {
             codeContractViolation()
         }
+    }
+    
+    proc addCircleMarker() { local numArg, x_screen, y_screen, radius_screen, colourIdx, numPts, delta_angle, ptIdx, angle localobj plotShape
+        
+        numArg = numarg()
+        if (numArg < 4 || numArg > 5) {
+            codeContractViolation()
+        }
+        
+        plotShape = $o1
+        x_screen = $2
+        y_screen = $3
+        radius_screen = $4
+        if (numArg == 5) {
+            colourIdx = $5
+        } else {
+            colourIdx = enumColours.black
+        }
+        
+        numPts = 200    // !! hardcode, maybe make it linear to radius_screen
+        
+        delta_angle = 2 * PI / numPts
+        plotShape.beginline(colourIdx, 0)
+        for ptIdx = 0, numPts {
+            angle = delta_angle * ptIdx
+            plotShape.line(x_screen + radius_screen * cos(angle), y_screen + radius_screen * sin(angle))
+        }
+        
+        // An alternative approach
+        //     plotShape.mark(x_screen, y_screen, "o", marker_size)
+        // looks simpler, but in fact has a restriction ("Arg out of range in user function" if marker_size < 0.1 or > 100)
+        // and requires calculation of marker_size which is linear to radius_screen, but also has an unclear dependency on PlotShape zoom, widget size etc.
     }
     
 endtemplate InterModularPlotShapeUtils

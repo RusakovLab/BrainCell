@@ -4,7 +4,7 @@
 proc showExtracellularManagerBaseWidget() {
 
     dismissIfNotNil(manageAndRunWidget)
-    manageAndRunWidget = new ManageAndRunWidget(2)
+    manageAndRunWidget = new ManageAndRunWidget(3)
     manageAndRunWidget.show()
     manageAndRunWidget.showECSManagerHandler()
     manageAndRunWidget.showAltRunControlHandler()

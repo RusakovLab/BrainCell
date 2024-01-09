@@ -1,0 +1,38 @@
+
+// !!! not exported at the moment
+
+begintemplate UtilsForFakeMechanismForExtValue
+
+    public setNewVar, getVarUnits
+    public mechName, numGlobalVars, theDynVarName
+    
+    external stringsEqual, codeContractViolation
+    
+    strdef mechName, theDynVarName, theDynVarUnits
+    numGlobalVars = -1
+    
+    
+    proc init() {
+        mechName = "External Value"
+        numGlobalVars = 0
+    }
+    
+    proc setNewVar() {
+        theDynVarName = $s1
+        theDynVarUnits = $s2
+    }
+    
+    proc getVarUnits() {
+        strdef varName
+        varName = $s1
+        if (!stringsEqual(varName, theDynVarName)) {
+            codeContractViolation()
+        }
+        $s2 = theDynVarUnits
+    }
+    
+endtemplate UtilsForFakeMechanismForExtValue
+
+
+objref utils4FakeMech4GapJuncExtValue
+utils4FakeMech4GapJuncExtValue = new UtilsForFakeMechanismForExtValue()

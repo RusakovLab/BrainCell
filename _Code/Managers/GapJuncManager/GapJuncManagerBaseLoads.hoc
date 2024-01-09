@@ -1,0 +1,3 @@
+
+loadIfNotDeclared("EnumGapJuncCompIdxs", "Exported/GapJuncEnums.hoc", 1)    // !! it would be better to avoid the 3rd arg "1"
+{ load_file("FakesForExtValue/LoadsForFakeMechanismForExtValue.hoc") }

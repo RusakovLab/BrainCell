@@ -14,21 +14,21 @@ begintemplate ReducedInhomAndStochLibrary
         activeSpecVars = new List()
     }
     
-    // in: enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx
+    // in: varLibId, segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx
     proc onInhomCreate() { localobj actSpecVar
-        actSpecVar = createActiveSpecVar($1, $2, $3, $4, $5, $6)
-        actSpecVar.makeInhom($o7, $o8, $9, $10)
+        actSpecVar = createActiveSpecVar($o1)
+        actSpecVar.makeInhom($o2, $o3, $4, $5)
     }
     
-    // in: enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, boundingHelper, stochFuncHelper, stochFuncCatIdx, stochFuncIdx
+    // in: varLibId, boundingHelper, stochFuncHelper, stochFuncCatIdx, stochFuncIdx
     proc onStochApply() { localobj actSpecVar
-        actSpecVar = findOrCreateActiveSpecVar($1, $2, $3, $4, $5, $6)
-        actSpecVar.makeStoch($o7, $o8, $9, $10)
+        actSpecVar = findOrCreateActiveSpecVar($o1)
+        actSpecVar.makeStoch($o2, $o3, $4, $5)
     }
     
     proc applyAllBiophysInhomModels() { localobj actSpecVar
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (!actSpecVar.isDmOrSynPart || !actSpecVar.isInhom || actSpecVar.isStoch) {
+            if (!actSpecVar.isDmOrTapPart || !actSpecVar.isInhom || actSpecVar.isStoch) {
                 codeContractViolation()
             }
             actSpecVar.applyBiophysInhomogeneity()
@@ -37,7 +37,7 @@ begintemplate ReducedInhomAndStochLibrary
     
     proc applyAllSynInhomModels() { localobj actSpecVar
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrSynPart || !actSpecVar.isInhom) {
+            if (actSpecVar.isDmOrTapPart || !actSpecVar.isInhom) {
                 continue
             }
             actSpecVar.applySynInhomogeneity()
@@ -47,7 +47,7 @@ begintemplate ReducedInhomAndStochLibrary
     func isAnyStochVarsForSyns() { local isFound localobj actSpecVar
         isFound = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrSynPart) {
+            if (actSpecVar.isDmOrTapPart) {
                 continue
             }
             if (actSpecVar.isStoch) {
@@ -71,25 +71,25 @@ begintemplate ReducedInhomAndStochLibrary
     // All next staff is private
     
     
-    // in: enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex
+    // in: varLibId
     // out: actSpecVar
     obfunc createActiveSpecVar() { localobj actSpecVar
-        actSpecVar = new ReducedInhomAndStochTarget($1, $2, $3, $4, $5, $6)
+        actSpecVar = new ReducedInhomAndStochTarget($o1)
         activeSpecVars.append(actSpecVar)
         return actSpecVar
     }
     
-    // in: enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex
+    // in: varLibId
     // out: actSpecVar
     obfunc findOrCreateActiveSpecVar() { local idx localobj actSpecVar
         // Not many activeSpecVars-s, so hashless comparison works just fine
         for idx = 0, activeSpecVars.count() - 1 {
             actSpecVar = activeSpecVars.o(idx)
-            if (actSpecVar.isEqual($1, $2, $3, $4, $5, $6)) {
+            if (actSpecVar.isEqual($o1)) {
                 return actSpecVar
             }
         }
-        return createActiveSpecVar($1, $2, $3, $4, $5, $6)
+        return createActiveSpecVar($o1)
     }
     
 endtemplate ReducedInhomAndStochLibrary

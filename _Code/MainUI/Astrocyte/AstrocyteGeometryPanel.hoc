@@ -61,7 +61,7 @@ proc createAstrocyteGeometryPanel() { local isEditLeafOrStalkGeometryByDefault
     xpanel("")
     xlabel("========== Specific membrane conductance =======================")
     xlabel("This membrane conductivity is scaled to base of leaf cylinders")
-    // !!! BUG: as a side effect, the handler updates not only biophysics, but also geometry of the nanostructures (no reseeding)
+    // !! BUG: as a side effect, the handler updates not only biophysics, but also geometry of the nanostructures (no reseeding)
     xvalue("Specific membrane conductance, Gm","GPassive", 1, "distrSelectedLeaves(1)", 0, 1)
     //xlabel("=============================================================")
     xpanel()

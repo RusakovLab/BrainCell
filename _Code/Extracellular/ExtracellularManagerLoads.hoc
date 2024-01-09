@@ -1,5 +1,5 @@
 
-// !!!! such an IF operator is used a few times - maybe encapsulate it into "makeSureDeclared"
+// !! such an IF operator is used a few times - maybe encapsulate it into "makeSureDeclared"
 if (makeSureDeclared("speciesLibrary") && isBaseOrNanoStart) {
     codeContractViolation()
 }
@@ -21,7 +21,7 @@ loadIfNotDeclared("ECSSeriesInfo", "ExtracellularSourcesLibrary/Exported/ECSSeri
 loadIfNotDeclared("ExtracellularSource", "ExtracellularSourcesLibrary/Exported/ExtracellularSource.hoc")
 loadIfNotDeclared("ExtracellularSourcesLibrary", "ExtracellularSourcesLibrary/Exported/ExtracellularSourcesLibrary.hoc")
 
-// !!!! (?)
+// !! (?)
 cond = (!isBaseOrNanoStart && ecsLibrary.isEmpty())
 if (cond) {
     printWasNotExportedSoWeWillCreateDefaultWarning("extracellular sources")

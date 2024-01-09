@@ -3,7 +3,7 @@ begintemplate RangeVarAnimationRecorder
     
     public onJustBeforeRun, onStep
     
-    external getRecSectsListAndNumSegms, getGraphedVarUnits, stringEmpty
+    external getRecSectsListAndNumSegms, getGraphedOrPointedVarUnits, stringEmpty
     external eachSegmInSecList
     external cvode
     external setdt
@@ -25,14 +25,14 @@ begintemplate RangeVarAnimationRecorder
         record = $o1
     }
     
-    // !!! keep in sync with RunnerHocWatchedVarsUtils.hoc -> setUpVarVecsForRecording
+    // !! keep in sync with RunnerHocWatchedVarsUtils.hoc -> setUpVarVecsForRecording
     proc onJustBeforeRun() { local DtOrMinus1, isFixedTimeStep, numRecsOr0, numSegms
         strdef watchedRangeVarNameWithIndex, unitsStr
         
         watchedRangeVarNameWithIndex = $s1
         DtOrMinus1 = $2
         
-        getGraphedVarUnits(watchedRangeVarNameWithIndex, unitsStr)
+        getGraphedOrPointedVarUnits(watchedRangeVarNameWithIndex, unitsStr)
         if (!stringEmpty(unitsStr)) {
             sprint(record.varNameWithIndexAndUnits, "%s (%s)", watchedRangeVarNameWithIndex, unitsStr)
         } else {
@@ -67,7 +67,7 @@ begintemplate RangeVarAnimationRecorder
         list_ref = getRecSectsListAndNumSegms(&numSegms)
         
         record.rangeVarVec = new Vector(numRecsOr0 * numSegms)
-        record.rangeVarVec.resize(0)    // !!!! not sure that the memory remains allocated after this
+        record.rangeVarVec.resize(0)    // !! not sure that the memory remains allocated after this
         
         sprint(readRangeVarInSegmHocCommand, "_value = %s(_x)", watchedRangeVarNameWithIndex)
         
@@ -90,7 +90,7 @@ begintemplate RangeVarAnimationRecorder
     
     
     proc recordRangeVarNow() {
-        // !!! BUG: we hit error "count : object prefix is NULL" in the next line when user starts simulation with "Init & Run" rather than "Start simulation"
+        // !! BUG: we hit error "count : object prefix is NULL" in the next line when user starts simulation with "Init & Run" rather than "Start simulation"
         for eachSegmInSecList(&_x, list_ref) {
             execute(readRangeVarInSegmHocCommand, this)
             record.rangeVarVec.append(_value)

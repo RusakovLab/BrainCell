@@ -9,7 +9,7 @@ begintemplate MechManagerMainWidget
     external mmAllComps
     external mwh, beih, mmIcrHelper
     
-    // !!!! maybe it would be better to encapsulate mmcoWidget into MechManagerMainWidget
+    // !! maybe it would be better to encapsulate mmcoWidget into MechManagerMainWidget
     external mmcoWidget, mmmowb
     
     objref mainBox, this

@@ -66,8 +66,8 @@ proc loadHocFile() { local wasSomethingImported, status
     mwh.showPleaseWaitBox("Loading geometry file.")
     {
         status = load_file(1, inFilePathName)
-        // !!! BUG: we can have status == 1 here despite the actual error;
-        //          this happens when inFilePathName loads another HOC file which, in turn, raises an error
+        // !! BUG: we can have status == 1 here despite the actual error;
+        //         this happens when inFilePathName loads another HOC file which, in turn, raises an error
     }
     mwh.hidePleaseWaitBox()
     

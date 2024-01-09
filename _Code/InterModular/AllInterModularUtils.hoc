@@ -6,6 +6,7 @@ checkPrerequisites()
 objref soma_ref, axon_ref, endFoot_ref
 objref usedNamesForDendrites, nanoBranchesManager, seededDendrites_ref
 { load_file("InterModularPythonUtils.hoc") }
+{ load_file("InterModularGeomMath.hoc") }
 { load_file("InterModularVectorUtils.hoc") }                    // !! not intermodular yet
 { load_file("InterModularListUtils.hoc") }
 { load_file("InterModularSectionUtils.hoc") }
@@ -19,17 +20,21 @@ iterator findSecArrayOrObjectIterator() { codeContractViolation() }
 { load_file("InterModularUniqueNameUtils.hoc") }
 { load_file("InterModularUniqueListItemUtils.hoc") }
 { load_file("InterModularRNGUtils.hoc") }
-objref smAllComps, mmIcrHelper
+objref smAllComps, gjmAllComps, mmIcrHelper
+proc makeSureGapJuncCompsCreatedOrImported() { codeContractViolation() }
 proc makeSureSynCompsCreatedOrImported() { codeContractViolation() }
 { load_file("InterModularCompUtils.hoc") }
 { load_file("InterModularUnitsUtils.hoc") }
+{ load_file("InterModularEnumColours.hoc") }
 { load_file("InterModularGraphUtils.hoc") }
 { load_file("InterModularPlotShapeUtils.hoc") }
 { load_file("InterModularWidgetUtils.hoc") }
 { load_file("InterModularOtherUtils.hoc") }
-objref mmcoWidget
+objref mmcoWidget, gapJuncManagerMainWidget
 { load_file("../MainUI/PluginsForCompSelectionWidget.hoc") }
 { load_file("Widgets/FileBrowserHelper.hoc") }
-{ load_file("Widgets/CompSubsetWidget.hoc") }                   // !! not intermodular yet
+{ load_file("Widgets/SectionsSelectorWidget.hoc") }
 { load_file("Widgets/GlobalsEditorWidget.hoc") }
-objref smAllSyns, mainUiLocker
+objref seedingDensityWidget
+{ load_file("Widgets/SeedingDensityWidget.hoc") }
+objref gjmAllGapJuncs[2], smAllSyns, mainUiLocker

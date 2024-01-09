@@ -5,7 +5,7 @@ from BiophysJsonExportImportUtils import BiophysJsonExportImportUtils
 from OtherInterModularUtils import *
 
 
-# !!! compare the units we read from JSON (including "GPassive") with the units in NEURON and show a warning if they are different
+# !! compare the units we read from JSON (including "GPassive") with the units in NEURON and show a warning if they are different
 
 class BiophysJsonImportCore:
     
@@ -34,16 +34,16 @@ class BiophysJsonImportCore:
             stickyMechNamesSet_imported = self._consumeDataFromCompInfoDict(recCompIdx, compInfoDict, options, 1)
             recComp.onJustAfterCompHomogenBiophysImport()
             
-            # !!! would it make sense to delete all inactiveSpecVars once user clicks Apply in Vars Editor?
-            # !!! what if user had actSpecVars for sticky mechs that we cannot uninsert?
+            # !! would it make sense to delete all inactiveSpecVars once user clicks Apply in Vars Editor?
+            # !! what if user had actSpecVars for sticky mechs that we cannot uninsert?
             inhomAndStochLibrary.onJustBeforeCompInhomStochBiophysImport(recCompIdx)
             self._consumeDataFromCompInfoDict(recCompIdx, compInfoDict, options, 0)
             
-            # !!!!!!! don't forget about special logic for verbatim inhom models
+            # !! don't forget about special logic for verbatim inhom models
             stickyMechNames = list(name for name in stickyMechNamesList_before if name not in stickyMechNamesSet_imported)
             if stickyMechNames:
                 csv = ', '.join(stickyMechNames)
-                # !!!! do we need to reset mechStd for a sticky mech to defaults if it was inserted before and not imported? (currently we don't reset them)
+                # !! do we need to reset mechStd for a sticky mech to defaults if it was inserted before and not imported? (currently we don't reset them)
                 h.continue_dialog(f'Cannot uninsert the next mech(s) from the sections of \"{recComp.name}\" comp (NEURON restriction): {csv}.')
                 
         return 0
@@ -53,7 +53,7 @@ class BiophysJsonImportCore:
         
         mth = hocObj.mth
         
-        recComp = hocObj.mmAllComps[recCompIdx]     # !!! maybe just reuse recComp obtaned upstream
+        recComp = hocObj.mmAllComps[recCompIdx]     # !! maybe just reuse recComp obtaned upstream
         
         stickyMechNamesSet = set()
         
@@ -78,19 +78,19 @@ class BiophysJsonImportCore:
                         isStoch = False
                         varValue = varValueOrInfoDict
                     else:
-                        # !!!!!!! unify underscore and camel case in node names
+                        # !! unify underscore and camel case in node names
                         (isInhom, inhomModelInfoDictOrNone) = self._getOptionalInfoDict(varValueOrInfoDict, 'inhom_model')
                         (isStoch, stochModelInfoDictOrNone) = self._getOptionalInfoDict(varValueOrInfoDict, 'stoch_model')
                         (isBaseValue, baseVarValueOrNone) = self._getOptionalInfoDict(varValueOrInfoDict, 'baseValue')
                         if not (isInhom or isStoch):
                             codeContractViolation()
                         if not isInhom and isStoch and not isBaseValue:
-                            baseVarValueOrNone = recComp.mechStds[mechIdx][varTypeIdx].get(varName, arrayIndex)     # !!!!!!!!!!!!! review this logic once again
+                            baseVarValueOrNone = recComp.mechStds[mechIdx][varTypeIdx].get(varName, arrayIndex)     # !! review this logic once again
                         varValue = baseVarValueOrNone
                         
                     if isConsumeHomogenOrInhomStochData:
                         if not isInhom:
-                            # !!!!!! do we need to set it when user decides not to import stoch models?
+                            # !! do we need to set it when user decides not to import stoch models?
                             self._setVarValueToMechStd(recComp, mechIdx, varTypeIdx, varName, varValue, arrayIndex)
                         continue
                         
@@ -117,9 +117,9 @@ class BiophysJsonImportCore:
         
         mmAllComps = hocObj.mmAllComps
         
-        # !!! recCompIdx = hocObj.findItemInListByString(mmAllComps, compName, 'name')
-        #     if recCompIdx == -1:
-        #         codeContractViolation()
+        # !! recCompIdx = hocObj.findItemInListByString(mmAllComps, compName, 'name')
+        #    if recCompIdx == -1:
+        #        codeContractViolation()
         
         numRecComps = len(mmAllComps)   # Recipient
         
@@ -146,7 +146,7 @@ class BiophysJsonImportCore:
         
     def _parseRightPart(self, string, startMarker, defaultRight):
         
-        # !!! need to make this code tolerant to arbitrary spaces in the string
+        # !! need to make this code tolerant to arbitrary spaces in the string
         idx = string.find(startMarker)
         if idx == -1:
             left = string
@@ -158,7 +158,7 @@ class BiophysJsonImportCore:
         return left, right
         
     def _getAllVarNames(self, mechName, varType):
-        mechStd = h.MechanismStandard(mechName, varType)    # !!!!! read it from comp ??
+        mechStd = h.MechanismStandard(mechName, varType)    # !! read it from comp ??
         
         varName = h.ref('')
         
@@ -203,7 +203,7 @@ class BiophysJsonImportCore:
         varName = 'GPassive'
         varNameWithUnits = '{} ({})'.format(varName, h.units(varName))
         try:
-            # !!! BUG: we'll hit KeyError by mistake if the units in JSON and NEURON are different
+            # !! BUG: we'll hit KeyError by mistake if the units in JSON and NEURON are different
             GPassive_new = inhomModelInfoDict[varNameWithUnits]
         except KeyError:
             # Donor user applied a custom inhom model to g_pas in "Large Glia" using Inhomogeneity editor
@@ -233,7 +233,7 @@ class BiophysJsonImportCore:
         segmentationHelperInfoDictOrNone = inhomModelInfoDict['segmentationHelper']
         distFuncHelperInfoDict = inhomModelInfoDict['distFuncHelper']
         
-        # !!!! does user prefer to have "keep as is" segmentation mode by default on import?
+        # !! does user prefer to have "keep as is" segmentation mode by default on import?
         if segmentationHelperInfoDictOrNone is not None:
             distMinMaxVec = h.Vector()
             comp = hocObj.mmAllComps[compIdx]
@@ -265,7 +265,8 @@ class BiophysJsonImportCore:
             
         self._importInhomModelInnerCore(compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper)
         
-        hocObj.inhomAndStochLibrary.onInhomApply(0, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx)
+        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        hocObj.inhomAndStochLibrary.onInhomApply(varLibId, segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx)
         
     def _importInhomModelInnerCore(self, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper):
         mth = hocObj.mth
@@ -279,7 +280,7 @@ class BiophysJsonImportCore:
         
         comp.applySegmentationAndInhomogeneity(segmentationHelper, mechName, varType, varName, arrayIndex, distFuncHelper)
         
-        # !!! it's a code contract that we don't export/import "constant" inhom models
+        # !! it's a code contract that we don't export/import "constant" inhom models
         mechStd.set(varName, math.nan, arrayIndex)
         
         comp.isMechVarTypeInhom[mechIdx][varTypeIdx] = 1
@@ -310,7 +311,8 @@ class BiophysJsonImportCore:
         stochFuncCatIdx = stochFuncHelperInfoDict['stochFuncCatIdx']
         stochFuncIdx = stochFuncHelperInfoDict['stochFuncIdx']
         
-        hocObj.inhomAndStochLibrary.onStochApply(0, compIdx, mechIdx, varType, varIdx, arrayIndex, boundingHelper, stochFuncHelper, stochFuncCatIdx, stochFuncIdx)
+        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        hocObj.inhomAndStochLibrary.onStochApply(varLibId, boundingHelper, stochFuncHelper, stochFuncCatIdx, stochFuncIdx)
         
     # See also: BiophysJsonExportCore._getExportedParams
     def _setImportedParams(self, distOrStochFuncHelper, vecOfVals, listOfStrs):

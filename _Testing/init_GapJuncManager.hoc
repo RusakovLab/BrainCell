@@ -1,0 +1,25 @@
+
+// Load some test nanogeometry file
+isAstrocyteOrNeuron = 1
+{ load_file("CommonPrologueForTests.hoc") }
+
+objref stochTestPlotShape
+stochTestPlotShape = new PlotShape()
+{ stochTestPlotShape.exec_menu("Shape Plot") }
+{ fast_flush_list.append(stochTestPlotShape) }
+
+tstop = 1500
+
+// Watch some var just to test stochasticity applied with AltRunControlWidget
+objref stochTestGraph
+stochTestGraph = new Graph()
+{ stochTestGraph.addvar("gjmAllGapJuncs[1].o(123).sngPp.BasicCa") }
+{ stochTestGraph.size(0, tstop, 0.99, 1.01) }
+{ graphList[0].append(stochTestGraph) }
+
+{ load_file("../_Code/Managers/CommonLoads.hoc") }
+{ load_file("../_Code/Managers/GapJuncManager/GapJuncManager.hoc") }
+
+makeSureGapJuncCompsCreatedOrImportedThenShowGapJuncManagerBaseWidget()
+
+{ chdir("..") }     // Without this, getcwd() will return different path compared to the start from "init.hoc"

@@ -1,0 +1,24 @@
+
+begintemplate VarLibId
+    
+    // !!! tapGroupIdx
+    // !!! isDmOrTapPart, enumPpRoleOrMinus1, mechName, varTypeIdx, varName, arraySize
+    
+    public enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex
+    public isEqual
+    
+    proc init() {
+        enumDmPpFk = $1
+        compIdx = $2
+        mechIdx = $3
+        varType = $4
+        varIdx = $5
+        arrayIndex = $6
+    }
+    
+    func isEqual() { localobj other
+        other = $o1
+        return (enumDmPpFk == other.enumDmPpFk && compIdx == other.compIdx && mechIdx == other.mechIdx && varType == other.varType && varIdx == other.varIdx && arrayIndex == other.arrayIndex)
+    }
+    
+endtemplate VarLibId

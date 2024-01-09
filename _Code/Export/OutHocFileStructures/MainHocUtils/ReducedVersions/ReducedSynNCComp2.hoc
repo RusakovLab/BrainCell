@@ -1,19 +1,19 @@
 
 begintemplate ReducedSynNCComp
 
-    public enumDmPpNc, mechStds
+    public enumDmPpFk, mechStds
     public applyInhomogeneity
     
     external mth, mcu
-    external synGroup, seh, utils4FakeMech4NC
+    external tapGroup, smAllSyns, seh, utils4FakeMech4SynNetCon
     external codeContractViolation
     
-    enumDmPpNc = -1
+    enumDmPpFk = -1
     objref mechStds[1][1]
     
     
     proc init() {
-        enumDmPpNc = 2
+        enumDmPpFk = 2
         objref mechStds[1][1]
     }
     
@@ -46,11 +46,11 @@ begintemplate ReducedSynNCComp
             mechStd = new MechanismStandard(seh.realMechName, seh.realVarType)
         }
         
-        for synGroup.applyInhomogeneityIter(syn, distFuncHelper) {
+        for tapGroup.applyInhomogeneityIter(syn, smAllSyns, distFuncHelper) {
             y = distFuncHelper.calculateAt(syn.dist)
             if (!isMetaVar) {
                 firstNetCon = syn.netCon
-                utils4FakeMech4NC.setNetConVar(firstNetCon, varNameWithIndex, y)
+                utils4FakeMech4SynNetCon.setNetConVar(firstNetCon, varNameWithIndex, y)
                 if (isSefwEnabled && isWeightVar) {
                     syn.sefwNetCon.weight = firstNetCon.weight
                 }

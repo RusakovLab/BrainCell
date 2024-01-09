@@ -2,21 +2,29 @@
 { load_file("SectionListUtils.hoc") }
 
 
-// Plugin for CompSubsetWidget from NanoBranchesManager module
-begintemplate PluginForCSW_FromNBM
+// Plugin for SectionsSelectorWidget from NanoBranchesManager module
+// !! not used at the moment
+begintemplate PluginForSSW_FromNBM
 
+    public getTopHint, isCurrentSectSelectable, updateNumSelectedSectsHint, doneHandler, dismissHandler
+    
     external nanoBranchesManager, seededDendrites_ref
     external checkIfCurrentSecIsDendrite
     
-    public getTopHint, isCurrentSectSelectable, doneHandler, dismissHandler
     
     proc getTopHint() {
-        $s1 = "Please select dendrites that will be seeded with nanostructures."
+        $s1 = "Please select the dendrites that will be seeded with nanostructures."
     }
     
     func isCurrentSectSelectable() {
         // Check if the section belongs to a dendrite
         return checkIfCurrentSecIsDendrite()
+    }
+    
+    proc updateNumSelectedSectsHint() { local numSelectedSects localobj placeholder
+        numSelectedSects = $2
+        placeholder = $o3
+        sprint($s1, "%d dendrite section(s) selected", numSelectedSects)
     }
     
     proc doneHandler() { localobj selected_ref
@@ -33,21 +41,22 @@ begintemplate PluginForCSW_FromNBM
         nanoBranchesManager.reseedBranchesWithLastUsedArgs()
     }
     
-endtemplate PluginForCSW_FromNBM
+endtemplate PluginForSSW_FromNBM
 
 
-// Plugin for CompSubsetWidget from MechManager module
-begintemplate PluginForCSW_FromMM
+// Plugin for SectionsSelectorWidget from BiophysManager module
+begintemplate PluginForSSW_FromBM
 
+    public getTopHint, isCurrentSectSelectable, updateNumSelectedSectsHint, doneHandler, dismissHandler
+    
     external mmcoWidget
     external stringsEqual
     
-    public getTopHint, isCurrentSectSelectable, doneHandler, dismissHandler
-    
     objref selectable_ref
     
+    
     proc getTopHint() {
-        $s1 = "Please select sections that will be removed from this and assigned to a new compartment."
+        $s1 = "Please select the sections that will be removed from this and assigned to a new compartment."
     }
     
     proc init() {
@@ -63,7 +72,7 @@ begintemplate PluginForCSW_FromMM
         //    need to use Python's Set here
         
         // Don't replace with eachSecInList to avoid the error "The sectionstack index should be 1 but it is 2"
-        // (!!! need to investigate what exactly causes this error: either plotShape.push_selected() upstream or
+        // (!! need to investigate what exactly causes this error: either plotShape.push_selected() upstream or
         // the fact that this func is called inside "forsec" block)
         for secIdx = 0, selectable_ref.count() - 1 {
             sec_ref = selectable_ref.o(secIdx)
@@ -75,15 +84,53 @@ begintemplate PluginForCSW_FromMM
         return 0
     }
     
+    proc updateNumSelectedSectsHint() { local numSelectedSects localobj in_comp
+        numSelectedSects = $2
+        in_comp = $o3
+        sprint($s1, "%d section(s) selected in \"%s\"", numSelectedSects, in_comp.name)
+    }
+    
     proc doneHandler() { localobj selected_ref
         selected_ref = $o1
-        
-        // !!
         mmcoWidget.splitHandler_layer2(selected_ref)
     }
     
     proc dismissHandler() {
-        // !! maybe empty by design
+        // Empty by design
     }
     
-endtemplate PluginForCSW_FromMM
+endtemplate PluginForSSW_FromBM
+
+
+// Plugin for SectionsSelectorWidget from GapJunctionManager module
+begintemplate PluginForSSW_FromGJM
+
+    public getTopHint, isCurrentSectSelectable, updateNumSelectedSectsHint, doneHandler, dismissHandler
+    
+    external gapJuncManagerMainWidget
+    
+    
+    proc getTopHint() {
+        $s1 = "Please select the sections that will be seeded with gap junctions."
+    }
+    
+    func isCurrentSectSelectable() {
+        return 1
+    }
+    
+    proc updateNumSelectedSectsHint() { local numSelectedSects localobj placeholder
+        numSelectedSects = $2
+        placeholder = $o3
+        sprint($s1, "%d section(s) selected", numSelectedSects)
+    }
+    
+    proc doneHandler() { localobj selected_ref
+        selected_ref = $o1
+        gapJuncManagerMainWidget.selectSectionsHandler_layer2(selected_ref)
+    }
+    
+    proc dismissHandler() {
+        // Empty by design
+    }
+    
+endtemplate PluginForSSW_FromGJM

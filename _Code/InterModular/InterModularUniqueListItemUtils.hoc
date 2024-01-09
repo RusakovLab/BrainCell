@@ -28,7 +28,7 @@ func isECSUnique() { local isUnique localobj newECS, ecsList, oldECS
     
     for eachItemInList(oldECS, ecsList) {
         if (newECS.isEqual(oldECS)) {
-            // !!!! make the text and the title more specific depending on whether user edits existing ECS or adds a new one
+            // !! make the text and the title more specific depending on whether user edits existing ECS or adds a new one
             line1 = "Exactly the same ECS has already been added to the list."
             line2 = "Please make at least 1 parameter different."
             line3 = "(But if you changed smth in \"Species GLOBAL-s\" or edited soma coords,"

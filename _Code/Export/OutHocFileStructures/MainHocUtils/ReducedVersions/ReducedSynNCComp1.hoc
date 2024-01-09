@@ -1,13 +1,13 @@
 
 begintemplate ReducedSynNCComp
 
-    public enumDmPpNc, mechStds
+    public enumDmPpFk, mechStds
     
-    enumDmPpNc = -1
+    enumDmPpFk = -1
     objref mechStds[1][1]
     
     proc init() {
-        enumDmPpNc = 2
+        enumDmPpFk = 2
         objref mechStds[1][1]
     }
     

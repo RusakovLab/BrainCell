@@ -3,10 +3,12 @@ begintemplate InhomEditorSubWidget
 
     public show, updateCurves, dismissHandler
     
-    external varsEditorSubWidget, synManagerMainWidget
-    external mwh, math, mth, mmmowb, mcu, dfc, compUtils, inhomAndStochLibrary, synGroup, seh, graphUtils, mainUiLocker
+    external isAstrocyteOrNeuron
+    external varsEditorSubWidget, gapJuncManagerMainWidget, synManagerMainWidget
+    external mwh, math, mth, mmmowb, mcu, mcu4t, dfc, compUtils, inhomAndStochLibrary, gapJuncGroups, synGroup, seh, graphUtils, mainUiLocker
     external getDistMechVarRangeOutside, getDistMechVarRangeInside, createEmptyPanel, createElasticSpacer, oneZeroToYesNo, codeContractViolation
     external eachPointInGrid
+    external enumColours
     
     objref mainBox, deck1OrNil, deck2, deck3, deck4, deck5, deck6, graph1, graph2, shape1, shape2, this
     strdef isInhomVarLabel
@@ -24,19 +26,14 @@ begintemplate InhomEditorSubWidget
     showCurveOrColormapIdx = -1
     showAllOrThisCompIdx = -1
     
-    enumDmPpNc = -1
-    isMechOrSynEditor = -1
-    compIdx = -1
+    objref varLibId
+    isBioOrTapEditor = -1
     objref comp
-    mechIdx = -1
     strdef mechName
-    varType = -1
     varTypeIdx = -1
     strdef varTypeName
-    varIdx = -1
     strdef varName
     arraySize = -1
-    arrayIndex = -1
     strdef varNameWithIndex
     strdef varNameWithIndexAndUnits
     
@@ -50,34 +47,31 @@ begintemplate InhomEditorSubWidget
     
     isCancelInDistFuncHelperSelectedHandler = -1
     
+    objref gapJuncGroupOfThisType
+    
     
     proc init() { local idx, isInhom1, isInhom2 localobj nil, distFuncHelper, innerDistFuncHelper
     
-        enumDmPpNc = $1
-        compIdx = $2
-        xMin = $3
-        xMax = $4
-        mechIdx = $5
-        varType = $6
-        varIdx = $7
-        arrayIndex = $8
+        varLibId = $o1
+        xMin = $2
+        xMax = $3
         
-        isMechOrSynEditor = (enumDmPpNc == 0)
+        isBioOrTapEditor = (varLibId.enumDmPpFk == 0)
         
-        comp = compUtils.getComp(isMechOrSynEditor, compIdx)
-        mth.getMechName(enumDmPpNc, mechIdx, mechName)
-        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
-        arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
-        mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
+        comp = compUtils.getComp(isBioOrTapEditor, varLibId.compIdx)
+        mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
+        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varLibId.varType)
+        arraySize = mth.getVarNameAndArraySize(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varName)
+        mth.getVarNameWithIndex(varName, arraySize, varLibId.arrayIndex, varNameWithIndex)
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             isCalledFromVarsEditor = (mmmowb.lastMechOpIdx == 1)
             
             // !! can be made local for proc "show"
             totalNsegVarName = "total_nseg"
             minNsegVarName = "min_nseg"
             
-            getDistMechVarRangeOutside(comp.list_ref, mechName, varType, varName, arrayIndex, &yMinOut, &yMaxOut)
+            getDistMechVarRangeOutside(comp.list_ref, mechName, varLibId.varType, varName, varLibId.arrayIndex, &yMinOut, &yMaxOut)
         } else {
             isCalledFromVarsEditor = 1
         }
@@ -125,11 +119,11 @@ begintemplate InhomEditorSubWidget
         // The difference between these two values can take place for morphology\diam
         // because it's inhomogen by fact even though its model is not stored in inhomAndStochLibrary
         // (however, user can apply an explicit inhom model to it making isInhom1 == isInhom2)
-        isInhom1 = inhomAndStochLibrary.isInhomEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
-        isInhom2 = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
+        isInhom1 = inhomAndStochLibrary.isInhomEnabledFor(varLibId)
+        isInhom2 = comp.isMechVarInhom(varLibId.mechIdx, varLibId.varType, varName, varLibId.arrayIndex)
         
         if (!isInhom1) {
-            if (isMechOrSynEditor) {
+            if (isBioOrTapEditor) {
                 createDefaultSegmentationHelper()
             }
             
@@ -137,8 +131,8 @@ begintemplate InhomEditorSubWidget
             distFuncIdx = 1
         } else {
             // Restoring the old UI state: segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx
-            inhomAndStochLibrary.getInhomModelDataFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper, &distFuncCatIdx, &distFuncIdx)
-            if (isMechOrSynEditor) {
+            inhomAndStochLibrary.getInhomModelDataFor(varLibId, segmentationHelper, distFuncHelper, &distFuncCatIdx, &distFuncIdx)
+            if (isBioOrTapEditor) {
                 if (segmentationHelper == nil) {
                     if (distFuncIdx != dfc.verbatimDistFuncIdx) {
                         codeContractViolation()
@@ -175,45 +169,53 @@ begintemplate InhomEditorSubWidget
         distFuncIdxs[distFuncCatIdx] = distFuncIdx
         
         showAllOrThisCompIdx = 0
+        
+        if (!isBioOrTapEditor && isAstrocyteOrNeuron) {
+            gapJuncGroupOfThisType = gapJuncGroups[comp.isExtOrInt]
+        }
     }
     
     proc show() { local isInhom, isStoch, idx localobj secList, hBox1, hBox2, hBox3, hBox4, hBox5, vBox1, vBox2, vBox3, vBox4, vBox5, nil
-        strdef compName, text, yesNo, what, when
+        strdef compName, text, yesNo, what, what1, what2, when
         
         compName = comp.name
-        mth.getVarTypeName(varType, varTypeName)
-        mth.getVarNameWithIndexAndUnits(enumDmPpNc, mechIdx, varName, arraySize, arrayIndex, varNameWithIndexAndUnits)
-        isInhom = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
-        isStoch = inhomAndStochLibrary.isStochEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        mth.getVarTypeName(varLibId.varType, varTypeName)
+        mth.getVarNameWithIndexAndUnits(varLibId.enumDmPpFk, varLibId.mechIdx, varName, arraySize, varLibId.arrayIndex, varNameWithIndexAndUnits)
+        isInhom = comp.isMechVarInhom(varLibId.mechIdx, varLibId.varType, varName, varLibId.arrayIndex)
+        isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
         secList = comp.getSecList()
         
         mainBox = new VBox()
         mainBox.intercept(1)
         {
             xpanel("")
-            mcu.createApplyReminder(isMechOrSynEditor, 0)
+            mcu.createApplyReminder(isBioOrTapEditor, 0)
             xpanel()
             hBox1 = new HBox()
             hBox1.intercept(1)
             {
                 xpanel("")
-                mcu.createEditorSubWidgetDigest(enumDmPpNc, compName, mechName, varTypeName, varNameWithIndexAndUnits)
+                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, compName, mechName, varTypeName, varNameWithIndexAndUnits)
                 updateIsInhomVarLabel(isInhom)
                 xvarlabel(isInhomVarLabel)
                 oneZeroToYesNo(isStoch, yesNo)
                 sprint(text, "Stochastic: %s", yesNo)
                 xlabel(text)
                 xlabel("")
-                if (isMechOrSynEditor) {
+                if (isBioOrTapEditor) {
                     what = compName
                 } else {
-                    what = "synapses"
+                    if (isAstrocyteOrNeuron) {
+                        sprint(what, "%ss", compName)
+                    } else {
+                        what = "synapses"
+                    }
                 }
                 sprint(text, "Distance range for %s:", what)
                 xlabel(text)
                 sprint(text, "%g ... %g (%s)", xMin, xMax, units("L"))
                 xlabel(text)
-                if (isMechOrSynEditor) {
+                if (isBioOrTapEditor) {
                     xlabel("")
                 }
                 xpanel()
@@ -360,17 +362,26 @@ begintemplate InhomEditorSubWidget
                             xradiobutton("Load table from Excel file + linear interpolation", "distFuncChangedHandler(13)", idx == dfc.tableFromExcelFileDistFuncIdx)
                             xpanel()
                             xpanel("")
-                            if (isMechOrSynEditor) {
+                            if (isBioOrTapEditor) {
                                 what = "segments (check subdivision on colormap for small \"nseg\")"
                             } else {
-                                if (enumDmPpNc == 1) {
-                                    what = "PPs"
-                                } else if (enumDmPpNc == 2) {
-                                    what = "NetCon-s"
+                                if (varLibId.enumDmPpFk == 1) {
+                                    what1 = "PPs"
+                                } else if (varLibId.enumDmPpFk == 2) {
+                                    if (isAstrocyteOrNeuron) {
+                                        what1 = "PPs"
+                                    } else {
+                                        what1 = "NetCon-s"
+                                    }
                                 } else {
                                     codeContractViolation()
                                 }
-                                sprint(what, "%s (check synapse locations on colormap)", what)
+                                if (isAstrocyteOrNeuron) {
+                                    what2 = "GJ"
+                                } else {
+                                    what2 = "synapse"
+                                }
+                                sprint(what, "%s (check %s locations on colormap)", what1, what2)
                             }
                             sprint(text, "Zebra by %s", what)
                             idx = distFuncIdxs[dfc.specialDistFuncCatIdx]
@@ -400,11 +411,22 @@ begintemplate InhomEditorSubWidget
                             {
                                 createEmptyPanel()
                                 xpanel("")
-                                xradiobutton("Show all compartments", "showAllOrThisCompColormapChangedHandler(0)", showAllOrThisCompIdx == 0)
-                                if (isMechOrSynEditor) {
+                                if (isBioOrTapEditor) {
+                                    what = "compartments"
+                                } else {
+                                    what = "sections"
+                                }
+                                sprint(text, "Show all %s", what)
+                                xradiobutton(text, "showAllOrThisCompColormapChangedHandler(0)", showAllOrThisCompIdx == 0)
+                                if (isBioOrTapEditor) {
                                     what = compName
                                 } else {
-                                    what = "syn locations"
+                                    if (isAstrocyteOrNeuron) {
+                                        what = "GJ"
+                                    } else {
+                                        what = "syn"
+                                    }
+                                    sprint(what, "%s sections", what)
                                 }
                                 sprint(text, "Show %s only", what)
                                 xradiobutton(text, "showAllOrThisCompColormapChangedHandler(1)", showAllOrThisCompIdx == 1)
@@ -434,14 +456,14 @@ begintemplate InhomEditorSubWidget
                         graph2.brush(0)         // Switching to solid line by default
                         
                         // Colormap (all compartments)
-                        if (isMechOrSynEditor) {
+                        if (isBioOrTapEditor) {
                             shape1 = new PlotShape()
                         } else {
                             shape1 = new Shape()
                         }
                         
                         // Colormap (this compartment only)
-                        if (isMechOrSynEditor) {
+                        if (isBioOrTapEditor) {
                             shape2 = new PlotShape(secList)
                         } else {
                             shape2 = new Shape(secList)
@@ -490,7 +512,7 @@ begintemplate InhomEditorSubWidget
         deck6.flip_to(3)
         initShape(shape2, 2)
         
-        updateColormaps()
+        updateColormaps(1)
         
         if (segmentationHelper != nil) {
             segmentationModeChangedHandler(segmentationHelper.segmentationMode)
@@ -515,19 +537,19 @@ begintemplate InhomEditorSubWidget
         if (mainBox.ismapped()) {
             mainBox.unmap()
         }
-        // !!!! graphUtils.unregister(1, 2)
+        // !! graphUtils.unregister(1, 2)
     }
     
     // All next staff is private
     
     
     proc createDefaultSegmentationHelper() {
-        // Have to "execute" this because the template is not loaded when !isMechOrSynEditor, so we catch "SegmentationHelper is not a template"
+        // Have to "execute" this because the template is not loaded when !isBioOrTapEditor, so we catch "SegmentationHelper is not a template"
         execute("segmentationHelper = new SegmentationHelper(xMax - xMin)", this)
     }
     
     func isSegmentationAvailable() {
-        return (isMechOrSynEditor && distFuncIdx != dfc.verbatimDistFuncIdx)
+        return (isBioOrTapEditor && distFuncIdx != dfc.verbatimDistFuncIdx)
     }
     
     proc updateIsInhomVarLabel() { local isInhom
@@ -544,8 +566,8 @@ begintemplate InhomEditorSubWidget
         shape.exec_menu("Shape Plot")
         shape.exec_menu("View = plot")
         
-        if (!isMechOrSynEditor) {
-            // !!!! it would make sense to have graphUtils.addPlotDynamicsMenuItem for the vars in PPs/ACs as well
+        if (!isBioOrTapEditor) {
+            // !! it would make sense to have graphUtils.addPlotDynamicsMenuItem for the vars in PPs/ACs as well
             return
         }
         
@@ -554,11 +576,11 @@ begintemplate InhomEditorSubWidget
         //         clicking on colormap corner and then "Plot What?"
         shape.variable(varNameWithIndex)
         
-        // !!! when selecting a watched point on the cell for the new Graph in "Show all compartments" mode,
-        //     user can click on a (grey) section not in this compartment
-        //     and face an error like "cadifus mechanism not inserted in section axon[1]",
-        //     but this error looks for good, so let's keep it
-        // !!!! it would make more sense to have such a tool in StochEditorSubWidget rather than here
+        // !! when selecting a watched point on the cell for the new Graph in "Show all compartments" mode,
+        //    user can click on a (grey) section not in this compartment
+        //    and face an error like "cadifus mechanism not inserted in section axon[1]",
+        //    but this error looks for good, so let's keep it
+        // !! it would make more sense to have such a tool in StochEditorSubWidget rather than here
         graphUtils.addPlotDynamicsMenuItem(shape, slotIdx, varTypeName, varNameWithIndex, 0)
     }
     
@@ -677,12 +699,12 @@ begintemplate InhomEditorSubWidget
         deck6.flip_to(cardIdx)  // Graph-s / PlotShape-s
         
         if (showCurveOrColormapIdx == 2) {
-            if (isMechOrSynEditor) {
+            if (isBioOrTapEditor) {
                 if (arraySize > 1) {
                     mwh.showWarningBox("The colormap is shown incorrectly because \"Plot What?\" is an array element (NEURON restriction).")
                 }
             } else {
-                mwh.showNotImplementedWarning()
+                mwh.showNotImplementedWarning("Showing only locations without the colormap.")
             }
         }
     }
@@ -716,27 +738,31 @@ begintemplate InhomEditorSubWidget
         
         graph2.erase_all()
         setXYLabels(graph2)
-        graph2.color(2)     // Red
+        graph2.color(enumColours.red)
         yMin = math.inf
         yMax = -math.inf
-        // !! for synapses, skip this call if the edited inhom var doesn't correspond to the actual synapses
+        // !! for syns and gap juncs, skip this call if the edited inhom var doesn't correspond to the actual syns or gap juncs
         //    (when they were created with different PPs or without NetCon-s)
-        comp.updateStatsCurve(graph2, &yMin, &yMax, mechName, varType, varName, arraySize, arrayIndex)
+        comp.updateStatsCurve(graph2, &yMin, &yMax, mechName, varLibId.varType, varName, arraySize, varLibId.arrayIndex)
         
         graph2.brush(1)     // Dash
         // !! for higher performance, just copy the data from graph1 (the same as in StochEditorSubWidget.hoc - create a common util)
         updateModelCurveCore(graph2, yMin, yMax)
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             what = "sec/seg"
         } else {
-            what = "syns"
+            if (isAstrocyteOrNeuron) {
+                what = "GJs"
+            } else {
+                what = "syns"
+            }
         }
         sprint(text, "Real %s", what)
         
-        graph2.color(2)     // Red
+        graph2.color(enumColours.red)
         graph2.label(text)
-        graph2.color(3)     // Blue
+        graph2.color(enumColours.blue)
         graph2.label("Dist func")
         
         if (numArg == 2) {
@@ -760,7 +786,7 @@ begintemplate InhomEditorSubWidget
         
         graph = $o1
 
-        graph.color(3)     // Blue
+        graph.color(enumColours.blue)
         
         yMin = math.inf
         yMax = -math.inf
@@ -770,7 +796,7 @@ begintemplate InhomEditorSubWidget
         if (distFuncIdx != dfc.verbatimDistFuncIdx) {
             minNseg4Curve = 1000    // !! hardcode
             
-            if (isMechOrSynEditor) {
+            if (isBioOrTapEditor) {
                 nseg4Curve = math.max(segmentationHelper.total_nseg, minNseg4Curve)
             } else {
                 nseg4Curve = minNseg4Curve
@@ -784,7 +810,7 @@ begintemplate InhomEditorSubWidget
                 math.updateMinMax(&yMin, &yMax, y)
             }
         } else if (!checkIfVerbatimInhomModelWasDestroyed()) {
-            // !! for synapses, skip this call if the edited inhom var doesn't correspond to the actual synapses
+            // !! for syns and gap juncs, skip this call if the edited inhom var doesn't correspond to the actual syns or gap juncs
             //    (when they were created with different PPs or without NetCon-s)
             comp.updateVerbatimModelCurve(graph, &yMin, &yMax, distFuncHelper)
         }
@@ -799,19 +825,23 @@ begintemplate InhomEditorSubWidget
         // This makes the axes box too small compared to the curve (no idea why)
         // graph.exec_menu("View = plot")
         
-        mcu.setGraphSize(graph, xMin, xMax, yMin, yMax)
+        graphUtils.setGraphSize(graph, xMin, xMax, yMin, yMax)
         
         // Looks unnecessary because we are not in the process of simulation
         // But if removed, then the default exp. model is not shown (no idea why)
         graph.flush()
     }
     
-    proc updateColormaps() { local numArg, yMin2, yMax2, distFuncIdx, absValue, yMin1, yMax1 localobj distFuncHelper
-        if (isMechOrSynEditor) {
-            numArg = numarg()
-            if (numArg == 0) {
+    proc updateColormaps() { local numArg, isCalledFromShow, yMin2, yMax2, distFuncIdx, absValue, yMin1, yMax1 localobj distFuncHelper
+        numArg = numarg()
+        if (numArg != 1 && numArg != 3) {
+            codeContractViolation()
+        }
+        isCalledFromShow = $1
+        if (isBioOrTapEditor) {
+            if (numArg == 1) {
                 if (!dfc.isZebraDistFunc(distFuncIdx)) {
-                    getDistMechVarRangeInside(comp.list_ref, mechName, varType, varName, arrayIndex, &yMin2, &yMax2)
+                    getDistMechVarRangeInside(comp.list_ref, mechName, varLibId.varType, varName, varLibId.arrayIndex, &yMin2, &yMax2)
                 } else {
                     distFuncIdx = distFuncIdxs[dfc.specialDistFuncCatIdx]
                     distFuncHelper = distFuncHelpers[distFuncIdx]
@@ -819,9 +849,9 @@ begintemplate InhomEditorSubWidget
                     yMin2 = -absValue
                     yMax2 = absValue
                 }
-            } else if (numArg == 2) {
-                yMin2 = $1
-                yMax2 = $2
+            } else if (numArg == 3) {
+                yMin2 = $2
+                yMax2 = $3
             } else {
                 codeContractViolation()
             }
@@ -833,7 +863,12 @@ begintemplate InhomEditorSubWidget
             shape1.scale(yMin1, yMax1)  // All compartments
             shape2.scale(yMin2, yMax2)  // This compartment only
         } else {
-            synGroup.updateColormaps(shape1, shape2)
+            if (isAstrocyteOrNeuron) {
+                gapJuncGroupOfThisType.updateColormap(shape1, isCalledFromShow)
+                gapJuncGroupOfThisType.updateColormap(shape2, isCalledFromShow)
+            } else {
+                synGroup.updateColormaps(shape1, shape2)
+            }
         }
         
         shape1.flush()
@@ -851,8 +886,8 @@ begintemplate InhomEditorSubWidget
             return
         }
         
-        if (isMechOrSynEditor) {
-            if (mth.checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar(mechIdx, varType, varName, 1)) {
+        if (isBioOrTapEditor) {
+            if (mth.checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar(varLibId.mechIdx, varLibId.varType, varName, 1)) {
                 return
             }
         }
@@ -863,8 +898,8 @@ begintemplate InhomEditorSubWidget
             }
         }
         
-        if (mainUiLocker != nil) {  // !!! nil in tests
-            if (isMechOrSynEditor) {
+        if (mainUiLocker != nil) {  // !! nil in tests
+            if (isBioOrTapEditor) {
                 isCancel = mainUiLocker.ifNanoCompThenMakeSureNanoUpdateLocked(compName)
             } else {
                 isCancel = mainUiLocker.makeSureNanoUpdateLocked()
@@ -879,8 +914,8 @@ begintemplate InhomEditorSubWidget
         if (!isSegmentationAvailable()) {
             segmentationHelperOrNil = nil
         }
-        if (isMechOrSynEditor) {
-            comp.applySegmentationAndInhomogeneity(segmentationHelperOrNil, mechName, varType, varName, arrayIndex, distFuncHelper)
+        if (isBioOrTapEditor) {
+            comp.applySegmentationAndInhomogeneity(segmentationHelperOrNil, mechName, varLibId.varType, varName, varLibId.arrayIndex, distFuncHelper)
             
             if (segmentationHelperOrNil != nil) {                       // Do not replace with one IF
                 if (segmentationHelperOrNil.segmentationMode != 0) {    //
@@ -891,24 +926,28 @@ begintemplate InhomEditorSubWidget
                 }
             }
         } else {
-            isOK = synManagerMainWidget.warnIfUserHasNotSelectedPPs()
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
             if (!isOK) {
                 return
             }
             
-            // It would be more correct to pass "yMin" (from stats curve, calculated just below) instead of "yMinModel" (from model curve, calculated earlier)
-            seh.ifMetaVarThenUpdateStatus(varName, yMinModel)
-            synManagerMainWidget.applyChangesToSynStrucIfNeeded()
+            if (isAstrocyteOrNeuron) {
+                gapJuncManagerMainWidget.applyChangesToGapJuncStrucIfNeeded()
+            } else {
+                // It would be more correct to pass "yMin" (from stats curve, calculated just below) instead of "yMinModel" (from model curve, calculated earlier)
+                seh.ifMetaVarThenUpdateStatus(varName, yMinModel)
+                synManagerMainWidget.applyChangesToSynStrucIfNeeded()
+            }
             
-            comp.applyInhomogeneity(mechName, varType, varName, arraySize, arrayIndex, distFuncHelper)
+            comp.applyInhomogeneity(mechName, varLibId.varType, varName, arraySize, varLibId.arrayIndex, distFuncHelper)
         }
         
-        inhomAndStochLibrary.onInhomApply(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelperOrNil, distFuncHelper, distFuncCatIdx, distFuncIdx)
+        inhomAndStochLibrary.onInhomApply(varLibId, segmentationHelperOrNil, distFuncHelper, distFuncCatIdx, distFuncIdx)
         
         updateStatsCurve(&yMin, &yMax)
         
-        // !! BUG: we pass yMin and yMax here, but they are not set by updateStatsCurve in some cases for compartments of type SynPPComp and SynNCComp
-        updateColormaps(yMin, yMax)
+        // !! BUG: we pass yMin and yMax here, but they are not set by updateStatsCurve in some cases for the comps of types Syn*Comp and GapJunc*Comp
+        updateColormaps(0, yMin, yMax)
         
         // !! the same comment regarding yMin and yMax (this is why we need 2nd IF)
         isInhom = (yMin != yMax)
@@ -917,18 +956,18 @@ begintemplate InhomEditorSubWidget
         } else {
             varValue = yMin
         }
-        if (!isMechOrSynEditor && mcu.isMetaVar(varName)) {
+        if (!isBioOrTapEditor && mcu.isMetaVar(varName)) {
             if (!seh.isSefwEnabled()) { // Don't combine into one IF because "seh" can be nil
                 isInhom = 0
                 varValue = 1
             }
         }
         
-        comp.mechStds[mechIdx][varTypeIdx].set(varName, varValue, arrayIndex)
+        comp.mechStds[varLibId.mechIdx][varTypeIdx].set(varName, varValue, varLibId.arrayIndex)
         mcu.update_isMechVarTypeInhom(comp)
         
         if (!isInhom) {
-            inhomAndStochLibrary.onMakingVarHomogen(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+            inhomAndStochLibrary.onMakingVarHomogen(varLibId)
         }
         
         updateThisAndParentWidgets(isInhom)
@@ -937,7 +976,7 @@ begintemplate InhomEditorSubWidget
     }
     
     func checkIfVerbatimInhomModelWasDestroyed() { local isDestroyed
-        isDestroyed = !inhomAndStochLibrary.doesThisVarHaveVerbatimOrNonVerbatimInhomModel(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, 1)
+        isDestroyed = !inhomAndStochLibrary.doesThisVarHaveVerbatimOrNonVerbatimInhomModel(varLibId, 1)
         if (isDestroyed) {
             mwh.showWarningBox("You have destroyed this verbatim model, so it cannot be shown or applied anymore.")
         }
@@ -950,15 +989,19 @@ begintemplate InhomEditorSubWidget
         updateIsInhomVarLabel(isInhom)
         
         if (isCalledFromVarsEditor) {
-            varsEditorSubWidget.onApplyInInhomEditor(varIdx, arrayIndex, isInhom)
+            varsEditorSubWidget.onApplyInInhomEditor(varLibId.varIdx, varLibId.arrayIndex, isInhom)
         }
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             if (mmmowb.lastMechOpIdx == 2 && !isInhom) {
                 // !! need to unmap and show MechOpWidgetBase again to hide the button
             }
         } else {
-            synManagerMainWidget.updateNumInhomVarsLabel()
+            if (isAstrocyteOrNeuron) {
+                gapJuncManagerMainWidget.updateNumInhomVarsLabel()
+            } else {
+                synManagerMainWidget.updateNumInhomVarsLabel()
+            }
         }
     }
     
@@ -967,8 +1010,8 @@ begintemplate InhomEditorSubWidget
         
         mwh.startIntercepting()
         {
-            if (isMechOrSynEditor) {                                        // Do not combine into one IF
-                if (mth.isDiamDistMechVar(mechIdx, varType, varName)) {     //
+            if (isBioOrTapEditor) {                                                         // Do not combine into one IF
+                if (mth.isDiamDistMechVar(varLibId.mechIdx, varLibId.varType, varName)) {   //
                     sprint(msg, "When applying an inhomogeneity to \"%s\", the result is not as accurate as for other vars.", mth.diamVarName)
                     mwh.showWarningBox(msg)
                 }
@@ -984,7 +1027,7 @@ begintemplate InhomEditorSubWidget
     proc setXYLabels() { localobj graph
         strdef xLabel
         graph = $o1
-        graph.color(1)  // Black
+        graph.color(enumColours.black)
         sprint(xLabel, "Distance (%s)", units("L"))
         graph.label(0.44, 0.015, xLabel)
         graph.label(0.04, 0.95, varNameWithIndexAndUnits)

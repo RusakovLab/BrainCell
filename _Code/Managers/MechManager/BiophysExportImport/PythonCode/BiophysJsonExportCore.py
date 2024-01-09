@@ -59,7 +59,7 @@ class BiophysJsonExportCore:
         
         jsonDict = {}
         
-        # !!! we can create varTypes once before all the cycles
+        # !! we can create varTypes once before all the cycles
         varTypes = [1]                  # 1: PARAMETER
         if self._options.isAssignedAndState:
             varTypes.extend([2, 3])     # 2: ASSIGNED, 3: STATE
@@ -81,10 +81,10 @@ class BiophysJsonExportCore:
         mechName = h.ref('')
         mth.getMechName(0, mechIdx, mechName)
         
-        # !!! maybe there is no need to create this for ASSIGNED and STATE because we know that defaultValue for them is 0
+        # !! maybe there is no need to create this for ASSIGNED and STATE because we know that defaultValue for them is 0
         defaultMechStd = h.MechanismStandard(mechName, varType)
         
-        varName = h.ref('')             # !!! maybe just save this one in the class and reuse in _prepareVarInfoDictOrEmpty
+        varName = h.ref('')             # !! maybe just save this one in the class and reuse in _prepareVarInfoDictOrEmpty
         varNameWithIndexAndUnits = h.ref('')
         
         jsonDict = {}
@@ -110,20 +110,22 @@ class BiophysJsonExportCore:
         varName = h.ref('')
         mth.getVarNameAndArraySize(0, mechIdx, varType, varIdx, varName)
         
-        isInhom1 = inhomAndStochLibrary.isInhomEnabledFor(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        
+        isInhom1 = inhomAndStochLibrary.isInhomEnabledFor(varLibId)
         isInhom2 = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
         if isInhom1 != isInhom2:
             codeContractViolation()
         isInhom = isInhom1
         
-        isStoch = inhomAndStochLibrary.isStochEnabledFor(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
         
         varTypeIdx = int(mth.convertVarTypeToVarTypeIdx(varType))
         varValue = comp.mechStds[mechIdx][varTypeIdx].get(varName, arrayIndex)
         
         defaultValue = defaultMechStd.get(varName, arrayIndex)
         if math.isnan(defaultValue):
-            # !!! risky for arbitrary user mechs
+            # !! risky for arbitrary user mechs
             codeContractViolation()
             
         jsonDict = {}
@@ -155,11 +157,12 @@ class BiophysJsonExportCore:
         
     def _prepareInhomModelInfoDict(self, compIdx, mechIdx, varType, varIdx, arrayIndex):
         
-        # !!! do we really need to export/import segmentationHelper as a part of biophysics?
-        #     (does user prefer to have "keep as is" segmentation mode by default on import?)
-        # !!!!! be careful importing VerbatimDistFuncHelper
+        # !! do we really need to export/import segmentationHelper as a part of biophysics?
+        #    (does user prefer to have "keep as is" segmentation mode by default on import?)
+        # !! be careful importing VerbatimDistFuncHelper
         
-        actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(varLibId)
         
         cond = (getTemplateName(actSpecVar.distFuncHelper) == 'VerbatimDistFuncHelper' and
             isAstrocyteSpecificInhomVar(compIdx, mechIdx, varType, varIdx, arrayIndex))
@@ -189,11 +192,12 @@ class BiophysJsonExportCore:
             # VerbatimDistFuncHelper
             segmentationHelperInfoDict = None
             
-        # !!! for encapsulation, maybe implement actSpecVar.toJson which, in turn, will call .toJson for all nested objects;
-        #     also, implement actSpecVar.fromJson
+        # !! for encapsulation, maybe implement actSpecVar.toJson which, in turn, will call .toJson for all nested objects;
+        #    also, implement actSpecVar.fromJson
         
         if actSpecVar.distFuncIdx == hocObj.dfc.verbatimDistFuncIdx:
-            BiophysJsonExportImportUtils.showVerbatimModelWarning(actSpecVar.compIdx, actSpecVar.mechIdx, actSpecVar.varType, actSpecVar.varIdx, actSpecVar.arrayIndex)
+            varLibId = actSpecVar.varLibId
+            BiophysJsonExportImportUtils.showVerbatimModelWarning(varLibId.compIdx, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varLibId.arrayIndex)
             
         jsonDict = {
             'distFuncHelper': {
@@ -208,7 +212,8 @@ class BiophysJsonExportCore:
         
     def _prepareStochModelInfoDict(self, compIdx, mechIdx, varType, varIdx, arrayIndex):
         
-        actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(varLibId)
         
         boundingHelper = actSpecVar.boundingHelper
         stochFuncHelper = actSpecVar.stochFuncHelper
@@ -217,8 +222,8 @@ class BiophysJsonExportCore:
         
         vecOfVals, listOfStrs = self._getExportedParams(stochFuncHelper)
         
-        # !!! for encapsulation, maybe implement actSpecVar.toJson which, in turn, will call .toJson for all nested objects;
-        #     also, implement actSpecVar.fromJson
+        # !! for encapsulation, maybe implement actSpecVar.toJson which, in turn, will call .toJson for all nested objects;
+        #    also, implement actSpecVar.fromJson
         
         jsonDict = {
             'stochFuncHelper': {

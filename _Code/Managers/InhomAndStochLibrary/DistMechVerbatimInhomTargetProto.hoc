@@ -22,9 +22,10 @@ begintemplate DistMechVerbatimInhomTargetProto
         distFuncHelper = $o5
     }
     
-    proc finish() { local compIdx localobj nil
+    proc finish() { local compIdx localobj varLibId, nil
         compIdx = $1
-        inhomAndStochLibrary.onInhomApply(0, compIdx, mechIdx, varType, varIdx, arrayIndex, nil, distFuncHelper, dfc.specialDistFuncCatIdx, dfc.verbatimDistFuncIdx)
+        varLibId = new VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        inhomAndStochLibrary.onInhomApply(varLibId, nil, distFuncHelper, dfc.specialDistFuncCatIdx, dfc.verbatimDistFuncIdx)
     }
     
 endtemplate DistMechVerbatimInhomTargetProto

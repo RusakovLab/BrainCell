@@ -1,13 +1,14 @@
 
-// !! deprecated in favour of CompSubsetWidget
+// !! deprecated in favour of SectionsSelectorWidget
 begintemplate SeededDendritesSelectionWidget
 
-    public show
+    public show, dismissHandler
     
     external dendrite_ref, seededDendrite_ref
     external mwh, nanoBranchesManager
-    external checkIfCurrentSecIsDendrite, addThisAndAllChildSecRefsToTheList_deprecated, removeAllDupSecRefsFromTheList
+    external checkIfCurrentSecIsDendrite, addThisAndAllChildSecRefsToTheList_deprecated, removeAllDupSecRefsFromTheList, concatenateTwoLists
     external eachSecInList
+    external enumColours
     
     isSelectWholeSubtree = -1
     
@@ -23,14 +24,59 @@ begintemplate SeededDendritesSelectionWidget
     
     
     proc init() {
-        isSelectWholeSubtree = 0
+        isSelectWholeSubtree = 1
         
-        dendriteColor = 3       // Blue
-        notDendriteColor = 1    // Black
-        selectedColor = 2       // Red
+        dendriteColor = enumColours.blue
+        notDendriteColor = enumColours.black
+        selectedColor = enumColours.red
         
         selectedDendrite_ref = new List()
+        concatenateTwoLists(selectedDendrite_ref, seededDendrite_ref)
     }
+    
+    proc show() {
+        mainBox = new VBox()
+        mainBox.intercept(1)
+        {
+            xpanel("")
+            xlabel("Please select the dendrites that will be seeded with nanostructures.")
+            xlabel("")
+            xradiobutton("Select individual sections", "isSelectWholeSubtree = 0", !isSelectWholeSubtree)
+            xradiobutton("Select whole subtrees", "isSelectWholeSubtree = 1", isSelectWholeSubtree)
+            xlabel("")
+            // Usage of "Ctrl" is more natural for multiselect than "Shift", but for some reason, mouseEventsHandler is not called at all when "Ctrl" is pressed
+            xlabel("Hold \"Shift\" when clicking on sections to keep the previous selection.")
+            xlabel("The sections shown in black are not dendrites, and so cannot be selected.")
+            xpanel()
+            plotShape = new PlotShape()
+            colorizeCompartments()
+            selectSections()
+            plotShape.menu_tool("Seeded Dendrite(s)", "mouseEventsHandler")
+            plotShape.exec_menu("Seeded Dendrite(s)")
+            xpanel("")
+            xvarlabel(numSeededDendsHint)
+            xbutton("Done", "doneHandler()")
+            xpanel()
+        }
+        mainBox.intercept(0)
+        mainBox.dismiss_action("dismissHandler(0)")
+        mainBox.map("Seeded dendrite(s)")
+        plotShape.exec_menu("View = plot")
+    }
+    
+    proc dismissHandler() { local isSkipReseeding
+        isSkipReseeding = $1
+        
+        if (!isSkipReseeding) {
+            // !! maybe need to inform user that we'll reseed rather than restore the old nanostructures
+            nanoBranchesManager.reseedBranchesWithLastUsedArgs()
+        }
+        
+        mainBox.unmap()
+    }
+    
+    // All next staff is private
+    
     
     proc colorizeCompartments() {
         plotShape.color_all(notDendriteColor)
@@ -39,32 +85,10 @@ begintemplate SeededDendritesSelectionWidget
         }
     }
     
-    proc show() {
-        mainBox = new VBox()
-        mainBox.intercept(1)
-        {
-            xpanel("")
-            xlabel("Please select dendrites that will be seeded with nanostructures.")
-            xlabel("")
-            xradiobutton("Select individual sections", "isSelectWholeSubtree = 0", !isSelectWholeSubtree)
-            xradiobutton("Select whole subtrees", "isSelectWholeSubtree = 1", isSelectWholeSubtree)
-            xlabel("")
-            // Usage of "Ctrl" is more natural for multiselect than "Shift", but for some reason, mouseEventsHandler is not called at all when "Ctrl" is pressed
-            xlabel("Hold \"Shift\" while clicking on sections to keep the previous selection.")
-            xlabel("The sections shown in black are not dendrites, and so cannot be selected.")
-            xlabel("")
-            xvarlabel(numSeededDendsHint)
-            xbutton("Done", "doneHandler()")
-            xpanel()
-            plotShape = new PlotShape()
-            colorizeCompartments()
-            plotShape.menu_tool("Seeded Dendrite(s)", "mouseEventsHandler")
-            plotShape.exec_menu("Seeded Dendrite(s)")
+    proc selectSections() {
+        if (selectedDendrite_ref.count() != 0) {
+            showSelectedDendsAndUpdateHint()
         }
-        mainBox.intercept(0)
-        mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Seeded dendrite(s)")
-        plotShape.exec_menu("View = plot")
     }
     
     // Mouse events handler: section selection and highlighting
@@ -112,11 +136,19 @@ begintemplate SeededDendritesSelectionWidget
             removeAllDupSecRefsFromTheList(selectedDendrite_ref)
         }
         
+        showSelectedDendsAndUpdateHint()
+    }
+    
+    proc showSelectedDendsAndUpdateHint() {
         for eachSecInList(selectedDendrite_ref) {
             plotShape.color(selectedColor)
         }
         
         updateNumSeededDendsHint()
+    }
+    
+    proc updateNumSeededDendsHint() {
+        sprint(numSeededDendsHint, "%d dendrite section(s) selected", selectedDendrite_ref.count())
     }
     
     // The handler of "Done" button
@@ -134,18 +166,6 @@ begintemplate SeededDendritesSelectionWidget
         mainBox.unmap()
     }
     
-    // The handler of "X" button
-    proc dismissHandler() {
-        // !! maybe need to inform user that we'll reseed rather than restore the old nanostructures
-        nanoBranchesManager.reseedBranchesWithLastUsedArgs()
-        
-        mainBox.unmap()
-    }
-    
-    proc updateNumSeededDendsHint() {
-        sprint(numSeededDendsHint, "%d dendrite section(s) selected", selectedDendrite_ref.count())
-    }
-    
 endtemplate SeededDendritesSelectionWidget
 
 
@@ -153,7 +173,7 @@ objref sdsWidget
 
 // Handler of "Reseed" button from the main UI
 // Input: isAllOrSomeDendritesSeeded (taken from the top level)
-proc seededDendritesChangedHandler() {
+proc seededDendritesChangedHandler() { localobj nil
     if (isAllOrSomeDendritesSeeded) {
         seededDendrite_ref = dendrite_ref
         nanoBranchesManager.reseedBranchesWithLastUsedArgs()
@@ -162,6 +182,9 @@ proc seededDendritesChangedHandler() {
         //    so maybe need to hide MainUI temporarily
         nanoBranchesManager.deleteBranches()
         
+        if (sdsWidget != nil) {
+            sdsWidget.dismissHandler(1)
+        }
         sdsWidget = new SeededDendritesSelectionWidget()
         sdsWidget.show()
     }

@@ -501,7 +501,7 @@ class GensForRunnerHoc:
         if not isExportAltRunControl:
             lines.append(indent + 'run()')
         else:
-            lines.append(indent + 'alt_run()')
+            lines.append(indent + 'altRunControlWidget.initAndRunHandler()')
             
         if isAnyWatchedVars or isAnyWatchedAPCounts:
             lines.append(indent)

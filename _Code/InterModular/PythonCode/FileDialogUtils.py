@@ -17,7 +17,7 @@ class FileDialogUtils:
         nanoGeometryHoc = 2
         biophysJson = 3
         binaryResultsBin = 4
-        """ !!! in the future, we can add support for:
+        """ !! in the future, we can add support for:
         distFuncHoc
         distFuncPy
         distFuncTxt
@@ -31,7 +31,7 @@ class FileDialogUtils:
         biophysJson = 2
         binaryResultsBin = 3
         textResultsTxt = 4
-        """ !!! in the future, we can add support for these files saved to "Text results" folder:
+        """ !! in the future, we can add support for these files saved to "Text results" folder:
         volumFractionTxt
         cadynamicsTxt
         circularFrapAverageTxt
@@ -42,7 +42,7 @@ class FileDialogUtils:
         EnumInFileTypes.baseGeometryAny: {
             'title': 'Import brain cell base geometry',
             'initialdir': 'Geometry',
-            'filetypes': [('All Files', '*.*'), ('HOC File', '*.hoc'), ('SWC File', '*.swc'), ('ZIP Archive from NeuroMorpho.org', '*.zip')]},  # !!! ideally, enlist explicitly each file type supported by NLMorphologyConverter, but need to test first
+            'filetypes': [('All Files', '*.*'), ('HOC File', '*.hoc'), ('SWC File', '*.swc'), ('ZIP Archive from NeuroMorpho.org', '*.zip')]},  # !! ideally, enlist explicitly each file type supported by NLMorphologyConverter, but need to test first
         EnumInFileTypes.baseGeometryHoc: {
             'title': 'Import external NEURON simulation',
             'initialdir': 'External simulations',
@@ -93,19 +93,19 @@ class FileDialogUtils:
             'defaultextension': '.txt'}
     }
     
-    # !!! keep these file names in sync with other code
+    # !! keep these file names in sync with other code
     _reservedHocFileNamesLower = {'params.hoc', 'runner.hoc'}
-    _reservedJsonFileNamesLower = {'hide_stoch_btn_for.json', 'diffusible_species.json'}
+    _reservedJsonFileNamesLower = {'hide_stoch_btn_for.json', 'diffusible_species.json', 'gap_junc_ptr_info.json'}
     
     _isBusy = False
     _top = None
     
-    # !!! BUG: import biophysics -> leave dialog open -> export biophysics -> click "Export" -> it puts the old "import" file dialog in focus
-    #          the correct behaviour would be to close it once user clicks export biophysics
-    #          (the same problem when first clicking export biophysics, then import biophysics)
+    # !! BUG: import biophysics -> leave dialog open -> export biophysics -> click "Export" -> it puts the old "import" file dialog in focus
+    #         the correct behaviour would be to close it once user clicks export biophysics
+    #         (the same problem when first clicking export biophysics, then import biophysics)
     
     
-    # !!! a lot of code dupl. in two methods below
+    # !! a lot of code dupl. in two methods below
     
     @classmethod
     def showLoadFileDialog(cls, enumInFileType):
@@ -135,7 +135,7 @@ class FileDialogUtils:
                     messagebox.showwarning(
                         title='Reserved name',
                         message=f'Cannot import "{fileName}" because it\'s a reserved file name.\n\nPlease use some other name.')
-                    # !!! use just selected folder as 'initialdir' when calling filedialog.askopenfilename next time
+                    # !! use just selected folder as 'initialdir' when calling filedialog.askopenfilename next time
                 else:
                     break
                     
@@ -173,11 +173,11 @@ class FileDialogUtils:
                     messagebox.showwarning(
                         title='Reserved name',
                         message=f'Cannot export to "{fileName}" because it\'s a reserved file name.\n\nPlease use some other name.')
-                    # !!! use just selected folder as 'initialdir' when calling filedialog.asksaveasfilename next time
+                    # !! use just selected folder as 'initialdir' when calling filedialog.asksaveasfilename next time
                 else:
                     break
                     
-            # !!! for EnumOutFileTypes.nanoGeometryHoc, if the folder is not empty, then ask user whether to clean up
+            # !! for EnumOutFileTypes.nanoGeometryHoc, if the folder is not empty, then ask user whether to clean up
             
             return outFilePathName
             

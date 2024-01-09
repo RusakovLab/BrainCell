@@ -1,23 +1,23 @@
 
 begintemplate ManagersCommonUtils
 
-    public defineDistFuncHandler, defineStochFuncHandler, showCannotUninsertMechWarning, createApplyReminder, createEditorSubWidgetDigest, copyAllVarsValuesExceptInhom, setOneIfNeededIn_isMechVarTypeInhom, update_isMechVarTypeInhom, isMetaVar, setGraphSize
+    public defineDistFuncHandler, defineStochFuncHandler, showCannotUninsertMechWarning, createApplyReminder, createEditorSubWidgetDigest, copyAllVarsValuesExceptInhom, setOneIfNeededIn_isMechVarTypeInhom, update_isMechVarTypeInhom, isMetaVar
     
-    external mmAllComps, smAllComps
+    external isAstrocyteOrNeuron
     external mwh, math, mth, compUtils
     external stringStartsWith, codeContractViolation
     
     
-    obfunc defineDistFuncHandler() { local enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, isMechOrSynEditor, isDisconnected, xMin, xMax localobj comp, nil, defineDistFuncSubWidget
-        enumDmPpNc = $1
+    obfunc defineDistFuncHandler() { local enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex, isBioOrTapEditor, isDisconnected, xMin, xMax localobj comp, varLibId, defineDistFuncSubWidget, nil
+        enumDmPpFk = $1
         compIdx = $2
         mechIdx = $3
         varType = $4
         varIdx = $5
         arrayIndex = $6
         
-        isMechOrSynEditor = (enumDmPpNc == 0)
-        comp = compUtils.getComp(isMechOrSynEditor, compIdx)
+        isBioOrTapEditor = (enumDmPpFk == 0)
+        comp = compUtils.getComp(isBioOrTapEditor, compIdx)
         
         isDisconnected = comp.getDistRange(&xMin, &xMax)
         if (isDisconnected) {
@@ -27,21 +27,23 @@ begintemplate ManagersCommonUtils
             return nil
         }
         
-        defineDistFuncSubWidget = new InhomEditorSubWidget(enumDmPpNc, compIdx, xMin, xMax, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        defineDistFuncSubWidget = new InhomEditorSubWidget(varLibId, xMin, xMax)
         defineDistFuncSubWidget.show()
         
         return defineDistFuncSubWidget
     }
     
-    obfunc defineStochFuncHandler() { local enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex localobj defineStochFuncSubWidget
-        enumDmPpNc = $1
+    obfunc defineStochFuncHandler() { local enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex localobj varLibId, defineStochFuncSubWidget
+        enumDmPpFk = $1
         compIdx = $2
         mechIdx = $3
         varType = $4
         varIdx = $5
         arrayIndex = $6
         
-        defineStochFuncSubWidget = new StochEditorSubWidget(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        defineStochFuncSubWidget = new StochEditorSubWidget(varLibId)
         defineStochFuncSubWidget.show()
         
         return defineStochFuncSubWidget
@@ -63,18 +65,22 @@ begintemplate ManagersCommonUtils
         mwh.showWarningBox(msg)
     }
     
-    proc createApplyReminder() { local isMechOrSynEditor, isOrLeave
+    proc createApplyReminder() { local isBioOrTapEditor, isOrLeave
         strdef textTempl, targetName, textEnd, text
         
-        isMechOrSynEditor = $1
+        isBioOrTapEditor = $1
         isOrLeave = $2
         
         textTempl = "No changes will be applied to %s until you click the \"Apply\" button%s"
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             targetName = "sections biophysics"
         } else {
-            targetName = "synapses"
+            if (isAstrocyteOrNeuron) {
+                targetName = "gap junctions"
+            } else {
+                targetName = "synapses"
+            }
         }
         
         if (isOrLeave) {
@@ -88,22 +94,26 @@ begintemplate ManagersCommonUtils
         xlabel(text)
     }
     
-    proc createEditorSubWidgetDigest() { local enumDmPpNc, isMechOrSynEditor
+    proc createEditorSubWidgetDigest() { local enumDmPpFk, isBioOrTapEditor
         strdef compName, mechName, varTypeName, varNameWithIndexAndUnits, compClassName, mechClassName, textTempl, text
         
-        enumDmPpNc = $1
+        enumDmPpFk = $1
         compName = $s2
         mechName = $s3
         varTypeName = $s4
         varNameWithIndexAndUnits = $s5
         
-        isMechOrSynEditor = (enumDmPpNc == 0)
+        isBioOrTapEditor = (enumDmPpFk == 0)
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             compClassName = "Compartment"
             mechClassName = "Mechanism"
         } else {
-            compClassName = "Synapse part"
+            if (isAstrocyteOrNeuron) {
+                compClassName = "Gap junction type"
+            } else {
+                compClassName = "Synapse part"
+            }
             mechClassName = "Point process"
         }
         
@@ -111,7 +121,7 @@ begintemplate ManagersCommonUtils
         
         sprint(text, textTempl, compClassName, compName)
         xlabel(text)
-        if (enumDmPpNc != 2) {
+        if (enumDmPpFk != 2) {
             sprint(text, textTempl, mechClassName, mechName)
             xlabel(text)
         } else {
@@ -139,19 +149,19 @@ begintemplate ManagersCommonUtils
         }
     }
     
-    proc setOneIfNeededIn_isMechVarTypeInhom() { local mechIdx, varType, enumDmPpNc, varTypeIdx, numVars, varIdx, arraySize, arrayIndex, value localobj comp
+    proc setOneIfNeededIn_isMechVarTypeInhom() { local mechIdx, varType, enumDmPpFk, varTypeIdx, numVars, varIdx, arraySize, arrayIndex, value localobj comp
         strdef varName
         
         comp = $o1
         mechIdx = $2
         varType = $3
         
-        enumDmPpNc = comp.enumDmPpNc
+        enumDmPpFk = comp.enumDmPpFk
         varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
         
-        numVars = mth.getNumMechVars(enumDmPpNc, mechIdx, varType)
+        numVars = mth.getNumMechVars(enumDmPpFk, mechIdx, varType)
         for varIdx = 0, numVars - 1 {
-            arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
+            arraySize = mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName)
             for arrayIndex = 0, arraySize - 1 {
                 value = comp.mechStds[mechIdx][varTypeIdx].get(varName, arrayIndex)
                 if (math.isNaN(value)) {
@@ -162,12 +172,12 @@ begintemplate ManagersCommonUtils
         }
     }
     
-    proc update_isMechVarTypeInhom() { local enumDmPpNc, numMechs, numVarTypes, mechIdx, varType, varTypeIdx localobj comp
+    proc update_isMechVarTypeInhom() { local enumDmPpFk, numMechs, numVarTypes, mechIdx, varType, varTypeIdx localobj comp
         comp = $o1
         
-        enumDmPpNc = comp.enumDmPpNc
-        numMechs = mth.getNumMechs(enumDmPpNc)
-        numVarTypes = mth.getNumVarTypes(enumDmPpNc)
+        enumDmPpFk = comp.enumDmPpFk
+        numMechs = mth.getNumMechs(enumDmPpFk)
+        numVarTypes = mth.getNumVarTypes(enumDmPpFk)
         for mechIdx = 0, numMechs - 1 {
             for varType = 1, numVarTypes {      // 1: "PARAMETER", 2: "ASSIGNED", 3: "STATE"
                 varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
@@ -178,30 +188,11 @@ begintemplate ManagersCommonUtils
     }
     
     // Keep in sync with ReducedManagersCommonUtils.isMetaVar
+    // !!! move to TapManagersCommonUtils
     func isMetaVar() {
         strdef varName
         varName = $s1
         return stringStartsWith(varName, "@")
-    }
-    
-    proc setGraphSize() { local xDataMin, xDataMax, yDataMin, yDataMax, xyMargin4Graph, xMargin4Graph, xMin4Graph, xMax4Graph, yMargin4Graph, yMin4Graph, yMax4Graph localobj graph
-        graph = $o1
-        xDataMin = $2
-        xDataMax = $3
-        yDataMin = $4
-        yDataMax = $5
-        
-        xyMargin4Graph = 0.1    // !! hardcode
-        
-        xMargin4Graph = xyMargin4Graph * (xDataMax - xDataMin)
-        xMin4Graph = xDataMin - xMargin4Graph
-        xMax4Graph = xDataMax + xMargin4Graph
-        
-        yMargin4Graph = xyMargin4Graph * (yDataMax - yDataMin)
-        yMin4Graph = yDataMin - yMargin4Graph
-        yMax4Graph = yDataMax + yMargin4Graph
-        
-        graph.size(xMin4Graph, xMax4Graph, yMin4Graph, yMax4Graph)
     }
     
 endtemplate ManagersCommonUtils

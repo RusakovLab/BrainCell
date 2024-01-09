@@ -11,7 +11,7 @@ proc _callPythonStringFunc() { local status
     sprint(pyCommand, "pyRes = '%s'.%s", inStr, pyStringFunc)
     status = nrnpython(pyCommand)
     if (!status) {
-        // !!!!! printPythonErrMsgAndStop
+        // !! printPythonErrMsgAndStop
         printMsgAndRaiseError("Exception raised in Python code (caught in _callPythonStringFunc)")
     }
 }

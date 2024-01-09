@@ -71,9 +71,9 @@ begintemplate ImportCompleteWidget
             if (!isExternalSimStart) {
                 sprint(text, text, " or import other one")
             } else {
-                // !!! maybe that's an overkill, but we don't propose "Import other" option here just to prevent an error in NEURON
-                //     in case if another file "nrnmech.dll" contains some mechs loaded before,
-                //     e.g. this error: "The user defined name already exists: AmpaSynapse"
+                // !! maybe that's an overkill, but we don't propose "Import other" option here just to prevent an error in NEURON
+                //    in case if another file "nrnmech.dll" contains some mechs loaded before,
+                //    e.g. this error: "The user defined name already exists: AmpaSynapse"
                 sprint(text, text, "")
             }
             xlabel(text)

@@ -71,7 +71,8 @@ class GensForInhomAndStochModels:
             newLines = self._createAndInitOneDistOrStochFuncHelper(distFuncHelper, 'distFuncHelper')
             lines.extend(newLines)
             
-            lines.append('{{ inhomAndStochLibrary.onInhomCreate({}, {}, {}, {}, {}, {}, segmentationHelper, distFuncHelper, {}, {}) }}'.format(int(actSpecVar.enumDmPpNc), int(actSpecVar.compIdx), int(actSpecVar.mechIdx), int(actSpecVar.varType), int(actSpecVar.varIdx), int(actSpecVar.arrayIndex), int(actSpecVar.distFuncCatIdx), int(actSpecVar.distFuncIdx)))
+            varLibId = actSpecVar.varLibId
+            lines.append('{{ inhomAndStochLibrary.onInhomCreate(new VarLibId({}, {}, {}, {}, {}, {}), segmentationHelper, distFuncHelper, {}, {}) }}'.format(int(varLibId.enumDmPpFk), int(varLibId.compIdx), int(varLibId.mechIdx), int(varLibId.varType), int(varLibId.varIdx), int(varLibId.arrayIndex), int(actSpecVar.distFuncCatIdx), int(actSpecVar.distFuncIdx)))
             lines.append('')
             
         return lines
@@ -102,7 +103,7 @@ class GensForInhomAndStochModels:
             newLines = self._createAndInitOneDistOrStochFuncHelper(stochFuncHelper, 'stochFuncHelper')
             lines.extend(newLines)
             
-            lines.append('{{ inhomAndStochLibrary.onStochApply({}, {}, {}, {}, {}, {}, boundingHelper, stochFuncHelper, {}, {}) }}'.format(int(actSpecVar.enumDmPpNc), int(actSpecVar.compIdx), int(actSpecVar.mechIdx), int(actSpecVar.varType), int(actSpecVar.varIdx), int(actSpecVar.arrayIndex), int(actSpecVar.stochFuncCatIdx), int(actSpecVar.stochFuncIdx)))
+            lines.append('{{ inhomAndStochLibrary.onStochApply(new VarLibId({}, {}, {}, {}, {}, {}), boundingHelper, stochFuncHelper, {}, {}) }}'.format(int(actSpecVar.varLibId.enumDmPpFk), int(actSpecVar.varLibId.compIdx), int(actSpecVar.varLibId.mechIdx), int(actSpecVar.varLibId.varType), int(actSpecVar.varLibId.varIdx), int(actSpecVar.varLibId.arrayIndex), int(actSpecVar.stochFuncCatIdx), int(actSpecVar.stochFuncIdx)))
             lines.append('')
             
         return lines

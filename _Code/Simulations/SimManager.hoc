@@ -1,42 +1,53 @@
 
-// !!! BUG: errors in custom proc-s "advance" (e.g. "object prefix is NULL") if user opens a simulation and immediately starts it
-//     with RunControl or AltRunControl instead of the dedicated "Run" button; to fix it, we'll have to stick to AltRunControl
-//     and integrate it with SimulationManager to be ready for this scenario
-
-// !!!! maybe call .dismissHandler() for the current sim widget if user closes its main panel
-
-objref simIdxToWidget[11]
-
 begintemplate SimulationManager
     
-    public createSimulationsPanel
+    public createSimulationsPanel, simIdxToWidget, preRun, preContinue, postRun
     
     external isAstrocyteOrNeuron
     external InsertElectricMechanisms, InsertGlutamateMechanisms, InsertPotassiumMechanisms
     external stringEmpty, codeContractViolation
-    external mmIcrHelper, beih
+    external mmIcrHelper, beih, mwh, pyObj
+    external altRunControlWidget
     
-    external simIdxToWidget
+    objref deck
     
+    objref simIdxToWidget[1]
+    
+    simCatIdx = -1
     lastSimIdxOrMinus1 = -1
+    isLastSimInited = -1
     
     double simIdxToLEDState[1]
+    objref simIdxToIsFirstShow
+    
+    objref this
     
     
-    proc init() {
-        simIdxToWidget[0] = new SimVoltageCA1Neuron()
-        simIdxToWidget[1] = new SimGABADiffusionBasketCell()
-        simIdxToWidget[2] = new SimFrapInCircleGeometry()           // !!! never called (hidden in UI)
+    proc init() { local numSims
+        
+        numSims = 11
+        
+        objref simIdxToWidget[numSims]
+        if (!isAstrocyteOrNeuron) {
+            execute("simIdxToWidget[0] = new SimVoltageCA1Neuron()", this)          // The templates are not loaded for astrocytes
+            execute("simIdxToWidget[1] = new SimGABADiffusionBasketCell()", this)   //
+        }
+        simIdxToWidget[2] = new SimFrapInCircleGeometry()
         simIdxToWidget[3] = new SimFrapLine()
         simIdxToWidget[4] = new SimSpatialVoltageDistributions()
         simIdxToWidget[5] = new SimConstantElectricalSimulations()
-        simIdxToWidget[6] = new SimFrequencyElectricalSimulation()  // !!! never called (hidden in UI)
-        simIdxToWidget[7] = new SimCalciumDynamics()
+        simIdxToWidget[6] = new SimFrequencyElectricalSimulation()
+        if (isAstrocyteOrNeuron) {
+            execute("simIdxToWidget[7] = new SimCalciumDynamics()", this)           // The template is not loaded for neurons
+        }
         simIdxToWidget[8] = new SimCalciumWave()
         simIdxToWidget[9] = new SimGlutamate()
         simIdxToWidget[10] = new SimPotassium()
         
-        double simIdxToLEDState[11]
+        simCatIdx = 0
+        
+        double simIdxToLEDState[numSims]
+        simIdxToIsFirstShow = new Vector(numSims, 1)
         
         lastSimIdxOrMinus1 = -1
     }
@@ -44,58 +55,119 @@ begintemplate SimulationManager
     proc createSimulationsPanel() {
         xpanel("")
         xlabel("===================== Simulations =====================")
-        xlabel("(Most sims below insert certain biophys mechs into the sections)")
-        if (!isAstrocyteOrNeuron) {
-            xlabel("---------------------------------------------------------------------------------------------------------")
-            xlabel("Basic voltage simulation of CA1-neuron")
-            xstatebutton("CA1-neuron voltage", &simIdxToLEDState[0], "simSelectedHandler(0)")
-            xlabel("---------------------------------------------------------------------------------------------------------")
-            xlabel("GABA diffusion simulation of basket cell interneuron")
-            xstatebutton("Basket cell GABA diffusion", &simIdxToLEDState[1], "simSelectedHandler(1)")
-        }
-        //xlabel("---------------------------------------------------------------------------------------------------------")
-        //xlabel("Simulation of FRAP experiment with round-spot bleaching")
-        //xstatebutton("FRAP with round-spot bleaching", &simIdxToLEDState[2], "simSelectedHandler(2)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Simulation of line-scan FRAP")
-        xstatebutton("Line-scan FRAP", &simIdxToLEDState[3], "simSelectedHandler(3)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Simulation of spatial distribution of voltage along dendrites") 
-        xstatebutton("Membrane voltage distribution", &simIdxToLEDState[4], "simSelectedHandler(4)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Parameters of somatic stimuli")
-        xstatebutton("Constant electric stimuli", &simIdxToLEDState[5], "simSelectedHandler(5)")
-        //xlabel("---------------------------------------------------------------------------------------------------------")
-        //xlabel("Parameters of sinusoidal stimulations into soma")
-        //xstatebutton("Variable electric stimuli", &simIdxToLEDState[6], "simSelectedHandler(6)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Parameters for microscopic calcium dynamics")
-        xstatebutton("Microscopic calcium dynamics", &simIdxToLEDState[7], "simSelectedHandler(7)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Calcium Wave simulations")
-        xstatebutton("Calcium Wave", &simIdxToLEDState[8], "simSelectedHandler(8)")
-        xlabel("---------------------------------------------------------------------------------------------------------")
-        xlabel("Cell model with Glutamate transporters")
-        xstatebutton("Membrane biophysics with glutamate transport", &simIdxToLEDState[9], "simSelectedHandler(9)")
-        xlabel("Cell model with potassium dynamics")
-        xstatebutton("Dynamics of intra and extracellular K+", &simIdxToLEDState[10], "simSelectedHandler(10)")
+        xlabel("")
+        xlabel("Simulation category:")
+        xradiobutton("Voltage", "simCatChangedHandler(0)", simCatIdx == 0)
+        xradiobutton("Electric stimuli", "simCatChangedHandler(1)", simCatIdx == 1)
+        xradiobutton("FRAP", "simCatChangedHandler(2)", simCatIdx == 2)
+        xradiobutton("Calcium", "simCatChangedHandler(3)", simCatIdx == 3)
+        xradiobutton("Other species", "simCatChangedHandler(4)", simCatIdx == 4)
+        xlabel("")
         xpanel()
+        deck = new Deck()
+        deck.intercept(1)
+        {
+            xpanel("")
+            if (!isAstrocyteOrNeuron) {
+                xlabel("Basic voltage simulation of CA1-neuron")
+                xstatebutton("CA1-neuron voltage", &simIdxToLEDState[0], "simSelectedHandler(0)")
+                insertSpacer()
+            }
+            xlabel("Simulation of spatial distribution of voltage along dendrites") 
+            xstatebutton("Membrane voltage distribution", &simIdxToLEDState[4], "simSelectedHandler(4)")
+            insertSpacer()
+            xpanel()
+            xpanel("")
+            xlabel("Parameters of somatic stimuli")
+            xstatebutton("Constant electric stimuli", &simIdxToLEDState[5], "simSelectedHandler(5)")
+            insertSpacer()
+            xlabel("Parameters of sinusoidal stimulations into soma")
+            xstatebutton("Variable electric stimuli", &simIdxToLEDState[6], "simSelectedHandler(6)")
+            insertSpacer()
+            xpanel()
+            xpanel("")
+            xlabel("Simulation of FRAP experiment with round-spot bleaching")
+            xstatebutton("FRAP with round-spot bleaching", &simIdxToLEDState[2], "simSelectedHandler(2)")
+            insertSpacer()
+            xlabel("Simulation of line-scan FRAP")
+            xstatebutton("Line-scan FRAP", &simIdxToLEDState[3], "simSelectedHandler(3)")
+            insertSpacer()
+            xpanel()
+            xpanel("")
+            if (isAstrocyteOrNeuron) {
+                xlabel("Parameters for microscopic calcium dynamics")
+                xstatebutton("Microscopic calcium dynamics", &simIdxToLEDState[7], "simSelectedHandler(7)")
+                insertSpacer()
+            }
+            xlabel("Calcium Wave simulations")
+            xstatebutton("Calcium Wave", &simIdxToLEDState[8], "simSelectedHandler(8)")
+            insertSpacer()
+            xpanel()
+            xpanel("")
+            if (!isAstrocyteOrNeuron) {
+                xlabel("GABA diffusion simulation of basket cell interneuron")
+                xstatebutton("Basket cell GABA diffusion", &simIdxToLEDState[1], "simSelectedHandler(1)")
+                insertSpacer()
+            }
+            xlabel("Cell model with Glutamate transporters")
+            xstatebutton("Membrane biophysics with glutamate transport", &simIdxToLEDState[9], "simSelectedHandler(9)")
+            insertSpacer()
+            xlabel("Cell model with potassium dynamics")
+            xstatebutton("Dynamics of intra and extracellular K+", &simIdxToLEDState[10], "simSelectedHandler(10)")
+            insertSpacer()
+            xpanel()
+        }
+        deck.intercept(0)
+        // deck.flip_to(*)      // Will be done below in simCatChangedHandler
+        deck.map()
+        xpanel("")
+        xlabel("Warning: Most sims above insert certain biophys mechs into")
+        xlabel("                the sections and deploy custom \"proc advance\".")
+        xlabel("                When you uncheck a button, the proc is removed,")
+        xlabel("                but the mechs remain.")
+        xpanel()
+        
+        simCatChangedHandler(simCatIdx)
+    }
+    
+    func preRun() { local isInitOnly
+        isInitOnly = $1
+        isLastSimInited = 1
+        return simIdxToWidget[lastSimIdxOrMinus1].preRun(isInitOnly)
+    }
+    
+    func preContinue() {
+        if (!isLastSimInited) {
+            altRunControlWidget.showNotInitedWarning()
+            return 1
+        }
+        return simIdxToWidget[lastSimIdxOrMinus1].preContinue()
+    }
+    
+    proc postRun() {
+        simIdxToWidget[lastSimIdxOrMinus1].postRun()
     }
     
     // All next staff is private
     
+    
+    proc simCatChangedHandler() {
+        simCatIdx = $1
+        deck.flip_to(simCatIdx)
+    }
     
     proc simSelectedHandler() { local simIdx, isCancel, isRescanRequired localobj widget, nil
         strdef biophysJsonFileNameOrEmpty, hocCommand
         
         simIdx = $1
         
-        if (simIdx == -1) {
-            codeContractViolation()
-        }
+        isLastSimInited = 0
         
         if (lastSimIdxOrMinus1 != -1) {
             simIdxToWidget[lastSimIdxOrMinus1].dismissHandler()
+            if (altRunControlWidget != nil) {
+                altRunControlWidget.unplugSim()
+            }
             if (simIdx == lastSimIdxOrMinus1) {
                 deployDefaultProcAdvance()
                 lastSimIdxOrMinus1 = -1
@@ -106,12 +178,12 @@ begintemplate SimulationManager
             }
         }
         
-        // !!! here we can call some more specialized proc because no need to have them imported or rescanned
+        // !! here we can call some more specialized proc because no need to have them imported or rescanned
         mmIcrHelper.makeSureMechCompsCreatedOrImportedAndRescanned()
         
         widget = simIdxToWidget[simIdx]
         
-        isCancel = widget.check()
+        isCancel = widget.preShowCheck()
         if (isCancel) {
             simIdxToLEDState[simIdx] = 0
             return
@@ -127,12 +199,11 @@ begintemplate SimulationManager
             }
         }
         
-        // !!!! deprecated: remove this IF operator in favour of beih.importForSim (called just above) once we:
-        //      (1) export/import density_GluTrans inhom model in the same way as for g_pas;
-        //      (2) move the GLOBAL vars assigned in "MechanismSwitch_deprecated.hoc" to the loaded JSON file;
-        //      (3?) create JSON files for the simulations hidden in UI (simIdx = 2 and 6)
+        // !! deprecated: remove this IF operator in favour of beih.importForSim (called just above) once we:
+        //    (1) export/import density_GluTrans inhom model in the same way as for g_pas;
+        //    (2) move the GLOBAL vars assigned in "MechanismSwitch_deprecated.hoc" to the loaded JSON file
         isRescanRequired = 0
-        if (simIdx == 3) {
+        if (simIdx == 2 || simIdx == 3) {
             InsertElectricMechanisms(0)
             isRescanRequired = 1
         } else if (simIdx == 7 || simIdx == 8) {
@@ -146,7 +217,7 @@ begintemplate SimulationManager
             isRescanRequired = 1
         }
         
-        if (isRescanRequired && mmIcrHelper != nil) {   // !!! can be nil in tests
+        if (isRescanRequired && mmIcrHelper != nil) {   // !! can be nil in tests
             mmIcrHelper.scheduleRescan(2)
         }
         
@@ -156,9 +227,23 @@ begintemplate SimulationManager
             deployDefaultProcAdvance()
         }
         
+        if (widget.isAltRunControl) {
+            altRunControlWidget.show()
+            altRunControlWidget.plugSim(pyObj.getTemplateName(widget))
+        }
+        
         lastSimIdxOrMinus1 = simIdx
         
-        widget.show()
+        mwh.startIntercepting()
+        {
+            widget.show(simIdxToIsFirstShow.x[simIdx])
+            simIdxToIsFirstShow.x[simIdx] = 0
+            
+            if (widget.isAltRunControl) {
+                mwh.showMessageBox("This simulation integrates with \"AltRunControl\".", "Please don't use the standard \"RunControl\" for it.", "Use AltRunControl")
+            }
+        }
+        mwh.endIntercepting()
     }
     
     proc deployDefaultProcAdvance() {
@@ -168,9 +253,13 @@ begintemplate SimulationManager
     proc deployCustomProcAdvance() { local simIdx
         strdef hocCommand
         simIdx = $1
-        // !!!! for simplicity, we can call proc fadvance() in this generated HOC command rather than on the beginning of each proc widget.advance()
-        sprint(hocCommand, "~proc advance() { simIdxToWidget[%d].advance() }", simIdx)
+        // !! for simplicity, we can call proc fadvance() in this generated HOC command rather than on the beginning of each proc widget.advance()
+        sprint(hocCommand, "~proc advance() { simManager.simIdxToWidget[%d].advance() }", simIdx)
         execute(hocCommand)
+    }
+    
+    proc insertSpacer() {
+        xlabel("---------------------------------------------------------------------------------------------------------")
     }
     
 endtemplate SimulationManager

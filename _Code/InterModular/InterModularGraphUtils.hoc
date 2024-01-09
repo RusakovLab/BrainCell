@@ -23,14 +23,14 @@ proc addVarToGraph() { local numArg, colourIdx localobj graph
 
 begintemplate GraphUtils
 
-    public addPlotDynamicsMenuItem, mouseEventsHandler0, mouseEventsHandler1, mouseEventsHandler2, mouseEventsHandler3, mouseEventsHandler4, mouseEventsHandler5, mouseEventsHandler6
+    public setGraphSize, addPlotDynamicsMenuItem, mouseEventsHandler0, mouseEventsHandler1, mouseEventsHandler2, mouseEventsHandler3, mouseEventsHandler4, mouseEventsHandler5, mouseEventsHandler6
     public varNamesWithIndex
     
     external mwh
     external addVarToGraph
-    external getGraphedVarUnits, stringEmpty, codeContractViolation
+    external getGraphedOrPointedVarUnits, stringEmpty, codeContractViolation
     external soma_ref
-    // !!! external pyObj
+    // !! external pyObj
     external graphList
     external tstop
     
@@ -40,14 +40,35 @@ begintemplate GraphUtils
     objref registeredPlotShapes[7], varNamesWithIndex[7]
     
     
-    // !!! BUG: if user changes the var name with "Plot What?" after calling this proc,
-    //          we still use the old var name when creating the Graph-s
+    proc setGraphSize() { local xDataMin, xDataMax, yDataMin, yDataMax, xyMargin4Graph, xMargin4Graph, xMin4Graph, xMax4Graph, yMargin4Graph, yMin4Graph, yMax4Graph localobj graph
+        graph = $o1
+        xDataMin = $2
+        xDataMax = $3
+        yDataMin = $4
+        yDataMax = $5
+        
+        // We use this margin to prevent overlapping of the axes and their labels
+        xyMargin4Graph = 0.1    // !! hardcode
+        
+        xMargin4Graph = xyMargin4Graph * (xDataMax - xDataMin)
+        xMin4Graph = xDataMin - xMargin4Graph
+        xMax4Graph = xDataMax + xMargin4Graph
+        
+        yMargin4Graph = xyMargin4Graph * (yDataMax - yDataMin)
+        yMin4Graph = yDataMin - yMargin4Graph
+        yMax4Graph = yDataMax + yMargin4Graph
+        
+        graph.size(xMin4Graph, xMax4Graph, yMin4Graph, yMax4Graph)
+    }
+    
+    // !! BUG: if user changes the var name with "Plot What?" after calling this proc,
+    //         we still use the old var name when creating the Graph-s
     proc addPlotDynamicsMenuItem() { local slotIdx, isDynamicColormap localobj plotShape
         strdef varNameForMenu, varNameWithIndexOrEmpty, menuItemNameAndMsgBoxTitle, mouseHandlerName, selectHandlerCall
         
         plotShape = $o1
         slotIdx = $2
-        varNameForMenu = $s3            // !!! if !isDynamicColormap, maybe just use varNameWithIndexOrEmpty instead of varNameForMenu
+        varNameForMenu = $s3            // !! if !isDynamicColormap, maybe just use varNameWithIndexOrEmpty instead of varNameForMenu
         varNameWithIndexOrEmpty = $s4   // Empty means "will be set dynamically (later)"
         isDynamicColormap = $5
         
@@ -60,15 +81,15 @@ begintemplate GraphUtils
         sprint(selectHandlerCall, "selectHandler(%d, \"%s\", %d)", slotIdx, menuItemNameAndMsgBoxTitle, isDynamicColormap)
         
         plotShape.menu_tool(menuItemNameAndMsgBoxTitle, mouseHandlerName, selectHandlerCall)
-        // !!!! think about 2 more menu items:
-        //      * first click creates a new Graph, each next adds a new var to it
-        //      * first click creates a new widget, each next adds a new Graph to it
-        //      also, I can show a mini widget to manage all the Graphs/widgets created this way
+        // !! think about 2 more menu items:
+        //    * first click creates a new Graph, each next adds a new var to it
+        //    * first click creates a new widget, each next adds a new Graph to it
+        //    also, I can show a mini widget to manage all the Graphs/widgets created this way
         registeredPlotShapes[slotIdx] = plotShape
         varNamesWithIndex[slotIdx] = new String(varNameWithIndexOrEmpty)
     }
     
-    // !!! maybe I can generate these proc-s in cycle with "execute(*, this)" or "execute1"
+    // !! maybe I can generate these proc-s in cycle with "execute(*, this)" or "execute1"
     
     proc mouseEventsHandler0() {
         mouseEventsHandler($1, $2, $3, $4, 0)
@@ -122,7 +143,7 @@ begintemplate GraphUtils
         }
     }
     
-    // !!! maybe extract some common utils used here and in CompSubsetWidget and SeededDendritesSelectionWidget
+    // !! maybe extract some common utils used here and in SectionsSelectorWidget and SeededDendritesSelectionWidget
     proc mouseEventsHandler() { local eventType, x, y, keystate, slotIdx, d, arc, wtop localobj plotShape, graph
         strdef varNameWithIndex, varStr1, varStr2, unitsStr, xLabel, yLabel
         
@@ -141,7 +162,7 @@ begintemplate GraphUtils
         
         // Make the nearest section currently accessed
         d = plotShape.nearest(x, y)
-        if (d > 25) {       // !!! hardcode (we can use, say, 10% of "cell size")
+        if (d > 25) {       // !! hardcode (we can use, say, 10% of "cell size")
             return
         }
         
@@ -150,21 +171,21 @@ begintemplate GraphUtils
             codeContractViolation()
         }
         
-        // !!! maybe replace inaccurate "0.5" with the actual cordinate of the centre of the middle segment
+        // !! maybe replace inaccurate "0.5" with the actual cordinate of the centre of the middle segment
         soma_ref.o(0).sec sprint(varStr1, "%s.%s(0.5)", secname(), varNameWithIndex)
         
         arc = plotShape.push_selected()
         {
-            // !!! it looks like "arc" has "float" precision rather than "double" because we can see some garbage digits in the end
-            //     (e.g. "0.6500000357627869") when printing it with the max. precision using pyObj.str(arc)
+            // !! it looks like "arc" has "float" precision rather than "double" because we can see some garbage digits in the end
+            //    (e.g. "0.6500000357627869") when printing it with the max. precision using pyObj.str(arc)
             sprint(varStr2, "%s.%s(%g)", secname(), varNameWithIndex, arc)
             
-            // !!! that's strange that we can set nseg=1 in axon[1] and then select 3 arc points: 0, 0.5, 1
-            //     (but all of them show the same dynamics on the Graph-s)
+            // !! that's strange that we can set nseg=1 in axon[1] and then select 3 arc points: 0, 0.5, 1
+            //    (but all of them show the same dynamics on the Graph-s)
         }
         pop_section()
         
-        getGraphedVarUnits(varNameWithIndex, unitsStr)
+        getGraphedOrPointedVarUnits(varNameWithIndex, unitsStr)
         
         sprint(xLabel, "Time (%s)", units("t"))
         sprint(yLabel, "%s (%s)", varNameWithIndex, unitsStr)
@@ -173,18 +194,18 @@ begintemplate GraphUtils
         addVarToGraph(graph, varStr1, 2)
         addVarToGraph(graph, varStr2, 3)
         graph.size(0, tstop, -20, 20)
-        wtop = 100 + 100 * slotIdx       // !!! hardcode
+        wtop = 100 + 100 * slotIdx       // !! hardcode
         graph.view(0, -20, tstop, 40, 1250, wtop, 400, 250)
         graph.label(0.5, 0.09, xLabel, 2, 1, 0, 1, 1)
         graph.label(0.1, 0.9, yLabel, 2, 1, 0, 1, 1)
         
-        // !!! BUG: when user creates a Graph for "Na+" in Manager of extracellular sources, there is a problem with the vertical range:
-        //          the line is out of the bounds by default, and clicking "View..." -> "View = plot" doesn't help,
-        //          so user has to use "View..." -> "Set View"
+        // !! BUG: when user creates a Graph for "Na+" in Manager of extracellular sources, there is a problem with the vertical range:
+        //         the line is out of the bounds by default, and clicking "View..." -> "View = plot" doesn't help,
+        //         so user has to use "View..." -> "Set View"
         
         graphList[0].append(graph)
-        // !!! ideally, we need to remove it from the list when user closes the Graph
-        //     think about wrapping the Graph into a VBox which has custom "dismiss_action"
+        // !! ideally, we need to remove it from the list when user closes the Graph
+        //    think about wrapping the Graph into a VBox which has custom "dismiss_action"
     }
 
 endtemplate GraphUtils

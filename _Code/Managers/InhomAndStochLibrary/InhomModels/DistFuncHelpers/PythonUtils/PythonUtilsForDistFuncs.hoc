@@ -7,7 +7,7 @@ func loadPythonFile() {
     sprint(pyCommand, "exec(open('%s').read())", filePathName)  // Works fine if user re-loads the same file/function
     status = nrnpython(pyCommand)
     if (!status) {
-        // !!!!! printPythonErrMsgAndStop
+        // !! printPythonErrMsgAndStop
         printMsgAndRaiseError("Exception raised in Python code (caught in loadPythonFile)")
     }
     

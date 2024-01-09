@@ -6,11 +6,18 @@
 begintemplate GlobalsEditorWidget
 
     public show, dismissHandler
+    public compIdx
     
     external unmapIfNotNil
     
     objref mainBox
     
+    compIdx = -1
+    
+    
+    proc init() {
+        compIdx = -1
+    }
     
     proc show() { local x, y
         strdef mechName, title

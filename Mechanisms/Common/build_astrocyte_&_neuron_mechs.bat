@@ -16,7 +16,7 @@ goto :eof
 
 :buildMechsForThisCellType
     set cellTypeFolderName=%1
-    set "modFilesFolderName=MOD files"
+    set modFilesFolderName=MOD_files
     set tempFolderName=temp_folder
     pushd ..
     if exist %tempFolderName% (

@@ -43,8 +43,8 @@ def prepareUniqueNameId(name):
     if name == '' or name[0] == ' ' or name[-1] == ' ' or '  ' in name:
         # Keep in sync with hoc:chooseUniqueNameForCompartmentForMechManager
         codeContractViolation()
-    # !!! BUG: multiple different names are mapped to the same ID, e.g. "A1", "A 1", "A (1)" etc.
-    # !!! compile the expression once with re.compile and then reuse for better performance
+    # !! BUG: multiple different names are mapped to the same ID, e.g. "A1", "A 1", "A (1)" etc.
+    # !! compile the expression once with re.compile and then reuse for better performance
     return re.sub(r'[^0-9A-Za-z_]', '', name)
     
 def getExposedVarName(exposedVarIdx):

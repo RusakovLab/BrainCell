@@ -10,7 +10,7 @@ begintemplate MechManagerCompOpWidget
     external inhomAndStochLibrary
     
     objref mainBox
-    objref parentWidget, cssSubWidget, mmcomSubWidget
+    objref parentWidget, ssSubWidget, mmcomSubWidget
     
     splitCompIdx = 0
     objref mergeCheckBoxStates  // Vector
@@ -125,8 +125,8 @@ begintemplate MechManagerCompOpWidget
             }
         } else {
             // Ask user to select the sections that will be moved into the new compartment
-            cssSubWidget = new CompSubsetWidget(mmAllComps.o(splitCompIdx), 1)
-            cssSubWidget.show()
+            ssSubWidget = new SectionsSelectorWidget(1, mmAllComps.o(splitCompIdx))
+            ssSubWidget.show()
             
             // All next operations are performed in splitHandler_layer2 (see below) once user is done with UI
         }
@@ -158,7 +158,7 @@ begintemplate MechManagerCompOpWidget
             return 1
         }
         
-        if (mainUiLocker != nil) {  // !!! nil in tests
+        if (mainUiLocker != nil) {  // !! nil in tests
             isCancel = mainUiLocker.ifNanoCompThenMakeSureNanoUpdateLocked(comp.name)
             if (isCancel) {
                 return 1
@@ -214,7 +214,7 @@ begintemplate MechManagerCompOpWidget
             return
         }
         
-        if (mainUiLocker != nil) {  // !!! nil in tests
+        if (mainUiLocker != nil) {  // !! nil in tests
             isCancel = mainUiLocker.ifNanoCompThenMakeSureNanoUpdateLocked(comp.name)
             if (isCancel) {
                 return
@@ -232,7 +232,7 @@ begintemplate MechManagerCompOpWidget
     }
     
     proc dismissHandler() {
-        dismissIfNotNil(cssSubWidget)
+        dismissIfNotNil(ssSubWidget)
         dismissIfNotNil(mmcomSubWidget)
         unmapIfNotNil(mainBox)
     }

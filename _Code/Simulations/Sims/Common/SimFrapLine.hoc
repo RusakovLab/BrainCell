@@ -1,83 +1,41 @@
 
-// Finds sections within a line and sets initial FRAP concentration on them.
-// $1 - xVec - two X coords on the screen
-// $2 - yVec - two Y coords on the screen
-// $3 - Line width
-// $4 - Basic concentration. The parameter can modulate the initial concentration of interest.
-// $5 - Alpha - affects speed of the bleaching
-// $6 - DFree
-// $7 - viewDirIdx - the view direction (0 to 2)
-// Returns: Sections affected by FRAP
-obfunc setInitialLineConcentration() { local LineWidth, BasicConc, Alpha, DFree, viewDirIdx, u1, u2, ptToLineDist localobj xVec, yVec, frapLineSecList
-    
-    xVec = $o1
-    yVec = $o2
-    LineWidth = $3
-    BasicConc = $4
-    Alpha = $5
-    DFree = $6
-    viewDirIdx = $7
-    
-    frapLineSecList = new List()
-    
-    forall {
-        frapion0_FRAP = BasicConc   // mM, The concentration of molecules used for the FRAP
-        DFree_FRAP = DFree
-        
-        if (viewDirIdx == 0) {          // XY plane
-            u1 = x3d(1)
-            u2 = y3d(1)
-        } else if (viewDirIdx == 1) {   // ZY plane
-            u1 = z3d(1)
-            u2 = y3d(1)
-        } else if (viewDirIdx == 2) {   // XZ plane
-            u1 = x3d(1)
-            u2 = z3d(1)
-        } else {
-            codeContractViolation()
-        }
-        
-        // !!! for slightly better performance, we can implement a custom func that returns the square of the distance
-        ptToLineDist = math.distFromPointToLine(u1, u2, xVec, yVec)
-        
-        if (ptToLineDist < LineWidth / 2) {
-            frapLineSecList.append(new SectionRef())
-            Alpha_FRAP = Alpha * BasicConc
-        }
-    }
-    
-    return frapLineSecList
-}
+{ load_file("Utils/FrapUtils.hoc") }
+
+obfunc setInitialLineConcentration() { codeContractViolation() }
 
 begintemplate SimFrapLine
     
-    public check, show, advance, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, preRun, preContinue, advance, postRun, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
     external setInitialLineConcentration, closeFileAndShowCompleteMsg
-    external createVector, listOfSecRefToSecList, removeItemFromList, createEmptyPanel, unmapIfNotNil, codeContractViolation
-    external math, plotShapeUtils, mwh
+    external createVector, listOfSecRefToSecList, removeItemFromList, addVarToGraph, createEmptyPanel, unmapIfNotNil, codeContractViolation
+    external geomMath, plotShapeUtils, graphUtils, mwh
     external eachSecInList
     external dendrite_ref
-    external run
+    external altRunControlWidget
     external tstop
-    external flush_list, fast_flush_list
+    external flush_list, fast_flush_list, graphList
+    external enumColours
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     strdef outTxtFileRelPathName
     
     // UI
-    objref mainBox, selectedSectionsBox, watchedPathBox
-    objref deck, graph, plotShapeFrapioniLine
-    objref plotShapeSelectedSections
+    objref mainBox, selectedSectionsBox, timeGraphBox, watchedPathBox
+    objref deck, rangeVarGraph, plotShapeFrapioniLine
+    objref plotShapeSelectedSections, timeGraph
     
     // Concentration file
     objref fileFrapLineConcentration
     
     // Sections affected by FRAP
     objref frapLineSecList
+    
+    isBleachingOrRecovery = -1
     
     objref xVec, yVec
     viewDirIdx = -1
@@ -86,16 +44,19 @@ begintemplate SimFrapLine
     
     
     proc init() {
-        biophysJsonFileNameOrEmpty = "SimFrapLine.json"
+        biophysJsonFileNameOrEmpty = "SimFrap.json"
         isCustomProcAdvance = 1
+        isAltRunControl = 1
         
         outTxtFileRelPathName = "Text results/TimeFRAP.txt"
         
         viewDirIdx = 0      // XY plane
         enumLockLevel = 0
+        
+        fileFrapLineConcentration = new File()
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -105,22 +66,86 @@ begintemplate SimFrapLine
         showFrapLineUi()
     }
     
+    func preRun() { local isCancel
+        strdef varStr
+        
+        isCancel = preContinue()
+        if (isCancel) {
+            return 1
+        }
+        
+        selectedSectionsBox = new VBox()
+        selectedSectionsBox.intercept(1)
+        {
+            removeItemFromList(fast_flush_list, plotShapeSelectedSections)
+            plotShapeSelectedSections = new PlotShape(listOfSecRefToSecList(frapLineSecList))
+            fast_flush_list.append(plotShapeSelectedSections)
+        }
+        selectedSectionsBox.intercept(0)
+        selectedSectionsBox.map("Selected sections")
+        
+        timeGraphBox = new VBox()
+        timeGraphBox.intercept(1)
+        {
+            removeItemFromList(graphList[0], timeGraph)
+            timeGraph = new Graph()
+            graphList[0].append(timeGraph)
+            frapLineSecList.o(0).sec {
+                sprint(varStr, "%s.frapioni(0.5)", secname())
+            }
+            addVarToGraph(timeGraph, varStr)
+            graphUtils.setGraphSize(timeGraph, 0, tstop, getYmin(), getYmax())
+            timeGraph.label(0.44, 0.015, "t (ms)")
+            timeGraph.label(0.7, 0.945, "Concentration (mM)")
+        }
+        timeGraphBox.intercept(0)
+        timeGraphBox.map("Concentration vs Time")
+        
+        fileFrapLineConcentration.printf("Time\tConcentration\n")
+        
+        return 0
+    }
+    
+    func preContinue() {
+        
+        frapLineSecList = setInitialLineConcentration(xVec, yVec, LineWidth, BasicFRAP, AlphaFRAP, DFreeFRAP, viewDirIdx)
+        
+        // Bleaching just started
+        print "Bleaching just started"
+        isBleachingOrRecovery = 1
+        
+        if (frapLineSecList.count() == 0) {
+            mwh.showWarningBox("Cannot start the simulation because the FRAP line doesn't touch any sections.")
+            return 1
+        }
+        
+        // !! we could move the code above from preContinue to preRun, but keep it here just so user can edit the FRAP line before continuing the simulation
+        
+        enumLockLevel = 1
+        deck.flip_to(0)
+        
+        fileFrapLineConcentration.aopen(outTxtFileRelPathName)
+        
+        return 0
+    }
+    
     // Switches between bleaching/recovery and writes concentration to file.
-    proc advance() { local cylinderVolume, FraRec, FraBasic, recoveryBleaching
+    proc advance() { local cylinderVolume, FraRec, FraBasic, isBleachingOrRecovery_new, isBleachingJustStarted, isRecoveryJustStarted
+        
         fadvance()
         
         FraRec = 0
         FraBasic = 0
         
-        if (t % (iterationTime*2) == iterationTime) {
-            // Recovery just started
-            recoveryBleaching = 1
-        } else if (t % (iterationTime*2) == 0) {
-            // Bleaching just started
-            recoveryBleaching = 2
+        isBleachingOrRecovery_new = (t % (iterationTime*2) < iterationTime)
+        
+        if (isBleachingOrRecovery_new != isBleachingOrRecovery) {
+            isBleachingJustStarted = (isBleachingOrRecovery_new > isBleachingOrRecovery)
+            isRecoveryJustStarted = !isBleachingJustStarted
+            isBleachingOrRecovery = isBleachingOrRecovery_new
         } else {
-            // In process
-            recoveryBleaching = 0
+            isBleachingJustStarted = 0
+            isRecoveryJustStarted = 0
         }
         
         for eachSecInList(frapLineSecList) {
@@ -129,85 +154,62 @@ begintemplate SimFrapLine
             FraBasic += cylinderVolume
             
             // Change Alpha for all sections in line
-            if (recoveryBleaching == 1) {
-                // Recovering every iterationTime
-                Alpha_FRAP = 0
-            } else if (recoveryBleaching == 2) {
+            if (isBleachingJustStarted) {
                 // Bleaching every other iterationTime
                 Alpha_FRAP = AlphaFRAP*BasicFRAP
+            } else if (isRecoveryJustStarted) {
+                // Recovering every iterationTime
+                Alpha_FRAP = 0
             }
         }
         
-        if (!fileFrapLineConcentration.isopen()) {
-            // !!! this is required when user uses RunControl or AltRunControl for the simulation;
-            //     unfortunately, in this case user will have to click "Save results" button manually
-            //     because otherwise it's not guaranteed that the last lines are flushed to the file
-            fileFrapLineConcentration.aopen(outTxtFileRelPathName)
+        if (isBleachingJustStarted) {
+            print "Bleaching just started"
+        } else if (isRecoveryJustStarted) {
+            print "Recovery just started"
         }
         
-        // "division by zero" would happen here if frapLineSecList was empty, but we have prevented this case in proc runFrapLine
+        // "division by zero" would happen here if frapLineSecList was empty, but we have prevented this case in "func preContinue"
         fileFrapLineConcentration.printf("%-6.5g\t%-6.5g\n", t, FraRec/FraBasic)
         
         if (t < tstop) {
-            if (recoveryBleaching == 1) {
-                fileFrapLineConcentration.printf("----- RECOVERY STARTED -----\n")
-            } else if (recoveryBleaching == 2) {
+            if (isBleachingJustStarted) {
                 fileFrapLineConcentration.printf("----- BLEACHING STARTED -----\n")
+            } else if (isRecoveryJustStarted) {
+                fileFrapLineConcentration.printf("----- RECOVERY STARTED -----\n")
             }
         }
+        
+        // rangeVarGraph.exec_menu("View = plot")
+        timeGraph.exec_menu("View = plot")
+    }
+    
+    proc postRun() {
+        closeFileAndShowCompleteMsg(fileFrapLineConcentration)
+        
+        enumLockLevel = 0
+        deck.flip_to(1)
     }
     
     proc dismissHandler() {
         
-        removeItemFromList(flush_list, graph)
+        removeItemFromList(flush_list, rangeVarGraph)
         removeItemFromList(fast_flush_list, plotShapeFrapioniLine)
         removeItemFromList(fast_flush_list, plotShapeSelectedSections)
+        removeItemFromList(graphList[0], timeGraph)
         
         unmapIfNotNil(selectedSectionsBox)
+        unmapIfNotNil(timeGraphBox)
         unmapIfNotNil(watchedPathBox)
         unmapIfNotNil(mainBox)
         
-        /* !!!
+        /* !!
         closeFileAndShowCompleteMsg(fileFrapLineConcentration)
         */
     }
     
     // All next staff is private
     
-    
-    // Runs FRAP Line simulation.
-    // Bleaching during iterationTime with a constant Alpha_FRAP and recovery during the same time.
-    proc runFrapLine() {
-        
-        frapLineSecList = setInitialLineConcentration(xVec, yVec, LineWidth, BasicFRAP, AlphaFRAP, DFreeFRAP, viewDirIdx)
-        if (frapLineSecList.count() == 0) {
-            mwh.showWarningBox("Cannot start the simulation because the FRAP line doesn't touch any sections.")
-            return
-        }
-        
-        enumLockLevel = 1
-        deck.flip_to(0)
-        
-        fileFrapLineConcentration = new File()
-        fileFrapLineConcentration.aopen(outTxtFileRelPathName)
-        fileFrapLineConcentration.printf("Time\tConcentration\n")
-        
-        selectedSectionsBox = new VBox()
-        selectedSectionsBox.intercept(1)
-        {
-            plotShapeSelectedSections = new PlotShape(listOfSecRefToSecList(frapLineSecList))
-            fast_flush_list.append(plotShapeSelectedSections)
-        }
-        selectedSectionsBox.intercept(0)
-        selectedSectionsBox.map("Selected sections")
-        
-        run()
-        
-        closeFileAndShowCompleteMsg(fileFrapLineConcentration)
-        
-        enumLockLevel = 0
-        deck.flip_to(1)
-    }
     
     // Inits UI and simulation parameters.
     proc initParamsFrapLine() { local defaultAlphaX, defaultY_Coor
@@ -233,7 +235,7 @@ begintemplate SimFrapLine
     proc setDefaultAnchorPoints() { local defaultAlphaX, defaultY_Coor, ptIdx
         defaultAlphaX = $1
         defaultY_Coor = $2
-        xVec = createVector(-50, 50)    // !!! hardcode (keep in sync with defaultAlphaX and defaultY_Coor)
+        xVec = createVector(-50, 50)    // !! hardcode (keep in sync with defaultAlphaX and defaultY_Coor)
         yVec = new Vector(2)
         for ptIdx = 0, 1 {
             yVec.x[ptIdx] = defaultAlphaX * xVec.x[ptIdx] + defaultY_Coor
@@ -241,7 +243,7 @@ begintemplate SimFrapLine
     }
     
     // Shows FRAP Line UI.
-    proc showFrapLineUi() { localobj vBox, rangeVarPlot, hBox, watchedPathPlotShape, pathSecList
+    proc showFrapLineUi() { local distMin, distMax localobj vBox, rangeVarPlot, hBox, watchedPathPlotShape, pathSecList
         strdef menuToolName
         
         mainBox = new HBox()
@@ -265,30 +267,30 @@ begintemplate SimFrapLine
                 
                 xpanel("")
                 xlabel("========================== Running ==========================")
-                xvalue("Duration of bleaching (recovery)","iterationTime", 1, "updateTstop()", 0, 1)
+                xvalue("Duration of bleaching (recovery) (ms)","iterationTime", 1, "updateTstop()", 0, 1)
                 xvalue("Bleaching-recovery iterations","iterations", 1, "updateTstop()", 0, 1)
                 xlabel("Run simulation. Results are saved to the TimeFRAP.txt")
-                xbutton("Run FRAP", "runFrapLine()")
-                // !!! instead of this button, maybe use a Timer with e.g. 1 sec interval to check if simulation is running and, if not, close the file;
-                //     alternatively, we'll have to stick to AltRunControl and update it's code to close this file
-                xbutton("Save results*", "closeFileAndShowCompleteMsg(fileFrapLineConcentration)")
-                xlabel("* If you used RunControl or AltRunControl for the simulation,")
-                xlabel("   then click this button once stopped")
+                xbutton("Run FRAP", "altRunControlWidget.initAndRunHandler()")
                 xlabel("===========================================================")
                 xpanel()
                 
-                removeItemFromList(flush_list, graph)
-                graph = new Graph()
-                flush_list.append(graph)
-                graph.size(-40, 40, 0.85*BasicFRAP, 1*BasicFRAP)
-                graph.xaxis()
-                graph.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
-                 graph.label(0.45, 0.01, "Distance (um)", 2, 1, 0, 0, 1)
                 rangeVarPlot = new RangeVarPlot("frapioni")
-                dendrite_ref.o(10).sec rangeVarPlot.begin(0)        // !!! this can be imporved
+                dendrite_ref.o(10).sec rangeVarPlot.begin(0)        // !! fragile: get rid of explicit indices
                 dendrite_ref.o(1).sec rangeVarPlot.end(1)           //
+                dendrite_ref.o(10).sec {                            //
+                    distMin = -distance(0)                          //
+                }                                                   //
+                dendrite_ref.o(1).sec {                             //
+                    distMax = distance(1)                           //
+                }                                                   //
                 
-                graph.addobject(rangeVarPlot, 2, 1)
+                rangeVarGraph = new Graph()
+                flush_list.append(rangeVarGraph)
+                graphUtils.setGraphSize(rangeVarGraph, distMin, distMax, getYmin(), getYmax())
+                rangeVarGraph.xaxis()
+                rangeVarGraph.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
+                rangeVarGraph.label(0.45, 0.01, "Distance (um)", 2, 1, 0, 0, 1)
+                rangeVarGraph.addobject(rangeVarPlot, enumColours.red, 1)
             }
             vBox.intercept(0)
             vBox.map()
@@ -321,9 +323,8 @@ begintemplate SimFrapLine
                     xpanel()
                 }
                 hBox.intercept(0)
-                hBox.map("", -1, -1, 1, -26)
+                hBox.map("", -1, -1, 1, 32)
                 
-                removeItemFromList(fast_flush_list, plotShapeFrapioniLine)
                 plotShapeFrapioniLine = new PlotShape(0)
                 fast_flush_list.append(plotShapeFrapioniLine)
                 plotShapeFrapioniLine.size(-50,50,-50,50)
@@ -334,7 +335,7 @@ begintemplate SimFrapLine
                 plotShapeFrapioniLine.menu_tool(menuToolName, "mouseEventsHandler")
                 plotShapeFrapioniLine.variable("frapioni")
                 plotShapeFrapioniLine.show(0)
-                plotShapeFrapioniLine.scale(0.8*BasicFRAP, 1.0*BasicFRAP)
+                plotShapeFrapioniLine.scale(getYmin(), getYmax())
                 plotShapeFrapioniLine.label(0.0340357, 0.94, "Concentration (mM)", 2, 1, 0, 0, 1)
                 
                 viewDirectionChangedHandler(viewDirIdx, 1)
@@ -351,15 +352,16 @@ begintemplate SimFrapLine
         watchedPathBox.intercept(1)
         {
             watchedPathPlotShape = new PlotShape()
-            watchedPathPlotShape.color_all(9)               // Grey
+            watchedPathPlotShape.color_all(enumColours.grey)
             pathSecList = new SectionList()
             rangeVarPlot.list(pathSecList)
-            watchedPathPlotShape.color_list(pathSecList, 2) // Red
+            watchedPathPlotShape.color_list(pathSecList, enumColours.red)
         }
         watchedPathBox.intercept(0)
         watchedPathBox.map("Watched path")
     }
     
+    // !! code dup. with "FRAP in circle"
     proc viewDirectionChangedHandler() { local numArg, isCalledFromShow
         numArg = numarg()
         if (numArg < 1 || numArg > 2) {
@@ -385,13 +387,15 @@ begintemplate SimFrapLine
         }
     }
     
-    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isDrag, isMoveOrResize, xc_screen, yc_screen, radius_screen
+    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isMoveOrResize, isDrag
         eventType = $1
         x_screen = $2
         y_screen = $3
         keystate = $4
         
-        // !!! BUG: we don't lock it when user uses RunControl or AltRunControl
+        // !! code dup. with "FRAP in circle"
+        
+        // !! BUG: we don't lock it when user uses RunControl or AltRunControl
         if (enumLockLevel > 0) {
             isPress = (eventType == 2)
             if (!isPress || enumLockLevel == 2) {
@@ -399,22 +403,20 @@ begintemplate SimFrapLine
             }
             // Just to prevent "Didn't close the previous panel" error
             enumLockLevel = 2
-            // !!! BUG: we still can hit "Segmentation violation" when clicking fast, but it seems to be a different error
+            // !! BUG: we still can hit "Segmentation violation" when clicking fast, but it seems to be a different error
             mwh.showWarningBox("Cannot edit the FRAP line when the simulation is running.")
             enumLockLevel = 1
             return
         }
         
-        isDrag = (eventType == 1)
         isMoveOrResize = (keystate != 2)    // 2: Shift
-        
         if (isMoveOrResize) {
+            isDrag = (eventType == 1)
             moveOneOrBothAnchorPoints(x_screen, y_screen, isDrag)
-            updateStripMarker()
         } else {
             changeStripWidth(x_screen, y_screen)
-            updateStripMarker()
         }
+        updateStripMarker()
     }
     
     proc moveOneOrBothAnchorPoints() { local x_screen, y_screen, isDrag, apIdx, delta_x, delta_y, ptIdx
@@ -448,9 +450,9 @@ begintemplate SimFrapLine
         x_screen = $1
         y_screen = $2
         
-        distSq1 = getDistanceSquare(x_screen, y_screen, xVec.x[0], yVec.x[0])
-        distSq2 = getDistanceSquare(x_screen, y_screen, xVec.x[1], yVec.x[1])
-        distSq3 = getDistanceSquare(x_screen, y_screen, xVec.mean(), yVec.mean())
+        distSq1 = geomMath.dist2D_PtToPt_squared(x_screen, y_screen, xVec.x[0], yVec.x[0])
+        distSq2 = geomMath.dist2D_PtToPt_squared(x_screen, y_screen, xVec.x[1], yVec.x[1])
+        distSq3 = geomMath.dist2D_PtToPt_squared(x_screen, y_screen, xVec.mean(), yVec.mean())
         
         distSqVec = createVector(distSq1, distSq2, distSq3)
         
@@ -465,33 +467,32 @@ begintemplate SimFrapLine
         // The central line and the anchors
         pdx = xVec.x[1] - xVec.x[0]
         pdy = yVec.x[1] - yVec.x[0]
-        createLineMarker(pdx, pdy, 0, 0)
+        createLineMarker(pdx, pdy, 0, 0, 9)
         for ptIdx = 0, 1 {
             plotShapeFrapioniLine.mark(xVec.x[ptIdx], yVec.x[ptIdx], "s", 8)
         }
-        plotShapeFrapioniLine.mark(xVec.mean(), yVec.mean(), "S", 4, 2, 1)
+        plotShapeFrapioniLine.mark(xVec.mean(), yVec.mean(), "S", 4, enumColours.red, 1)
         
         // The edge lines
-        factor = LineWidth / sqrt(pdx^2 + pdy^2) / 2    // !!! error here if len == 0
+        factor = LineWidth / geomMath.len2D(pdx, pdy) / 2   // !! error here if len == 0
         ndx = -pdy * factor
         ndy = pdx * factor
-        createLineMarker(pdx, pdy, ndx, ndy)    // !!! maybe use dash style or other color
-        createLineMarker(pdx, pdy, -ndx, -ndy)  //
-        
-        plotShapeFrapioniLine.flush()
+        createLineMarker(pdx, pdy, ndx, ndy, 1)
+        createLineMarker(pdx, pdy, -ndx, -ndy, 1)
     }
     
-    proc createLineMarker() { local pdx, pdy, ndx, ndy, factor, ptIdx, sign
+    proc createLineMarker() { local pdx, pdy, ndx, ndy, colourIdx, factor, ptIdx, sign
         pdx = $1
         pdy = $2
         ndx = $3
         ndy = $4
+        colourIdx = $5
         
-        factor = 1000   // !!! hardcode; it would be better to stick to the view boundaries, but there is no guarantee that user doesn't use pan (MMB press + move)
+        factor = 1000   // !! hardcode; it would be better to stick to the view boundaries, but there is no guarantee that user doesn't use pan (MMB press + move)
         pdx *= factor
         pdy *= factor
         
-        plotShapeFrapioniLine.beginline()
+        plotShapeFrapioniLine.beginline(colourIdx, 0)
         sign = -1
         for ptIdx = 0, 1 {
             plotShapeFrapioniLine.line(xVec.x[ptIdx] + sign * pdx + ndx, yVec.x[ptIdx] + sign * pdy + ndy)
@@ -502,11 +503,55 @@ begintemplate SimFrapLine
     proc changeStripWidth() { local x_screen, y_screen
         x_screen = $1
         y_screen = $2
-        LineWidth = 2 * math.distFromPointToLine(x_screen, y_screen, xVec, yVec)
+        LineWidth = 2 * geomMath.dist2D_PtToLine(x_screen, y_screen, xVec, yVec)
     }
     
-    func getDistanceSquare() {
-        return ($1 - $3) ^ 2 + ($2 - $4) ^ 2
+    func getYmin() {
+        return 0.85*BasicFRAP
+    }
+    
+    func getYmax() {
+        return 1*BasicFRAP
     }
     
 endtemplate SimFrapLine
+
+
+// Finds sections within a line and sets initial FRAP concentration on them.
+// $1 - xVec - two X coords on the screen
+// $2 - yVec - two Y coords on the screen
+// $3 - Line width
+// $4 - Basic concentration. The parameter can modulate the initial concentration of interest.
+// $5 - Alpha - affects speed of the bleaching
+// $6 - DFree
+// $7 - viewDirIdx - the view direction (0 to 2)
+// Returns: Sections affected by FRAP
+obfunc setInitialLineConcentration() { local LineWidth, BasicConc, Alpha, DFree, viewDirIdx, u1, u2, ptToLineDist localobj xVec, yVec, frapLineSecList
+    
+    xVec = $o1
+    yVec = $o2
+    LineWidth = $3
+    BasicConc = $4
+    Alpha = $5
+    DFree = $6
+    viewDirIdx = $7
+    
+    frapLineSecList = new List()
+    
+    forall {
+        frapion0_FRAP = BasicConc   // mM, The concentration of molecules used for the FRAP
+        DFree_FRAP = DFree
+        
+        viewDirIdxToTwoCoordsForFrapSim(viewDirIdx, &u1, &u2)
+        
+        // !! for slightly better performance, we can implement a custom func that returns the square of the distance
+        ptToLineDist = geomMath.dist2D_PtToLine(u1, u2, xVec, yVec)
+        
+        if (ptToLineDist < LineWidth / 2) {
+            frapLineSecList.append(new SectionRef())
+            Alpha_FRAP = Alpha * BasicConc
+        }
+    }
+    
+    return frapLineSecList
+}

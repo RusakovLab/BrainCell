@@ -197,7 +197,7 @@ begintemplate AstrocyteNanoBranch
     
     proc updateBiophysics() { local isUpdateLeaves, isUpdateStalks, leafIdx
         isUpdateLeaves = $1
-        isUpdateStalks = $2     // !!! not used
+        isUpdateStalks = $2     // !! not used
         
         if (!isUpdateLeaves && !isUpdateStalks) {
             codeContractViolation()

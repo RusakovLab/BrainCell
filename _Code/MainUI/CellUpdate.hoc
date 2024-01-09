@@ -13,9 +13,9 @@ proc stretch() { local scaleNew, j, d
     for eachSecInList(dendrite_ref) {
         for j = 0, n3d()-1 {
             if (x3d(j) > 0.01 && y3d(j) > 0.01) {
-                d = 1.67/sqrt(scaleNew*sqrt(x3d(j)^2+y3d(j)^2))     // !! if scaleNew < 0, then error here: sqrt argument out of domain
+                d = 1.67/sqrt(scaleNew*geomMath.len2D(x3d(j), y3d(j)))          // !! if scaleNew < 0, then error here: sqrt argument out of domain
             } else {
-                d = 1.67/sqrt(scaleNew*sqrt(x3d(j)^2+1+y3d(j)^2))   // !! the same comment
+                d = 1.67/sqrt(scaleNew*sqrt(1 + math.sumSq(x3d(j), y3d(j))))    // !! the same comment
             }
             pt3dchange(j, x3d(j), y3d(j), z3d(j), d)    // randomStretch.uniform(-1, 1)+z3d(j)
         }
@@ -23,5 +23,5 @@ proc stretch() { local scaleNew, j, d
     
     // !! if this proc starts changing "L", don't forget to update astrocyte biophysics here because it depends on "L"
     
-    // !!! mmIcrHelper.scheduleRescan(*)
+    // !! mmIcrHelper.scheduleRescan(*)
 }

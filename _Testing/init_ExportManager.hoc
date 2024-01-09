@@ -1,10 +1,15 @@
 
 // Load some test nanogeometry file
+isAstrocyteOrNeuron = 1
 { load_file("CommonPrologueForTests.hoc") }
 
 { load_file("../_Code/Managers/CommonLoads.hoc") }
 { load_file("../_Code/Managers/MechManager/MechManager.hoc") }
-{ load_file("../_Code/Managers/SynManager/SynManager.hoc") }
+if (isAstrocyteOrNeuron) {
+    load_file("../_Code/Managers/GapJuncManager/GapJuncManager.hoc")
+} else {
+    load_file("../_Code/Managers/SynManager/SynManager.hoc")
+}
 { load_file("../_Code/Extracellular/ExtracellularManager.hoc") }
 
 { load_file("../_Code/Export/ExportCoreLoads.hoc") }

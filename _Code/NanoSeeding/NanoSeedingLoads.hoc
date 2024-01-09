@@ -1,6 +1,5 @@
 
+{ load_file("../Managers/SeedingDensityHelper.hoc") }
+
 { load_file("SectionListUtils_deprecated.hoc") }
-{ load_file("../Managers/InhomAndStochLibrary/InhomModels/DistFuncHelpers/Exported/CustomCodeDistFuncHelper.hoc") }
-{ load_file("SeedingDensityHelper.hoc") }
 { load_file("Widgets/SeededDendritesWidget_deprecated.hoc") }
-{ load_file("Widgets/SeedingDensityWidget.hoc") }

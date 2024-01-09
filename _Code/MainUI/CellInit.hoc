@@ -1,8 +1,8 @@
 
-// !!! maybe I don't need to assign, use and export NumberDendrites anywhere
-//     (maybe keep NumberDendrites only in Import module for old-style files)
-// !!! direct usage of MaxNumberStalksPerDendrite and MaxNumberSpinesPerDendrite in cycles is deprecated
-// !!! maybe replace MaxNumberStalksPerDendrite and MaxNumberSpinesPerDendrite with one MaxNumberNanoBranchesPerDendrite
+// !! maybe I don't need to assign, use and export NumberDendrites anywhere
+//    (maybe keep NumberDendrites only in Import module for old-style files)
+// !! direct usage of MaxNumberStalksPerDendrite and MaxNumberSpinesPerDendrite in cycles is deprecated
+// !! maybe replace MaxNumberStalksPerDendrite and MaxNumberSpinesPerDendrite with one MaxNumberNanoBranchesPerDendrite
 
 // Initial all the cell parameters.
 proc initCell() {

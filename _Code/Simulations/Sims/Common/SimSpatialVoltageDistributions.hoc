@@ -1,18 +1,20 @@
 
 begintemplate SimSpatialVoltageDistributions
     
-    public check, show, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
-    external run
+    external altRunControlWidget
     external tstop
     external removeItemFromList, unmapIfNotNil
     external soma_ref, dendrite_ref
     external flush_list
     external NumberDendrites
+    external enumColours
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     // UI
     objref vBoxSpatialVoltage, graphDendrogramm
@@ -24,9 +26,10 @@ begintemplate SimSpatialVoltageDistributions
     proc init() {
         biophysJsonFileNameOrEmpty = ""
         isCustomProcAdvance = 0
+        isAltRunControl = 1
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -36,16 +39,30 @@ begintemplate SimSpatialVoltageDistributions
         showSpatialVoltageUi()
     }
     
+    func preRun() {
+        // !! it would be better to split "proc stimulDendro" into two parts and move the first one to "proc show":
+        //    part 1 - creation of currentDendrogramm (it will be destroyed in "proc dismissHandler")
+        //    part 2 - initialization of currentDendrogramm based on GUI
+        stimulDendro(Amplitude, DurationPlot)
+        return 0
+    }
+    
+    func preContinue() {
+        return 0
+    }
+    
+    proc postRun() {
+        graphDendrogramm.exec_menu("View = plot")
+    }
+    
     proc dismissHandler() {
         
         removeItemFromList(flush_list, graphDendrogramm)
         
         unmapIfNotNil(vBoxSpatialVoltage)
         
-        /* !!!
         // Remove IClamp after simulation
         objref currentDendrogramm
-        */
     }
     
     // All next staff is private
@@ -61,18 +78,6 @@ begintemplate SimSpatialVoltageDistributions
             currentDendrogramm.dur = $2 // ms
             currentDendrogramm.amp = $1 // nA
         }
-    }
-    
-    // Sets soma params and starts the simulation.
-    proc runDendro() {
-        stimulDendro(Amplitude, DurationPlot)
-        run()
-        
-        // !!! BUG: the command "flush_list.append(graphDendrogramm)" executed upstream has no effect, so we have to do this:
-        graphDendrogramm.exec_menu("View = plot")
-        
-        // Remove IClamp after simulation
-        objref currentDendrogramm
     }
     
     // Inits UI and simulation parameters.
@@ -92,10 +97,9 @@ begintemplate SimSpatialVoltageDistributions
             xvalue("Stimulus amplitude (nA)","Amplitude", 1, "", 0, 1)
             xvalue("Duration (ms)","DurationPlot", 1, "", 0, 1)
             xvalue("Computation time (ms)","tstop", 1, "", 0, 1)
-            xbutton("Run", "runDendro()")
+            xbutton("Run", "altRunControlWidget.initAndRunHandler()")
             xpanel()
             
-            removeItemFromList(flush_list, graphDendrogramm)
             graphDendrogramm = new Graph(0)
             flush_list.append(graphDendrogramm)
             graphDendrogramm.size(-25, 80, -86, -80)
@@ -108,17 +112,17 @@ begintemplate SimSpatialVoltageDistributions
             graphDendrogramm.yaxis(-86, -80, -2, 5, 0, 0, 1)
             
             //for i = 0, NumberDendrites-1 {
-            // !!! maybe use for eachSecInList(dendrite_ref, 1) here, but why to start with 1?
+            // !! maybe use for eachSecInList(dendrite_ref, 1) here, but why to start with 1?
               for i = 1, NumberDendrites-1 {
                 voltagePlot = new RangeVarPlot("v")
                 soma_ref.o(0).sec voltagePlot.begin(0)
                 dendrite_ref.o(i).sec voltagePlot.end(1)
                 
-                graphDendrogramm.addobject(voltagePlot, 1, 1)
+                graphDendrogramm.addobject(voltagePlot, enumColours.black, 1)
             }
         }
-        vBoxSpatialVoltage.intercept(0) //ends intercept mode
-        vBoxSpatialVoltage.map("Spatial Voltage Distributions") // ends of Geometry of Astrocyte
+        vBoxSpatialVoltage.intercept(0)
+        vBoxSpatialVoltage.map("Spatial Voltage Distributions")
     }
     
 endtemplate SimSpatialVoltageDistributions

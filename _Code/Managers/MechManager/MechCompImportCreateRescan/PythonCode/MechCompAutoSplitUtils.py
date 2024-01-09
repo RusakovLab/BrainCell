@@ -31,6 +31,6 @@ def splitSectionsIntoGroupsBasedOnMechInsertion(list_ref):
     for thisList_ref in arrayOfFlagsToSecListDict.values():
         listOfList_ref.append(thisList_ref)
         
-    # !!! think about ordering the output groups based on "distance" within each group (e.g. min or average)
+    # !! think about ordering the output groups based on "distance" within each group (e.g. min or average)
     return listOfList_ref
     

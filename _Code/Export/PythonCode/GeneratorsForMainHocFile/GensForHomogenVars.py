@@ -18,7 +18,7 @@ class GensForHomogenVars:
         # Create number of proc-s to prepare and set "isMechInserted" and "mechStds" for each mech comp
         procNames = []
         mth = hocObj.mth
-        enumDmPpNc = 0
+        enumDmPpFk = 0
         mechName = h.ref('')
         for compIdx in range(len(mmAllComps)):
             comp = mmAllComps[compIdx]
@@ -28,10 +28,10 @@ class GensForHomogenVars:
             lines.append('proc {}() {{ localobj comp, mechStd'.format(procName))
             lines.append('    comp = $o1')
             lines.append('    ')
-            numMechs = int(mth.getNumMechs(enumDmPpNc))
+            numMechs = int(mth.getNumMechs(enumDmPpFk))
             for mechIdx in range(numMechs):
                 if comp.isMechInserted[mechIdx]:
-                    mth.getMechName(enumDmPpNc, mechIdx, mechName)
+                    mth.getMechName(enumDmPpFk, mechIdx, mechName)
                     lines.append('    comp.isMechInserted[{}] = 1    // {}'.format(mechIdx, mechName[0]))
             lines.append('    ')
             for mechIdx in range(numMechs):
@@ -107,10 +107,10 @@ class GensForHomogenVars:
         isAnySweptVars = hocObj.exportOptions.isAnySweptVars()
         
         mechName = h.ref('')
-        enumDmPpNc = comp.enumDmPpNc
-        mth.getMechName(enumDmPpNc, mechIdx, mechName)
+        enumDmPpFk = comp.enumDmPpFk
+        mth.getMechName(enumDmPpFk, mechIdx, mechName)
         mechName = mechName[0]
-        if enumDmPpNc != 2:
+        if enumDmPpFk != 2:
             if isExportAssignedAndState:
                 maxVarType = 3
             else:
@@ -123,28 +123,28 @@ class GensForHomogenVars:
             varTypeName = h.ref('')
             mth.getVarTypeName(varType, varTypeName)
             varTypeName = varTypeName[0]
-            if enumDmPpNc != 2:
+            if enumDmPpFk != 2:
                 defaultMechStd = h.MechanismStandard(mechName, varType)
             else:
                 defaultMechStd = h.FakeMechanismStandardForNetCon()
             newLines = []
             isAllDefault = True
-            if enumDmPpNc != 2:
+            if enumDmPpFk != 2:
                 newLines.append('    mechStd = new MechanismStandard("{}", {})    // {}'.format(mechName, varType, varTypeName))
             else:
                 newLines.append('    mechStd = new FakeMechanismStandardForNetCon()')
-            numVars = int(mth.getNumMechVars(enumDmPpNc, mechIdx, varType))
+            numVars = int(mth.getNumMechVars(enumDmPpFk, mechIdx, varType))
             for varIdx in range(numVars):
                 varName = h.ref('')
-                arraySize = int(mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName))
+                arraySize = int(mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName))
                 varName = varName[0]
                 for arrayIndex in range(arraySize):
-                    isContinue, isExposedOrSweptVar, isValueNaN, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty = self._getOneValueInfo(enumDmPpNc, compIdx, comp, mechIdx, varType, varTypeIdx, varIdx, varName, arraySize, arrayIndex, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars)
+                    isContinue, isExposedOrSweptVar, isValueNaN, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty = self._getOneValueInfo(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars)
                     if isContinue:
                         continue
                     if arraySize == 1:
                         newLines.append('    mechStd.set("{}", {}){}'.format(varName, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty))
-                        if enumDmPpNc == 2 and mcu.isMetaVar(varName):
+                        if enumDmPpFk == 2 and mcu.isMetaVar(varName):
                             if isExposedOrSweptVar:
                                 # !! for swept vars, the generated code calls "getSweptVarValue" twice;
                                 #    it would be better to assign the value to a local var and then use it twice
@@ -165,7 +165,7 @@ class GensForHomogenVars:
             
         return lines
         
-    def _getOneValueInfo(self, enumDmPpNc, compIdx, comp, mechIdx, varType, varTypeIdx, varIdx, varName, arraySize, arrayIndex, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars):
+    def _getOneValueInfo(self, enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars):
     
         # !! need to make sure that user doesn't select the same var as both exposed and swept,
         #    but selection of a fixed exposed var (e.g. "v_init" or other from hocObj.exportOptions.stdExposedVarsList) as a swept var is fine:
@@ -178,24 +178,25 @@ class GensForHomogenVars:
         varNameWithIndex = h.ref('')
         mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
         varNameWithIndex = varNameWithIndex[0]
-        isDmOrSynPart = (comp.enumDmPpNc == 0)
-        unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForDmOrSynPart(isDmOrSynPart, compIdx, mechIdx, varName, varNameWithIndex)
+        isDmOrTapPart = (comp.enumDmPpFk == 0)
+        unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForDmOrTapPart(isDmOrTapPart, compIdx, mechIdx, varName, varNameWithIndex)
         
         if isAnySweptVars:
-            sweptVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(enumDmPpNc, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.sweptVarsList, getSweptVarName)
+            sweptVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(False, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.sweptVarsList, getSweptVarName)
             if sweptVarNameOrEmpty:
                 sweptVarInitializer = f'getSweptVarValue("{sweptVarNameOrEmpty}", {value})'
                 return False, True, None, sweptVarInitializer, unitsCommentOrEmpty
                 
         if isAnyExposedVars:
-            exposedVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(enumDmPpNc, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.exposedVarsList, getExposedVarName)
+            exposedVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(True, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.exposedVarsList, getExposedVarName)
             if exposedVarNameOrEmpty:
                 return False, True, None, exposedVarNameOrEmpty, ''
                 
         # Decide whether to skip "mechStd.set" for this var;
         # for stoch vars, we don't skip it even though the value is default
         # because we'll need to read it just before adding the noise
-        if not hocObj.inhomAndStochLibrary.isStochEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex):
+        varLibId = h.VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        if not hocObj.inhomAndStochLibrary.isStochEnabledFor(varLibId):
             defaultValue = defaultMechStd.get(varName, arrayIndex)
             # !! not sure about the 2nd condition in IF below,
             #    but it found out for ASSIGNED "ko_IKa" from "IPotassium.mod" that its default value
@@ -220,9 +221,11 @@ class GensForHomogenVars:
                     
         return False, False, isValueNaN, value, unitsCommentOrEmpty
         
-    def _getExposedOrSweptVarNameOrEmpty(self, enumDmPpNc, compIdx, mechIdx, varType, varName, arrayIndex, varsList, getVarName):
+    def _getExposedOrSweptVarNameOrEmpty(self, isExposedOrSweptVar, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, varsList, getVarName):
         for varIdx in range(len(varsList)):
-            if varsList[varIdx].isEqual(enumDmPpNc, compIdx, mechIdx, varType, varName, arrayIndex):
+            if varsList[varIdx].isEqual(enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex):
+                if isExposedOrSweptVar:
+                    varIdx += len(hocObj.exportOptions.stdExposedVarsList)
                 return getVarName(varIdx)
         return ''
         

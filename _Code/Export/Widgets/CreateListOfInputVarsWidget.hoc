@@ -47,7 +47,7 @@ begintemplate CreateListOfInputVarsWidget
     }
     
     proc show() { local numSpacers localobj hBox, deck
-        strdef label, title, field
+        strdef label, title, field, text
         
         if (isExposedOrSwept) {
             label = "Vars to expose in the params file:"
@@ -83,9 +83,12 @@ begintemplate CreateListOfInputVarsWidget
                 {
                     xpanel("")
                     xbutton("Add biophys var", "addBiophysVarHandler()")
-                    if (!isAstrocyteOrNeuron) {
-                        xbutton("Add synapse var", "addSynVarHandler()")
+                    if (isAstrocyteOrNeuron) {
+                        text = "Add gap junc var"
+                    } else {
+                        text = "Add synapse var"
                     }
+                    xbutton(text, "addTapVarHandler()")
                     xbutton("Add custom var", "addCustomVarHandler()")
                     xlabel("")
                     xbutton("Correct var", "correctVarHandler()")
@@ -93,7 +96,7 @@ begintemplate CreateListOfInputVarsWidget
                         xlabel("")
                         xbutton("Define var grid", "defineVarGridHandler()")
                     }
-                    numSpacers = 1 + 2 * isExposedOrSwept + isAstrocyteOrNeuron
+                    numSpacers = 1 + 2 * isExposedOrSwept
                     addEmptyLabels(numSpacers)
                     xbutton("Delete var", "deleteVarHandler()")
                     xpanel()
@@ -163,12 +166,12 @@ begintemplate CreateListOfInputVarsWidget
         aoivWidgets[0].show()   // --> onVarAddHandler
     }
     
-    proc addSynVarHandler() {
+    proc addTapVarHandler() {
         dismissChilds()
         aoivWidgets[1].show()   // --> onVarAddHandler
     }
     
-    proc correctBiophysOrSynVar() { local aoivWidIdx, selVarIdx localobj listItem
+    proc correctBiophysOrTapVar() { local aoivWidIdx, selVarIdx localobj listItem
         aoivWidIdx = $1
         listItem = $o2
         selVarIdx = $3
@@ -193,7 +196,7 @@ begintemplate CreateListOfInputVarsWidget
         exprsList.select(numVars - 1)
     }
     
-    proc correctVarHandler() { local selVarIdx, enumSpDmCeSt, isOK localobj oldItem, newItem
+    proc correctVarHandler() { local selVarIdx, enumDmTpCeSt, aoivWidIdx, isOK localobj oldItem, newItem
         strdef expr
         
         dismissChilds()
@@ -205,12 +208,11 @@ begintemplate CreateListOfInputVarsWidget
         }
         
         oldItem = exprsList.o(selVarIdx)
-        enumSpDmCeSt = oldItem.enumSpDmCeSt
-        if (enumSpDmCeSt == 0) {
-            correctBiophysOrSynVar(1, oldItem, selVarIdx)
-        } else if (enumSpDmCeSt == 1) {
-            correctBiophysOrSynVar(0, oldItem, selVarIdx)
-        } else if (enumSpDmCeSt == 2) {
+        enumDmTpCeSt = oldItem.enumDmTpCeSt
+        if (enumDmTpCeSt < 2) {
+            aoivWidIdx = enumDmTpCeSt
+            correctBiophysOrTapVar(aoivWidIdx, oldItem, selVarIdx)
+        } else if (enumDmTpCeSt == 2) {
             expr = oldItem.customExpr
             isOK = enterVarExpression(expr, exprsList)
             if (!isOK) {

@@ -1,5 +1,5 @@
 
-// !! some code dupl. with MechComp.hoc
+// !! some code dupl. with MechComp.hoc and major code dupl. with GapJuncGroup.hoc
 
 
 // Probability for "Random" synapse location:
@@ -10,13 +10,13 @@
 // A group of synapses (a counterpart of MechComp template)
 begintemplate SynGroup
 
-    public is3Or1PartInSynStruc, getPpNameOrEmpty, getMechIdxAndOptionalName, getDistRange, getSecList, reCalcAndCacheDistInSyns, applyChangesToLoc, applyChangesToStrucIfNeeded, applyChangesToDirtyHomogenVars, applyInhomogeneityIter, updateStatsCurveIter, updateColormaps, isAnyVarInhom
+    public is3Or1PartInSynStruc, getPpNameOrEmpty, getMechIdxAndOptionalName, getDistRange, getSecList, reCalcAndCacheDistInSyns, applyChangesToLoc, applyChangesToStrucIfNeeded, applyChangesToDirtyHomogenVars, applyInhomogeneityIter, updateColormaps
     public witheredSpineNeckDiam
     
     external synManagerMainWidget
     external smAllSyns, smAllComps, nanoProximal_ref, nanoDistal_ref
-    external mwh, mth, math, mcu, seh, rngUtils, mmIcrHelper
-    external isDisconnectedDistance, capDiam, stringEmpty, stringsEqual, codeContractViolation
+    external mwh, mth, math, mcu, seh, rngUtils, mmIcrHelper, tapGroup
+    external capDiam, stringEmpty, stringsEqual, codeContractViolation
     external eachItemInList
     external enumSynCompIdxs, smEnumSynLoc, smSynLocP
     external spineNeckDiamCache, inhomAndStochLibrary
@@ -38,29 +38,14 @@ begintemplate SynGroup
         return (smAllSyns.o(0).netCon != nil)
     }
     
-    proc getPpNameOrEmpty() { local enumPpRole, idx localobj pp, nil, strFunc
-        strdef ppNameWithBrackets, ppName
-        
+    proc getPpNameOrEmpty() { local enumPpRole
+        strdef ppName
         enumPpRole = $1     // 0: "Source PP", 1: "Target PP", 2: "Single PP"
-        
-        // It's a code contract that all the syns have the same structure
-        pp = smAllSyns.o(0).getPointProcess(enumPpRole)
-        if (pp == nil) {
-            $s2 = ""
-            return
-        }
-        
-        // !! maybe this can be optimized significantly (e.g. with Python) or at least we can extract and call a shared util
-        sprint(ppNameWithBrackets, "%s", pp)
-        strFunc = new StringFunctions()
-        idx = strFunc.head(ppNameWithBrackets, "\\[", ppName)
-        if (idx == -1) {
-            codeContractViolation()
-        }
-        
+        tapGroup.getPpNameOrEmpty(smAllSyns.o(0), enumPpRole, ppName)
         $s2 = ppName
     }
     
+    // !!!! some code dup. with GapJuncGroup.getMechIdxAndOptionalName
     // Returns -1 and "" if there is no PP given role
     func getMechIdxAndOptionalName() { local numArg, enumPpRole
         strdef mechName
@@ -80,41 +65,12 @@ begintemplate SynGroup
         }
     }
     
-    func getDistRange() { local distMin, distMax, isDisconnected, dist localobj syn
-        distMin = math.inf
-        distMax = -1
-        
-        isDisconnected = 0
-        for eachItemInList(syn, smAllSyns) {
-            dist = syn.dist
-            if (isDisconnectedDistance(dist)) {
-                isDisconnected = 1
-                break
-            }
-            math.updateMinMax(&distMin, &distMax, dist)
-        }
-        
-        if (isDisconnected) {
-            return 1
-        }
-        
-        $&1 = distMin
-        $&2 = distMax
-        
-        return 0
+    func getDistRange() {
+        return tapGroup.getDistRange(smAllSyns, &$&1, &$&2)
     }
     
-    obfunc getSecList() { localobj secList, syn
-        secList = new SectionList()
-        for eachItemInList(syn, smAllSyns) {
-            syn.sec_ref.sec secList.append()
-        }
-        
-        // When synapse location is "Dendrite (just under Spine Neck)",
-        // this is required to avoid glitchy look of the colormap "Show syn locations only"
-        secList.unique()
-        
-        return secList
+    obfunc getSecList() {
+        return tapGroup.getSecList(smAllSyns)
     }
     
     proc reCalcAndCacheDistInSyns() { localobj syn
@@ -124,6 +80,7 @@ begintemplate SynGroup
     }
     
     // Other input: smEnumSynLoc, smSynLocP (taken from the top level)
+    // See also: GapJuncGroup.applyChangesToLoc
     proc applyChangesToLoc() { local isReviewAfterApply, distMin, distMax, synIdx, connectionPoint, spineNeckDiam localobj sec_ref, syn, nil
         isReviewAfterApply = $1
         
@@ -147,7 +104,7 @@ begintemplate SynGroup
         
         synManagerMainWidget.onSynLocChangedHandler(distMin, distMax, isReviewAfterApply)
         
-        if (mmIcrHelper != nil) {   // !!! can be nil in tests
+        if (mmIcrHelper != nil) {   // !! can be nil in tests
             mmIcrHelper.scheduleRescan(5)
         }
     }
@@ -239,70 +196,11 @@ begintemplate SynGroup
         return isSmthChanged
     }
     
-    // Keep in sync with ReducedSynGroup.applyInhomogeneityIter
-    iterator applyInhomogeneityIter() { local synIdx localobj distFuncHelper, nil, prevSec_ref, syn
-        distFuncHelper = $o2
-        
-        mwh.showPleaseWaitBox("Applying inhomogeneity.")
-        distFuncHelper.onJustBeforeFirstSection()
-        {
-            prevSec_ref = nil
-            for synIdx = 0, smAllSyns.count() - 1 {
-                syn = smAllSyns.o(synIdx)
-                if (syn.sec_ref != prevSec_ref) {
-                    distFuncHelper.onJustBeforeNewSection()
-                }
-                $o1 = syn
-                iterator_statement
-                prevSec_ref = syn.sec_ref
-            }
-        }
-        distFuncHelper.onJustAfterLastSection()
-        mwh.hidePleaseWaitBox()
-    }
-    
-    iterator updateStatsCurveIter() { local yMin, yMax, synIdx, y localobj graph, syn
-        graph = $o2
-        yMin = $&4
-        yMax = $&5
-        for synIdx = 0, smAllSyns.count() - 1 {
-            syn = smAllSyns.o(synIdx)
-            $o1 = syn
-            iterator_statement
-            y = $&3
-            graph.mark(syn.dist, y, "O", 2, 2, 0)
-            math.updateMinMax(&yMin, &yMax, y)
-        }
-        $&4 = yMin
-        $&5 = yMax
-    }
-    
-    proc updateColormaps() { localobj shape1, shape2, syn, pp
+    proc updateColormaps() { localobj shape1, shape2
         shape1 = $o1
         shape2 = $o2
-        
-        shape1.point_mark_remove()
-        shape2.point_mark_remove()
-        for eachItemInList(syn, smAllSyns) {
-            pp = syn.getPointProcess(3)
-            // !! need to choose the "colorindex" arg according to the watched var value and the colorbar
-            shape1.point_mark(pp, 2, 2, 2)
-            shape2.point_mark(pp, 2, 2, 2)
-        }
-    }
-    
-    func isAnyVarInhom() { local mechIdx, numVarTypes, varTypeIdx localobj comp
-        comp = $o1
-        mechIdx = $2
-        
-        numVarTypes = mth.getNumVarTypes(comp.enumDmPpNc)
-        for varTypeIdx = 0, numVarTypes - 1 {   // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
-            if (comp.isMechVarTypeInhom[mechIdx][varTypeIdx]) {
-                return 1
-            }
-        }
-        
-        return 0
+        tapGroup.updateColormap(smAllSyns, 3, shape1)
+        tapGroup.updateColormap(smAllSyns, 3, shape2)
     }
     
     // All next staff is private
@@ -328,10 +226,10 @@ begintemplate SynGroup
             mechType = mth.getMechType(1)
             mechType.select(mechName)
             mechType.make(outPp)    // Not located in any section
-            setDefaultVars(synCompIdx, mechIdx, outPp)
+            tapGroup.setDefaultVars(synCompIdx, mechIdx, outPp)
             return outPp
         } else {
-            return createNewPpAttachedToSectionButTryToInherit(syn.srcPp, synCompIdx, mechIdx, mechName, syn.sec_ref, syn.connectionPoint, 0)
+            return tapGroup.createNewPpAttachedToSectionButTryToInherit(syn.srcPp, synCompIdx, mechIdx, mechName, syn.sec_ref, syn.connectionPoint, 0)
         }
     }
     
@@ -351,7 +249,7 @@ begintemplate SynGroup
         if (!isForceNew && isMechNameUnchanged) {
             return pp_old
         } else {
-            return createNewPpAttachedToSectionButTryToInherit(pp_old, synCompIdx, mechIdx, mechName, syn.sec_ref, syn.connectionPoint, isMechNameUnchanged)
+            return tapGroup.createNewPpAttachedToSectionButTryToInherit(pp_old, synCompIdx, mechIdx, mechName, syn.sec_ref, syn.connectionPoint, isMechNameUnchanged)
         }
     }
     
@@ -367,52 +265,14 @@ begintemplate SynGroup
             mechStd.in(syn.netCon)
             mechStd.out(netCon)
         } else {
-            setDefaultVars(enumSynCompIdxs.netCon, 0, netCon)
+            tapGroup.setDefaultVars(enumSynCompIdxs.netCon, 0, netCon)
         }
         
         return netCon
     }
     
-    objref _tempPp
-    
-    // Keep in sync with ReducedSynGroup.createNewPpAttachedToSection
-    obfunc createNewPpAttachedToSectionButTryToInherit() { local synCompIdx, mechIdx, x, isMechNameUnchanged localobj pp_old, sec_ref, pp_new, nil, mechStd
-        strdef mechName, hocCommand
-        
-        pp_old = $o1
-        synCompIdx = $2
-        mechIdx = $3
-        mechName = $s4
-        sec_ref = $o5
-        x = $6
-        isMechNameUnchanged = $7
-        
-        sprint(hocCommand, "_tempPp = new %s(%.15e)", mechName, x)
-        sec_ref.sec {
-            execute(hocCommand, this)
-        }
-        
-        pp_new = _tempPp
-        _tempPp = nil
-        
-        if (isMechNameUnchanged) {
-            mechStd = new MechanismStandard(mechName)
-            mechStd.in(pp_old)
-            mechStd.out(pp_new)
-        } else {
-            setDefaultVars(synCompIdx, mechIdx, pp_new)
-            // !!! BUG: need to schedule "Rescan" in biophys manager if PP uses any ions (e.g. GapCa) because they will be inserted into section (if not inserted aleady)
-            //          do I need to do the same in ReducedSynGroup.createNewPpAttachedToSection? maybe not
-            //     UPD: "Rescan" will work fine only when Synapse Location is "All on Spine Head";
-            //          "Rescan" will fail when Synapse Location is "All on Dendrite" or "Random" because we cannot create the compartments where an ion is inserted in some sections and uninserted in others
-            //          to make it work, we'll have to collect all synapse attachement sections into a separate compartment
-        }
-        
-        return pp_new
-    }
-    
     // Keep in sync with ReducedSynGroup.initHomogenVars
-    func ifMechDirtyThenApplyHomogenChanges() { local compIdx, mechIdx, enumPpRole, isPPorNC, maxVarType, varType, varTypeIdx, release_probability localobj comp, syn, nil, sefwPpOrNil, sefwNetConOrNil, ppOrNetCon, compMechStd, tempMechStdExt
+    func ifMechDirtyThenApplyHomogenChanges() { local compIdx, mechIdx, enumPpRole, isPPorNC, maxVarType, varType, varTypeIdx, release_probability localobj comp, syn, sefwPpOrNil, sefwNetConOrNil, ppOrNetCon, compMechStd, tempMechStdExt, nil
         strdef mechName
         
         compIdx = $1
@@ -429,20 +289,22 @@ begintemplate SynGroup
         
         if (isPPorNC) {
             mth.getMechName(1, mechIdx, mechName)
+            maxVarType = 3
+        } else {
+            maxVarType = 1
         }
+        
         for eachItemInList(syn, smAllSyns) {
             sefwPpOrNil = nil
             sefwNetConOrNil = nil
             if (isPPorNC) {
                 ppOrNetCon = syn.getPointProcess(enumPpRole)
-                maxVarType = 3
             } else {
                 ppOrNetCon = syn.netCon
                 if (seh.isSefwEnabled()) {
                     sefwPpOrNil = syn.sefwPp
                     sefwNetConOrNil = syn.sefwNetCon
                 }
-                maxVarType = 1
             }
             for varType = 1, maxVarType {   // 1: "PARAMETER", 2: "ASSIGNED", 3: "STATE"
                 varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
@@ -478,7 +340,7 @@ begintemplate SynGroup
         return 1
     }
     
-    // !! major code dupl. with Neuron_AddSynapses_reseed
+    // !! major code dupl. with proc reseedNeuronSyns
     proc getNewSecRefConnectionPointAndSpineNeckDiam() { local synIdx, synLocIdx, connectionPoint, spineNeckDiam localobj sec_ref, np_ref
         synIdx = $1
         
@@ -512,22 +374,6 @@ begintemplate SynGroup
         $o2 = sec_ref
         $&3 = connectionPoint
         $&4 = spineNeckDiam
-    }
-    
-    // Keep in sync with ReducedSynGroup.setDefaultVars
-    proc setDefaultVars() { local synCompIdx, mechIdx, numVarTypes, varTypeIdx localobj pp, comp
-        synCompIdx = $1
-        mechIdx = $2
-        pp = $o3
-        
-        comp = smAllComps.o(synCompIdx)
-        numVarTypes = mth.getNumVarTypes(comp.enumDmPpNc)
-        
-        for varTypeIdx = 0, numVarTypes - 1 {   // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
-            // This inserts NaN-s for inhomogen vars,
-            // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
-            comp.mechStds[mechIdx][varTypeIdx].out(pp)
-        }
     }
     
     func isSefwPresentInSynStruc() { localobj nil

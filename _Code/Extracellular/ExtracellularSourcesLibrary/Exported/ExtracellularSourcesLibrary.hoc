@@ -1,7 +1,7 @@
 
 begintemplate ExtracellularSourcesLibrary
 
-    public addNewSource, isEmpty, getNumECSs, getMaxNumImpsPerECS, packToVec, deployAllSeriesChains
+    public addNewSource, deleteAll, isEmpty, getNumECSs, getMaxNumImpsPerECS, packToVec, deployAllSeriesChains
     public ecsList
     
     external math, eclDeploymentCache
@@ -38,6 +38,10 @@ begintemplate ExtracellularSourcesLibrary
         }
         
         ecsList.append(ecs)
+    }
+    
+    proc deleteAll() {
+        ecsList.remove_all()
     }
     
     func isEmpty() {

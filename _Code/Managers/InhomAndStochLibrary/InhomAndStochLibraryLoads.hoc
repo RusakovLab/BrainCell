@@ -2,6 +2,7 @@
 { load_file("InhomModels/DistFuncHelpers/DistFuncsCatalogue.hoc") }
 { load_file("StochModels/StochFuncHelpers/StochFuncsCatalogue.hoc") }
 
+loadIfNotDeclared("VarLibId", "Exported/VarLibId.hoc")
 { load_file("DistMechVerbatimInhomTargetProto.hoc") }
 { load_file("InhomAndStochTarget.hoc") }
 { load_file("InhomAndStochLibrary.hoc") }

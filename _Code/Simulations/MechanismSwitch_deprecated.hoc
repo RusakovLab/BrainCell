@@ -1,8 +1,7 @@
 
-// !!! deprecated: get rid of this file in favour of BiophysExportImportHelper and JSON files once we:
-//     (1) export/import density_GluTrans inhom model in the same way as for g_pas;
-//     (2) move the GLOBAL vars assigned below to the loaded JSON file;
-//     (3?) create JSON files for the simulations hidden in UI (simIdx = 2 and 6)
+// !! deprecated: get rid of this file in favour of BiophysExportImportHelper and JSON files once we:
+//    (1) export/import density_GluTrans inhom model in the same way as for g_pas;
+//    (2) move the GLOBAL vars assigned below to the loaded JSON file
 
 
 // Insert FRAP and set its params.
@@ -40,7 +39,7 @@ proc InsertElectricMechanisms() { local isCadifusOrFRAP
         }
     }
     
-    // !!! how about axon_ref, endFoot_ref and other_ref?
+    // !! how about axon_ref, endFoot_ref and other_ref?
 }
 
 // Insert mechanisms needed for Glutamate simulation and set their params.
@@ -87,25 +86,25 @@ proc InsertGlutamateMechanisms() {
     }
     
     // Stalks / necks
-    /* !!! moved here from AstrocyteNanoBranch.updateBiophysics
+    /* !! moved here from AstrocyteNanoBranch.updateBiophysics
     for eachSecInList(nanoProximal_ref) {
         density_GluTrans = DensityGluTransporters
     }
     */
     
-    // !!! how about axon_ref, endFoot_ref and other_ref?
+    // !! how about axon_ref, endFoot_ref and other_ref?
 }
 
 
 // Insert mechanisms for Potassium simulation.
 proc InsertPotassiumMechanisms() {
 
-    // !!! maybe use "forall" here
+    // !! maybe use "forall" here
     
     // Soma, Dendrites, Leaves / heads, Stalks / necks
     for eachSecInList(soma_ref, dendrite_ref, nanoDistal_ref, nanoProximal_ref) {
        _SectionInsertPotassiumMechanisms()
     }
     
-    // !!! how about axon_ref, endFoot_ref and other_ref?
+    // !! how about axon_ref, endFoot_ref and other_ref?
 }

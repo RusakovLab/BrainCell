@@ -79,7 +79,7 @@ func findItemInListByStringAndSelect() { local idxOrMinus1 localobj list
 // $o1 - The List to remove from
 // $o2 - The item to remove
 // $3 (optional) - 0/1 flag specifying whether to raise an error if the item is not found; the default is 0
-// !!! remove 3rd arg making it 1 constantly
+// !! remove 3rd arg making it 1 constantly
 proc removeItemFromList() { local numArg, isErrorIfNotFound, idxOrMinus1, isFound localobj list, item
     
     numArg = numarg()

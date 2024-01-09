@@ -45,15 +45,16 @@ begintemplate WatchedVarsAndRecorderSettingsWidget
             graph.menu_remove("Erase")
             graph.menu_remove("Move Text")
             graph.menu_remove("Change Text")
-            // !!! in addition to this Graph, think about showing a PlotShape
-            //     with the special menu item added with graphUtils.addPlotDynamicsMenuItem
+            // !! in addition to this Graph, think about showing a PlotShape
+            //    with the special menu item added with graphUtils.addPlotDynamicsMenuItem
             xpanel("")
             xlabel("")
             xpvalue("Recording period, Dt", &exportOptions.DtOrMinus1, 1, "DtChangedHandler()")
             createRecordingPeriodHint()
             apcList = new List("APCount")
             sprint(text, "Record and save spikes info with all APCount-s (%d detected)", apcList.count())
-            xcheckbox(text, &exportOptions.isRecordAndSaveWithAPCounts, "recordAndSaveWithAPCountsCheckBoxHandler()")
+            xcheckbox(text, &exportOptions.isRecordAndSaveWithAPCounts)
+            xbutton("How do I edit APCount-s?", "editAPCountsHandler()")
             xlabel("")
             xlabel("Save to:")
             xradiobutton("TXT files (optimized for Origin)", "saveToTxtOrBinFileRadioButtonHandler(1)", exportOptions.isSaveToTxtOrBinFile == 1)
@@ -69,10 +70,6 @@ begintemplate WatchedVarsAndRecorderSettingsWidget
         
         // Keep the var name in sync with GraphUtils.parseVarsFromTheGraph
         graph.save_name("someUniqueNameForTheParsedGraph")
-        
-        if (exportOptions.isRecordAndSaveWithAPCounts) {
-            recordAndSaveWithAPCountsCheckBoxHandler()
-        }
     }
     
     proc dismissHandler() {
@@ -88,11 +85,8 @@ begintemplate WatchedVarsAndRecorderSettingsWidget
         }
     }
     
-    proc recordAndSaveWithAPCountsCheckBoxHandler() {
+    proc editAPCountsHandler() {
         strdef line1, line2, line3, line4, line5, line6, line7, line8, line9
-        if (!exportOptions.isRecordAndSaveWithAPCounts) {
-            return
-        }
         line1 = "You can use the next standard panels to manage APCount-s:"
         line2 = "    * To edit the thresholds in already existing APCount-s:"
         line3 = "       Tools -> Point Processes -> Viewers -> PointProcesses -> APCount, then double click on a particular APCount"

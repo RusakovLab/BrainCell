@@ -1,34 +1,60 @@
 
-// This widget is a counterpart of the standard "RunControl" widget available via "Tools" -> "RunControl" or nrncontrolmenu()
-// with the difference that it applies the stoch (and inhom) models defined in our program
+objref simManager
+
+// This widget is a counterpart of the standard "RunControl" panel available via "Tools" -> "RunControl" or nrncontrolmenu() with some new features:
+// * it applies the stoch (and inhom) models defined in our program;
+// * it integrates with the sims providing custom handling for start/stop/continue events;
+// * it eliminates the common source of errors when user clicks "Continue til", "Continue for" or "Single Step" before "Init" or "Init & Run".
 begintemplate AltRunControlWidget
 
-    public show, dismissHandler
+    public show, plugSim, unplugSim, initAndRunHandler, showNotInitedWarning, dismissHandler
     
     external cvode
     external v_init, runStopAt, runStopIn, tstop, steps_per_ms, screen_update_invl, realtime, running_
     external stdinit, run, continuerun, steprun, tstop_changed, setdt
     external alt_stdinit, alt_run, alt_continuerun, alt_steprun
+    external simManager, mwh
     
     external inhomAndStochApplicator, inhomAndStochLibrary
     external mmIcrHelper
-    external printNotImplementedMsgAndRaiseError
+    external printNotImplementedMsgAndRaiseError, codeContractViolation
     
     objref mainBox
     
     isEnableStoch = -1
     
+    isInited = -1
+    isSimPlugged = -1
+    strdef integratedWithVarLabel
+    
+    strdef none
+    
     
     proc init() {
         isEnableStoch = 1
+        
+        isInited = 0
+        isSimPlugged = 0
+        none = "NONE"
+        updateIntegratedWithVarLabel(none)
     }
     
-    proc show() {
+    proc show() { localobj nil
         strdef label
+        
+        if (mainBox != nil) {           // Do not replace with one IF
+            if (mainBox.ismapped()) {   //
+                return
+            }
+        }
         
         mainBox = new VBox()
         mainBox.intercept(1)
         {
+            xpanel("")
+            xvarlabel(integratedWithVarLabel)
+            xpanel()
+            
             // Making this widget look alike the standard one as close as possible
             // see "%NEURONHOME%\lib\hoc\stdrun.hoc" -> proc nrncontrolmenu()
             
@@ -99,25 +125,45 @@ begintemplate AltRunControlWidget
         mainBox.map("AltRunControl", 200, 575, -1, -1)
     }
     
-    proc dismissHandler() {
-        mainBox.unmap()
+    proc plugSim() {
+        strdef simName
+        simName = $s1
+        updateIntegratedWithVarLabel(simName)
+        isSimPlugged = 1
     }
     
-    // All next staff is private
+    proc unplugSim() {
+        updateIntegratedWithVarLabel(none)
+        isSimPlugged = 0
+    }
     
-    
-    proc initHandler() {
-        rescanBiophysCompsIfNeeded()
-        if (!isEnableStoch) {
-            stdinit()
-        } else {
-            checkCVodeStochPrereqs()
-            alt_stdinit()
+    proc initAndRunHandler() { local numArg, isSkipSimPreRunAndPostRun, isCancel, isWaitingForCallbacks
+        
+        numArg = numarg()
+        if (numArg > 1) {
+            codeContractViolation()
         }
-    }
-    
-    proc initAndRunHandler() { local isWaitingForCallbacks
+        
+        if (numArg == 1) {
+            isSkipSimPreRunAndPostRun = $1
+            if (!isSkipSimPreRunAndPostRun) {
+                codeContractViolation()
+            }
+        } else {
+            isSkipSimPreRunAndPostRun = 0
+        }
+        
         rescanBiophysCompsIfNeeded()
+        
+        if (!isSkipSimPreRunAndPostRun) {
+            isCancel = callSimPreRun(0)
+            if (isCancel) {
+                return
+            }
+        }
+        
+        isInited = 1
+        
         if (!isEnableStoch) {
             run()
         } else {
@@ -130,10 +176,56 @@ begintemplate AltRunControlWidget
             }
             inhomAndStochApplicator.stopPlayingVars()
         }
+        
+        if (!isSkipSimPreRunAndPostRun) {
+            callSimPostRun()
+        }
     }
     
-    proc continueTilHandler() { local isWaitingForCallbacks
+    proc showNotInitedWarning() { localobj nil
+        strdef msg
+        msg = "Please don't click \"Continue til\", \"Continue for\" or \"Single Step\" before \"Init\" or \"Init & Run\"."
+        if (mwh != nil) {
+            mwh.showWarningBox(msg)
+        } else {
+            printf("\n    Warning: %s\n\n", msg)
+        }
+    }
+    
+    proc dismissHandler() { localobj nil
+        if (mainBox != nil) {
+            mainBox.unmap()
+        }
+    }
+    
+    // All next staff is private
+    
+    
+    proc initHandler() { local isCancel
         rescanBiophysCompsIfNeeded()
+        isCancel = callSimPreRun(1)
+        if (isCancel) {
+            return
+        }
+        isInited = 1
+        if (!isEnableStoch) {
+            stdinit()
+        } else {
+            checkCVodeStochPrereqs()
+            alt_stdinit()
+        }
+    }
+    
+    proc continueTilHandler() { local isCancel, isWaitingForCallbacks
+        if (!isInited) {
+            showNotInitedWarning()
+            return
+        }
+        rescanBiophysCompsIfNeeded()
+        isCancel = callSimPreContinue()
+        if (isCancel) {
+            return
+        }
         if (!isEnableStoch) {
             continuerun(runStopAt)
         } else {
@@ -146,10 +238,19 @@ begintemplate AltRunControlWidget
             }
             inhomAndStochApplicator.stopPlayingVars()
         }
+        callSimPostRun()
     }
     
-    proc continueForHandler() { local tStopAt, isWaitingForCallbacks
+    proc continueForHandler() { local isCancel, tStopAt, isWaitingForCallbacks
+        if (!isInited) {
+            showNotInitedWarning()
+            return
+        }
         rescanBiophysCompsIfNeeded()
+        isCancel = callSimPreContinue()
+        if (isCancel) {
+            return
+        }
         tStopAt = t + runStopIn
         if (!isEnableStoch) {
             continuerun(tStopAt)
@@ -163,10 +264,19 @@ begintemplate AltRunControlWidget
             }
             inhomAndStochApplicator.stopPlayingVars()
         }
+        callSimPostRun()
     }
     
-    proc singleStepHandler() { local isWaitingForCallbacks
+    proc singleStepHandler() { local isCancel, isWaitingForCallbacks
+        if (!isInited) {
+            showNotInitedWarning()
+            return
+        }
         rescanBiophysCompsIfNeeded()
+        isCancel = callSimPreContinue()
+        if (isCancel) {
+            return
+        }
         if (!isEnableStoch) {
             steprun()
         } else {
@@ -179,11 +289,35 @@ begintemplate AltRunControlWidget
             }
             inhomAndStochApplicator.stopPlayingVars()
         }
+        callSimPostRun()
     }
     
     proc rescanBiophysCompsIfNeeded() { localobj nil
         if (mmIcrHelper != nil) {
             mmIcrHelper.makeSureMechCompsCreatedOrImportedAndRescanned()
+        }
+    }
+    
+    func callSimPreRun() { local isInitOnly
+        isInitOnly = $1
+        if (isSimPlugged) {
+            return simManager.preRun(isInitOnly)
+        } else {
+            return 0
+        }
+    }
+    
+    func callSimPreContinue() {
+        if (isSimPlugged) {
+            return simManager.preContinue()
+        } else {
+            return 0
+        }
+    }
+    
+    proc callSimPostRun() {
+        if (isSimPlugged) {
+            simManager.postRun()
         }
     }
     
@@ -195,6 +329,12 @@ begintemplate AltRunControlWidget
     
     proc addUnitsFrom() {
         sprint($s1, $s1, units($s2))
+    }
+    
+    proc updateIntegratedWithVarLabel() {
+        strdef simNameOrNone
+        simNameOrNone = $s1
+        sprint(integratedWithVarLabel, "Integrated with: %s", simNameOrNone)
     }
     
 endtemplate AltRunControlWidget

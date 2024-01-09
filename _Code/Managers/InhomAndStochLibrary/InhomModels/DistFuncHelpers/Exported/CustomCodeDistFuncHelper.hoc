@@ -79,7 +79,7 @@ begintemplate CustomCodeDistFuncHelper
             }
             defineHocFunction(oneLinerHocDistFuncName, oneLinerHocDistFuncBody)
         } else if (modelIdx == 1) {
-            // !!! keep in sync with SeedingDensityWidget.show
+            // !! keep in sync with SeedingDensityWidget.show
             sprint(text, "Enter Python expression (one-liner).%s We've done \"from math import *\" for you.", hint1)
             isAccept = string_dialog(text, oneLinerPyDistFuncBody)
             if (!isAccept) {
@@ -222,7 +222,7 @@ begintemplate CustomCodeDistFuncHelper
         sprint(pyCommand, "from math import *\ndef %s(x):\n    return %s", oneLinerPyDistFuncName, oneLinerPyDistFuncBody)
         status = nrnpython(pyCommand)
         if (!status) {
-            // !!!!! printPythonErrMsgAndStop
+            // !! printPythonErrMsgAndStop
             printMsgAndRaiseError("Exception raised in Python code (caught in definePythonFunction)")
         }
     }
@@ -238,7 +238,7 @@ begintemplate CustomCodeDistFuncHelper
         sprint(pyCommand, "y = %s(x)", oneLinerPyDistFuncName)
         status = nrnpython(pyCommand)
         if (!status) {
-            // !!!!! printPythonErrMsgAndStop
+            // !! printPythonErrMsgAndStop
             printMsgAndRaiseError("Exception raised in Python code (caught in callPythonFunction)")
         }
         

@@ -5,8 +5,8 @@ from BiophysJsonExportCore import BiophysJsonExportCore
 from BiophysJsonImportCore import BiophysJsonImportCore
 from OtherInterModularUtils import *
 
-# !!! maybe allow user to put comments in any place of JSON file using "comment" key (and leave an example comment in the exported JSON)
-#     OR use some other file format but JSON to support comments
+# !! maybe allow user to put comments in any place of JSON file using "comment" key (and leave an example comment in the exported JSON)
+#    OR use some other file format but JSON to support comments
 
 
 class BiophysJsonFileHelper:
@@ -55,7 +55,7 @@ class BiophysJsonFileHelper:
         
         missingMechNames = h.List()
         for mechName in donMechNames:
-            if mechName not in recMechNames:        # !!! h.name_declared(mechName) can give a false positive
+            if mechName not in recMechNames:        # !! h.name_declared(mechName) can give a false positive
                 missingMechNames.append(h.String(mechName))
                 
         if missingMechNames:

@@ -1,5 +1,5 @@
 
-// !!! keeping this proc on the top level rather than inside a template just because we need to use "farall"
+// !! keeping this proc on the top level rather than inside a template just because we need to use "farall"
 func applyExtracellularSources() { local numECSs, isInsertOrUninsert, maxNumImpsPerECS, segmIdx_global, u localobj spcLibPackedToVec, ecSrcLibPackedToVec, segm3DSpecificDataMatrix, numImpsSoFarDataVec, impTimesDataMatrix
 
     numECSs = ecsLibrary.getNumECSs()
@@ -37,10 +37,10 @@ func applyExtracellularSources() { local numECSs, isInsertOrUninsert, maxNumImps
             insert ECDCalcAndConsHelper
             
             for (u, 0) {
-                // !!! all the pointers below are initialized as "RANGE POINTER"-s,
-                //     but actually only ptr_segm3DSpecificDataMatRow_ECDCalcAndConsHelper needs to be a "RANGE POINTER"
-                //     and all others should be "GLOBAL POINTER"-s
-                //     but how can we do this with NEURON? it considers illegal even when we try to remove "(u)" below
+                // !! all the pointers below are initialized as "RANGE POINTER"-s,
+                //    but actually only ptr_segm3DSpecificDataMatRow_ECDCalcAndConsHelper needs to be a "RANGE POINTER"
+                //    and all others should be "GLOBAL POINTER"-s
+                //    but how can we do this with NEURON? it considers illegal even when we try to remove "(u)" below
                 
                 setpointer ptr_spcLibDataVec_ECDCalcAndConsHelper(u), spcLibPackedToVec.x[0]
                 setpointer ptr_ecSrcLibDataVec_ECDCalcAndConsHelper(u), ecSrcLibPackedToVec.x[0]
@@ -69,7 +69,7 @@ func applyExtracellularSources() { local numECSs, isInsertOrUninsert, maxNumImps
     return isInsertOrUninsert
 }
 
-// !!! keeping this proc on the top level rather than inside a template just because we need to use "farall"
+// !! keeping this proc on the top level rather than inside a template just because we need to use "farall"
 func disableExtracellularSources() { local wasEnabled
     
     wasEnabled = getExtracellularSourcesStatus()
@@ -96,21 +96,17 @@ func getExtracellularSourcesStatus() { local isEnabled
     return isEnabled
 }
 
-// !!! test this
+// !! test this
 obfunc _prepareSegm3DSpecificDataMatrix() { local numSegms_global, numECSs, segmIdx_global, segmIdx_local, u, xSegm, ySegm, zSegm, ecsIdx, dist, value localobj segm3DSpecificDataMatrix, xSegm_vec, ySegm_vec, zSegm_vec, spatialInfo
-
-    numSegms_global = 0
-    forall {
-        numSegms_global += nseg
-    }
     
+    numSegms_global = getTotalNumSegms()
     numECSs = ecsLibrary.getNumECSs()
     
     // A matrix such that given global segment index "segmIdx_global" and extracellular source index "ecsIdx",
     // the value "segm3DSpecificDataMatrix[segmIdx_global][ecsIdx]" has different meaning depending on the source shape:
     //   * "point"  - distance from the 3D point to the segment centre
     //   * "sphere" - 0/1 flag indicating whether the segment centre is inside the sphere
-    // !!! for performance, we can add the 3rd case when the value has the meaning of "distanceToPoint ^ 2"
+    // !! for performance, we can add the 3rd case when the value has the meaning of "distanceToPoint ^ 2"
     segm3DSpecificDataMatrix = new Matrix(numSegms_global, numECSs)
     
     xSegm_vec = new Vector()
@@ -120,7 +116,7 @@ obfunc _prepareSegm3DSpecificDataMatrix() { local numSegms_global, numECSs, segm
     segmIdx_global = 0
     forall {
     
-        _interpEachSegmCentreCoordsFromSec3DPointCoords(xSegm_vec, ySegm_vec, zSegm_vec)
+        interpEachSegmCentreCoordsFromSec3DPointCoords(xSegm_vec, ySegm_vec, zSegm_vec)
         
         segmIdx_local = 0
         for (u, 0) {
@@ -138,7 +134,7 @@ obfunc _prepareSegm3DSpecificDataMatrix() { local numSegms_global, numECSs, segm
                 if (spatialInfo.enumPointSphere == 0) {
                     value = dist
                 } else if (spatialInfo.enumPointSphere == 1) {
-                    value = (dist <= spatialInfo.radiusOrMinus1)    // !!! or < ?
+                    value = (dist <= spatialInfo.radiusOrMinus1)    // !! or < ?
                 } else {
                     codeContractViolation()
                 }
@@ -154,39 +150,7 @@ obfunc _prepareSegm3DSpecificDataMatrix() { local numSegms_global, numECSs, segm
     return segm3DSpecificDataMatrix
 }
 
-// See also: "%NEURONHOME%\lib\python\neuron\__init__.py" -> _get_3d_pt
-proc _interpEachSegmCentreCoordsFromSec3DPointCoords() { local numPts, ptIdx, du, u_start localobj xSegm_vec, ySegm_vec, zSegm_vec, x3d_vec, y3d_vec, z3d_vec, u3d_vec, uSegm_vec
-
-    xSegm_vec = $o1
-    ySegm_vec = $o2
-    zSegm_vec = $o3
-    
-    numPts = n3d()
-    
-    x3d_vec = new Vector(numPts)
-    y3d_vec = new Vector(numPts)
-    z3d_vec = new Vector(numPts)
-    u3d_vec = new Vector(numPts)
-    
-    for ptIdx = 0, numPts - 1 {
-        x3d_vec.x[ptIdx] = x3d(ptIdx)
-        y3d_vec.x[ptIdx] = y3d(ptIdx)
-        z3d_vec.x[ptIdx] = z3d(ptIdx)
-        u3d_vec.x[ptIdx] = arc3d(ptIdx) / L
-    }
-    
-    uSegm_vec = new Vector(nseg)
-    
-    du = 1 / nseg
-    u_start = du / 2
-    uSegm_vec.indgen(u_start, du)
-    
-    xSegm_vec.interpolate(uSegm_vec, u3d_vec, x3d_vec)
-    ySegm_vec.interpolate(uSegm_vec, u3d_vec, y3d_vec)
-    zSegm_vec.interpolate(uSegm_vec, u3d_vec, z3d_vec)
-}
-
-// See also: GenerateRandomInSphereWidget.getDistSquareBetweenTwo3DPoints
+// !! maybe move this to GeometryMath
 func _getDistBetweenTwo3DPoints() {
     return sqrt(($1 - $4) ^ 2 + ($2 - $5) ^ 2 + ($3 - $6) ^ 2)
 }

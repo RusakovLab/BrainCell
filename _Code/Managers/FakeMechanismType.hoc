@@ -1,0 +1,30 @@
+
+begintemplate FakeMechanismType
+
+    public count
+    public select, selected
+    
+    external codeContractViolation
+    
+    strdef theMechName
+    count = -1
+    
+    
+    proc init() {
+        theMechName = $s1
+        count = 1
+    }
+    
+    proc select() { local selMechIdx
+        selMechIdx = $1
+        
+        if (selMechIdx != 0) {
+            codeContractViolation()
+        }
+    }
+    
+    proc selected() {
+        $s1 = theMechName
+    }
+    
+endtemplate FakeMechanismType

@@ -1,0 +1,47 @@
+
+begintemplate SEClampHelper
+    
+    public deployClamp, removeClamp
+    public seClamp
+    
+    external vBoxSEClampPPGM
+    external mwh
+    external unmapIfNotNil, printMsgAndRaiseError
+    
+    objref ms, seClamp
+    
+    isFirstDeployment = -1
+    
+    
+    proc init() {
+        ms = new MechanismStandard("SEClamp", 1)
+        
+        isFirstDeployment = 1
+    }
+    
+    proc deployClamp() { localobj list
+        load_file(1, "_Code/Clamps/SEClampPointProcessGroupManager.hoc")
+        list = new List("SEClamp")
+        if (list.count() != 1) {
+            printMsgAndRaiseError("More than one SEClamp detected.")
+        }
+        seClamp = list.o(0)
+        if (isFirstDeployment) {
+            isFirstDeployment = 0
+        } else {
+            ms.out(seClamp)
+        }
+        mwh.showMessageBox("SEClamp was inserted into the centre of the first soma section.", "Please be advised that it will be deleted only when you uncheck the simulation button.", "SEClamp inserted")
+    }
+    
+    proc removeClamp() { localobj nil
+        ms.in(seClamp)
+        seClamp = nil
+        unmapIfNotNil(vBoxSEClampPPGM)
+        vBoxSEClampPPGM = nil   // Without this, the SEClamp object won't be deleted
+    }
+    
+endtemplate SEClampHelper
+
+objref seClampHelper
+seClampHelper = new SEClampHelper()

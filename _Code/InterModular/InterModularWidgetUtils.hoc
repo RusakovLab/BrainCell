@@ -14,7 +14,7 @@ proc oneZeroToYesNo() { local oneOrZero
     }
 }
 
-// !!! not intermodular actually
+// !! not intermodular actually
 proc oneZeroToEnabledDisabled() { local oneOrZero
     oneOrZero = $1
     if (oneOrZero) {

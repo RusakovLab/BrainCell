@@ -1,5 +1,5 @@
 
-// !!!! can I merge this template with SpeciesInfo?
+// !! can I merge this template with SpeciesInfo?
 begintemplate SpeciesListItem
 
     public s, rangeVarName, ionMechName
@@ -19,8 +19,8 @@ begintemplate SpeciesListItem
         
         // Prepare the shown name "s"
         getUserFriendlyIonName(userFriendlyIonName)
-        charge = ion_charge(ionMechName)        // !!! it looks like fractional or zero charge is OK for NEURON, so we are ready as well
-        /* !!!
+        charge = ion_charge(ionMechName)        // !! it looks like fractional or zero charge is OK for NEURON, so we are ready as well
+        /* !!
         if (charge == -10000) {
             // No VALENCE specified in the MOD file
             codeContractViolation()
@@ -41,7 +41,7 @@ begintemplate SpeciesListItem
                 chargeSignOrEmptyStr = ""
             }
         } else {
-            // !!!
+            // !!
             absChargeOrEmptyStr = "?"
             chargeSignOrEmptyStr = ""
         }
@@ -57,7 +57,7 @@ begintemplate SpeciesListItem
     // All next staff is private
     
     
-    // !!!! double check that I can't get it from MechanismType or MechanismStandard
+    // !! double check that I can't get it from MechanismType or MechanismStandard
     proc getUserFriendlyIonName() {
         strdef userFriendlyIonName
         
@@ -68,10 +68,10 @@ begintemplate SpeciesListItem
         
         $s1 = userFriendlyIonName
         
-        // !!! if the ion name ends with a digit, e.g. "IP3" or "ExtraIon3", then "3+" looks like the charge => maybe use "Ca(2+)" format
-        // !!! do not show the (wrong) charge for "IP3"
+        // !! if the ion name ends with a digit, e.g. "IP3" or "ExtraIon3", then "3+" looks like the charge => maybe use "Ca(2+)" format
+        // !! do not show the (wrong) charge for "IP3"
         
-        // !!! sprint($s1, "%s (%s)", userFriendlyIonName, ionMechName)    // !!! ??
+        // !! sprint($s1, "%s (%s)", userFriendlyIonName, ionMechName)    // !! ??
     }
     
 endtemplate SpeciesListItem

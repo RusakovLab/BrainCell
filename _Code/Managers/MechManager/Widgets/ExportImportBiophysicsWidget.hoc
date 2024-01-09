@@ -1,8 +1,8 @@
 
-// !!!! close this widget automatically in the next cases:
-//      * when user performs any comp or mech operation in the parent widget
-//      * once export or import complete (the same as for ExportManagerMainWidget)
-// !!!! also, once import complete, we need to close (or re-open) other sub-widgets of MechManagerMainWidget
+// !! close this widget automatically in the next cases:
+//    * when user performs any comp or mech operation in the parent widget
+//    * once export or import complete (the same as for ExportManagerMainWidget)
+// !! also, once import complete, we need to close (or re-open) other sub-widgets of MechManagerMainWidget
 
 begintemplate ExportImportBiophysicsWidget
 
@@ -60,7 +60,7 @@ begintemplate ExportImportBiophysicsWidget
             numComps = compNames.count()
         }
         
-        options.isGlobals = 0       // !!!! remove this line once implemented
+        options.isGlobals = 0       // !! remove this line once implemented
         
         dismissHandler()
         
@@ -93,7 +93,7 @@ begintemplate ExportImportBiophysicsWidget
                     deckSpacerSlider.intercept(1)
                     {
                         xpanel("")
-                        // !!!! too long comp. names get truncated (until user makes the widget wider)
+                        // !! too long comp. names get truncated (until user makes the widget wider)
                         for compIdx = 0, numComps - 1 {
                             sprint(hocCommand, "compNameCheckBoxHandler(%d)", compIdx)
                             xcheckbox(compNames.o(compIdx).s, &options.isUseThisCompNameVec.x[compIdx], hocCommand)
@@ -102,7 +102,7 @@ begintemplate ExportImportBiophysicsWidget
                     }
                     deckSpacerSlider.intercept(0)
                     
-                    // !!! must be done only before "deckSpacerSlider.flip_to(0)" to force creation of a slider rather than stretching the widget in vertical direction
+                    // !! must be done only before "deckSpacerSlider.flip_to(0)" to force creation of a slider rather than stretching the widget in vertical direction
                     deckSpacerSlider.map("", -1, -1, 120, 1)
                     
                     deckSpacerSlider.flip_to(0)
@@ -120,7 +120,7 @@ begintemplate ExportImportBiophysicsWidget
                     deckSpacerSlider = new Deck()     // Just to fill the remaining space below in cyan
                     deckSpacerSlider.intercept(1)
                     {
-                        // !!! keep in sync with ExportManagerMainWidget.createInhomStochDeck
+                        // !! keep in sync with ExportManagerMainWidget.createInhomStochDeck
                         xpanel("")
                         xcheckbox("GLOBAL vars", &options.isGlobals, "globalVarsCheckBoxHandler()")
                         sprint(text, "       (when imported, they can have an effect on the comps that you don't import)", word)
@@ -129,7 +129,7 @@ begintemplate ExportImportBiophysicsWidget
                         sprint(text, "       (in most cases, you don't need to %s them explicitly, but some MOD files don't init a var", word)
                         xlabel(text)
                         xlabel("        automatically in the INITIAL block expecting that we set a nonzero value from HOC code)")
-                        sprint(text, "Inhom models (%d detected)", numInhomVars)    // !!! maybe skip explicit inhom models for morphology\diam in the counter here
+                        sprint(text, "Inhom models (%d detected)", numInhomVars)    // !! maybe skip explicit inhom models for morphology\diam in the counter here
                         xcheckbox(text, &options.isInhoms)
                         sprint(text, "Stoch models (%d detected)", numStochVars)
                         xcheckbox(text, &options.isStochs)
@@ -178,7 +178,7 @@ begintemplate ExportImportBiophysicsWidget
     
     proc exportOrImportHandler() { local isCancel
         
-        // !!!!! check isDirty flags for mechs and comps and propose user to apply the changes
+        // !! check isDirty flags for mechs and comps and propose user to apply the changes
         
         isCancel = options.validate(word)
         if (isCancel) {

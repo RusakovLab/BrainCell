@@ -73,25 +73,19 @@ begintemplate ExportManagerMainWidget
             }
             hBox.intercept(0)
             hBox.map()
-            if (!isAstrocyteOrNeuron) {
-                hBox = new HBox()
-                hBox.intercept(1)
-                {
-                    slotHeight = 53
-                    deck = openDeck()
-                    {
-                        xpanel("")
-                        xcheckbox("All synapses", &exportOptions.isExportSyns, "synsCheckBoxHandler()")
-                        xpanel()
-                    }
-                    closeDeck(deck, 0, firstColWidth, slotHeight)
-                    numInhomVars = inhomAndStochLibrary.getNumInhomVarsForSyns()
-                    numStochVars = inhomAndStochLibrary.getNumStochVarsForSyns()
-                    deck2 = createInhomStochDeck(0, numInhomVars, numStochVars, &exportOptions.isExportSynAssignedAndState, &exportOptions.isExportSynInhoms, &exportOptions.isExportSynStochs, exportOptions.isExportSyns, slotHeight)
+            hBox = new HBox()
+            hBox.intercept(1)
+            {
+                numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps()
+                numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps()
+                if (isAstrocyteOrNeuron) {
+                    deck2 = createGapJuncOrSynBlock("All gap junctions", &exportOptions.isExportGapJuncs, "gapJuncsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportGapJuncAssignedAndState, &exportOptions.isExportGapJuncInhoms, &exportOptions.isExportGapJuncStochs)
+                } else {
+                    deck2 = createGapJuncOrSynBlock("All synapses", &exportOptions.isExportSyns, "synsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportSynAssignedAndState, &exportOptions.isExportSynInhoms, &exportOptions.isExportSynStochs)
                 }
-                hBox.intercept(0)
-                hBox.map()
             }
+            hBox.intercept(0)
+            hBox.map()
             hBox = new HBox()
             hBox.intercept(1)
             {
@@ -217,7 +211,26 @@ begintemplate ExportManagerMainWidget
     // All next staff is private
     
     
-    // !!! keep in sync with ExportImportBiophysicsWidget.show
+    obfunc createGapJuncOrSynBlock() { local numInhomVars, numStochVars, slotHeight localobj deck
+        strdef checkBoxLabel, checkBoxHandler
+        checkBoxLabel = $s1
+        checkBoxHandler = $s3
+        numInhomVars = $4
+        numStochVars = $5
+        
+        slotHeight = 53
+        
+        deck = openDeck()
+        {
+            xpanel("")
+            xcheckbox(checkBoxLabel, &$&2, checkBoxHandler)
+            xpanel()
+        }
+        closeDeck(deck, 0, firstColWidth, slotHeight)
+        return createInhomStochDeck(0, numInhomVars, numStochVars, &$&6, &$&7, &$&8, $&2, slotHeight)
+    }
+    
+    // !! keep in sync with ExportImportBiophysicsWidget.show
     obfunc createInhomStochDeck() { local isInhomOrStoch, numInhomVars, numStochVars, cardIdx, slotHeight localobj deck
         strdef text
         
@@ -250,6 +263,13 @@ begintemplate ExportManagerMainWidget
     
     proc distMechsCheckBoxHandler() {
         deck1.flip_to(exportOptions.isExportDistMechs)
+    }
+    
+    proc gapJuncsCheckBoxHandler() {
+        deck2.flip_to(exportOptions.isExportGapJuncs)
+        if (exportOptions.isExportGapJuncs) {
+            mwh.showNotImplementedWarning()     // !!!
+        }
     }
     
     proc synsCheckBoxHandler() {
@@ -303,11 +323,11 @@ begintemplate ExportManagerMainWidget
         
         isRescanRequired = 0
         if (exportOptions.isExportExtracellularLibrary()) {
-            // !!! it would be better to skip applying ECSs now and, as a result, skip exporting huge VerbatimDistFuncHelper-s for ions
-            //     (the exported file remains fully functional in standalone mode even without them),
-            //     but, in order to avoid errors in "start with nano" mode, we need to create the missing models on import
-            //     (somewhere in MechComp.analyzeMechInhomogeneity or MechCompImportCreateRescanHelper.makeSureMechCompsCreatedOrImportedAndRescanned),
-            //     and for now this logic is not implemented
+            // !! it would be better to skip applying ECSs now and, as a result, skip exporting huge VerbatimDistFuncHelper-s for ions
+            //    (the exported file remains fully functional in standalone mode even without them),
+            //    but, in order to avoid errors in "start with BrainCell export" mode, we need to create the missing models on import
+            //    (somewhere in MechComp.analyzeMechInhomogeneity or MechCompImportCreateRescanHelper.makeSureMechCompsCreatedOrImportedAndRescanned),
+            //    and for now this logic is not implemented
             applyExtracellularSourcesWithWaitBox()
             isRescanRequired = 1
         } else {

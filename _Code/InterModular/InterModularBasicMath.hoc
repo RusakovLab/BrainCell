@@ -2,7 +2,7 @@
 begintemplate BasicMath
 
     public inf, nan
-    public min, max, updateMinMax, isNaN, disableGreedyComparison, restoreGreedyComparison, distFromPointToLine
+    public min, max, updateMinMax, isNaN, disableGreedyComparison, restoreGreedyComparison, sumSq
     
     external codeContractViolation
     
@@ -12,16 +12,12 @@ begintemplate BasicMath
     isGreedyComparisonEnabled = -1
     float_epsilon_old = -1
     
-    objref guiMath
-    
     
     proc init() {
         sscanf("inf", "%f", &inf)
         sscanf("nan", "%f", &nan)
         
         isGreedyComparisonEnabled = 1
-        
-        guiMath = new GUIMath()
     }
     
     func min() {
@@ -67,12 +63,12 @@ begintemplate BasicMath
         isGreedyComparisonEnabled = 1
     }
     
-    func distFromPointToLine() { local xPt, yPt localobj xLineVec, yLineVec
-        xPt = $1
-        yPt = $2
-        xLineVec = $o3
-        yLineVec = $o4
-        return guiMath.d2line(xPt, yPt, xLineVec.x[0], yLineVec.x[0], xLineVec.x[1], yLineVec.x[1])
+    func sumSq() { local res, i
+        res = 0
+        for i = 1, numarg() {
+            res += $i ^ 2
+        }
+        return res
     }
     
 endtemplate BasicMath

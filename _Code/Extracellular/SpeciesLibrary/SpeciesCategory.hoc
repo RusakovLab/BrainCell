@@ -9,7 +9,7 @@ begintemplate SpeciesCategory
     
     strdef spcCatName
     
-    // !!! try to merge these two into one
+    // !! try to merge these two into one
     objref spcNamesList, spcInfoList
     
     isUnrecSpcCat = -1

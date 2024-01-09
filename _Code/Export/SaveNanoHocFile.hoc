@@ -27,7 +27,7 @@ func saveNanoHocFile() { local isCancel, cond localobj bulletedList
     str2 = "custom PPs/ACs%s (if you add them), but APCount-s are exported"
     if (isAstrocyteOrNeuron) {
         sprint(str1, str1, "")
-        sprint(str2, str2, "")
+        sprint(str2, str2, " and gap junctions")    // !!!
     } else {
         sprint(str1, str1, " and synaptic PPs/ACs")
         sprint(str2, str2, " outside synapses")
@@ -35,11 +35,11 @@ func saveNanoHocFile() { local isCancel, cond localobj bulletedList
     bulletedList.append(new String(str1))
     bulletedList.append(new String(str2))
     bulletedList.append(new String("custom \"proc advance() { ... }\", e.g. the ones used in the \"Simulations\""))
-    if (isExternalSimStart) {   // !!! maybe add || isBaseOrNanoStart
+    if (isExternalSimStart) {   // !! maybe add || isBaseOrNanoStart
         bulletedList.append(new String("overrides for other standard proc-s (e.g. \"init\" and \"run\") that may be imported from external HOC file"))
     }
     bulletedList.append(new String("the distance centre location (if you change it)"))
-    cond = exportOptions.isExportAnyStochFuncs()    // !!! false positive here when user disables export of ASSIGNED and STATE vars
+    cond = exportOptions.isExportAnyStochFuncs()    // !! false positive here when user disables export of ASSIGNED and STATE vars
     if (!isAstrocyteOrNeuron) {
         cond = (cond || smEnumSynLoc == 2)  // smEnumSynLoc is not defined for Astrocyte
     }

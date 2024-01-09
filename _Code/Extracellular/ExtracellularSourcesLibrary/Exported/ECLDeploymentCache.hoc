@@ -6,7 +6,7 @@ begintemplate ECLDeploymentCache
     public spcLibPackedToVec, ecSrcLibPackedToVec
     public segm3DSpecificDataMatrix
     public numImpsSoFarDataVec, impTimesDataMatrix
-    public seriesNetStimList, seriesNetConList, seriesECDHelperList     // !!!! maybe raname the last one to "ecsSeriesHelperList" here and in MOD
+    public seriesNetStimList, seriesNetConList, seriesECDHelperList     // !! maybe raname the last one to "ecsSeriesHelperList" here and in MOD
     
     objref spcLibPackedToVec, ecSrcLibPackedToVec
     objref segm3DSpecificDataMatrix
@@ -30,9 +30,9 @@ begintemplate ECLDeploymentCache
         setpointer ecdSeriesHelper.ptr_numImpsSoFarVecElem, $&2
         setpointer ecdSeriesHelper.ptr_impTimesDataMatRow, $&3
         
-        // !!!! this sets the delay=1 ms by default
-        netCon = new NetCon(netStim, ecdSeriesHelper)   // !!! was: threshold=0, delay=0, weight=1 (in legacy Diffusion3D.hoc)
-        netCon.delay = 0    // !!!! how about other params?
+        // !! this sets the delay=1 ms by default
+        netCon = new NetCon(netStim, ecdSeriesHelper)   // !! was: threshold=0, delay=0, weight=1 (in legacy Diffusion3D.hoc)
+        netCon.delay = 0    // !! how about other params?
         
         seriesNetStimList.append(netStim)
         seriesECDHelperList.append(ecdSeriesHelper)

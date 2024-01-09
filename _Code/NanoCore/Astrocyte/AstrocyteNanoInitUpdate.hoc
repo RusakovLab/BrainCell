@@ -1,5 +1,5 @@
 
-proc addLeaves() {
+proc reseedAstrocyteNanoBranches() {
     nanoBranchesManager.reseedBranches(createVector(distrStatusLeaves, distrStatusStalks))
 }
 

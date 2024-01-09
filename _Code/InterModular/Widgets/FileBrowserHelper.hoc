@@ -1,9 +1,9 @@
 
-// !!! in the future, we can use fbh.showLoadFileDialog to select a file in:
+// !! in the future, we can use fbh.showLoadFileDialog to select a file in:
 //  * proc loadDiamDistrFile ("*.txt")
 //  * func selectDistFuncInputFile_deprecated ("*.hoc", "*.py", "*.txt", "*.xlsx")
 
-// !!! in the future, we can use fbh.showSaveFileDialog to select a file for:
+// !! in the future, we can use fbh.showSaveFileDialog to select a file for:
 //  * 4 TXT files saved to "Text results" folder ("*.txt")
 
 
@@ -42,9 +42,9 @@ begintemplate FileBrowserHelper
         
         pyEnumOutFileType = $o1
         
-        // !!!! maybe propose user the default saved file name in style:
-        //          "<imported_name>_converted.hoc" or "<imported_name>+nano.hoc" or "<imported_name>_bio.json"
-        //      (maybe depending on isBaseOrNanoStart or previously loaded file)
+        // !! maybe propose user the default saved file name in style:
+        //        "<imported_name>_converted.hoc" or "<imported_name>+nano.hoc" or "<imported_name>_bio.json"
+        //    (maybe depending on isBaseOrNanoStart or previously loaded file)
         defaultFileName = ""
         
         $s2 = pyObj.FileDialogUtils.showSaveFileDialog(pyEnumOutFileType, defaultFileName)

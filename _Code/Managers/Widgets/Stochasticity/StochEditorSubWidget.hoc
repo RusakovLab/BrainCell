@@ -4,11 +4,13 @@ begintemplate StochEditorSubWidget
     public show, updateModelCurves, dismissHandler
     public boundingHelper, sampleSize
     
+    external isAstrocyteOrNeuron
     external cvode
-    external varsEditorSubWidget, synManagerMainWidget
-    external mwh, math, mth, mmmowb, mcu, sfc, compUtils, inhomAndStochLibrary, seh
+    external varsEditorSubWidget, gapJuncManagerMainWidget, synManagerMainWidget
+    external mwh, math, mth, mmmowb, mcu, mcu4t, graphUtils, sfc, compUtils, inhomAndStochLibrary, seh
     external createEmptyPanel, oneZeroToYesNo, codeContractViolation
     external eachPointInGrid
+    external enumColours
     
     objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7, deck8, deck9, deck10, graph1, graph2, graph3, graph4, graph5, graph6, graph7, this
     strdef isStochVarLabel
@@ -27,24 +29,19 @@ begintemplate StochEditorSubWidget
     sampleSize = -1
     numBins = -1
     
-    enumDmPpNc = -1
-    isMechOrSynEditor = -1
-    compIdx = -1
+    objref varLibId
+    isBioOrTapEditor = -1
     objref comp
-    mechIdx = -1
     strdef mechName
-    varType = -1
     varTypeIdx = -1
-    varIdx = -1
     strdef varName
     arraySize = -1
-    arrayIndex = -1
     strdef varNameWithIndex
     strdef varNameWithIndexAndUnits
     
     isCalledFromVarsEditor = -1
     isCalledFromReviewStochVars = -1
-    isSinglePP = -1
+    isSynAndSinglePP = -1
     
     isBoundsOK = -1
     isCancelInStochFuncHelperSelectedHandler = -1
@@ -55,32 +52,27 @@ begintemplate StochEditorSubWidget
     
     proc init() { local inf, isStoch, idx localobj stochFuncHelper, innerStochFuncHelper
     
-        enumDmPpNc = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
-        varIdx = $5
-        arrayIndex = $6
+        varLibId = $o1
         
-        isMechOrSynEditor = (enumDmPpNc == 0)
+        isBioOrTapEditor = (varLibId.enumDmPpFk == 0)
         
-        comp = compUtils.getComp(isMechOrSynEditor, compIdx)
-        mth.getMechName(enumDmPpNc, mechIdx, mechName)
-        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
-        arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
-        mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
+        comp = compUtils.getComp(isBioOrTapEditor, varLibId.compIdx)
+        mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
+        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varLibId.varType)
+        arraySize = mth.getVarNameAndArraySize(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varName)
+        mth.getVarNameWithIndex(varName, arraySize, varLibId.arrayIndex, varNameWithIndex)
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             isCalledFromVarsEditor = (mmmowb.lastMechOpIdx == 1)
             isCalledFromReviewStochVars = (mmmowb.lastMechOpIdx == 3)
-            isSinglePP = -1
+            isSynAndSinglePP = -1
         } else {
             isCalledFromVarsEditor = 1
             isCalledFromReviewStochVars = 0
-            isSinglePP = 0
-            if (enumDmPpNc == 1) {
-                if (comp.enumPpRole == 2) { // Don't combine into one IF because other comps don't have "enumPpRole"
-                    isSinglePP = 1
+            isSynAndSinglePP = 0
+            if (!isAstrocyteOrNeuron && varLibId.enumDmPpFk == 1) { // Don't combine into one IF because other comps don't have "enumPpRole"
+                if (comp.enumPpRole == 2) {                         //
+                    isSynAndSinglePP = 1
                 }
             }
         }
@@ -94,7 +86,7 @@ begintemplate StochEditorSubWidget
         variable_domain(&sampleSize, 2, inf)    // !! need to disallow fractions somehow
         variable_domain(&numBins, 1, inf)       //
         
-        isStoch = inhomAndStochLibrary.isStochEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
         
         if (!isStoch) {
             colourizationHelper = new ColourizationHelper()
@@ -103,7 +95,7 @@ begintemplate StochEditorSubWidget
             stochFuncIdx = 1
         } else {
             // Restoring the old UI state (part 1): boundingHelper, colourizationHelper, stochFuncCatIdx, stochFuncIdx
-            inhomAndStochLibrary.getStochModelDataFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, boundingHelper, stochFuncHelper, &stochFuncCatIdx, &stochFuncIdx)
+            inhomAndStochLibrary.getStochModelDataFor(varLibId, boundingHelper, stochFuncHelper, &stochFuncCatIdx, &stochFuncIdx)
             colourizationHelper = boundingHelper.colourizationHelper
         }
         
@@ -183,10 +175,10 @@ begintemplate StochEditorSubWidget
         strdef compName, varTypeName, varNameWithIndex, text, yesNo, line2, when
         
         compName = comp.name
-        mth.getVarTypeName(varType, varTypeName)
-        mth.getVarNameWithIndexAndUnits(enumDmPpNc, mechIdx, varName, arraySize, arrayIndex, varNameWithIndexAndUnits, varNameWithIndex)
-        isInhom = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
-        isStoch = inhomAndStochLibrary.isStochEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        mth.getVarTypeName(varLibId.varType, varTypeName)
+        mth.getVarNameWithIndexAndUnits(varLibId.enumDmPpFk, varLibId.mechIdx, varName, arraySize, varLibId.arrayIndex, varNameWithIndexAndUnits, varNameWithIndex)
+        isInhom = comp.isMechVarInhom(varLibId.mechIdx, varLibId.varType, varName, varLibId.arrayIndex)
+        isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
         
         mainBox = new VBox()
         mainBox.intercept(1)
@@ -197,13 +189,13 @@ begintemplate StochEditorSubWidget
             xpanel()
             */
             xpanel("")
-            mcu.createApplyReminder(isMechOrSynEditor, 0)
+            mcu.createApplyReminder(isBioOrTapEditor, 0)
             xpanel()
             hBox1 = new HBox()
             hBox1.intercept(1)
             {
                 xpanel("")
-                mcu.createEditorSubWidgetDigest(enumDmPpNc, compName, mechName, varTypeName, varNameWithIndexAndUnits)
+                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, compName, mechName, varTypeName, varNameWithIndexAndUnits)
                 oneZeroToYesNo(isInhom, yesNo)
                 sprint(text, "Inhomogeneous: %s", yesNo)
                 xlabel(text)
@@ -488,15 +480,15 @@ begintemplate StochEditorSubWidget
                     graph1 = new Graph()    // PDF (model)
                     setXYLabels(graph1, 0)
                     graph1.brush(0)         // Without this, graph1 will be dashed if the widget is unmapped and shown again
-                    graph1.color(3)         // Blue
+                    graph1.color(enumColours.blue)
                     graph2 = new Graph()    // CDF (model)
                     setXYLabels(graph2, 1)
                     graph2.brush(0)
-                    graph2.color(3)         // Blue
+                    graph2.color(enumColours.blue)
                     graph3 = new Graph()    // A sample
                     setXYLabels(graph3, 2)
                     graph3.brush(0)
-                    graph3.color(2)         // Red
+                    graph3.color(enumColours.red)
                     graph4 = new Graph()    // PDF (from the sample + model)
                     setXYLabels(graph4, 0)
                     graph4.brush(1, 1, 0)   // Installing a dash brush; looks like the "pattern" arg doesn't work as described in NEURON docs
@@ -532,14 +524,18 @@ begintemplate StochEditorSubWidget
                 xbutton("Disable", "disableHandler()")
                 xpanel()
                 xpanel("")
-                if (isMechOrSynEditor) {
+                if (isBioOrTapEditor) {
                     when = "ITERATION"
                 } else {
-                    if (isSinglePP) {
-                        // !! not implemented
-                        when = "{ITERATION/SYNAPTIC EVENT}"
+                    if (isAstrocyteOrNeuron) {
+                        when = "ITERATION"
                     } else {
-                        when = "SYNAPTIC EVENT"
+                        if (isSynAndSinglePP) {
+                            // !! not implemented
+                            when = "{ITERATION/SYNAPTIC EVENT}"
+                        } else {
+                            when = "SYNAPTIC EVENT"
+                        }
                     }
                 }
                 sprint(text, "Applied on each: %s", when)
@@ -857,7 +853,7 @@ begintemplate StochEditorSubWidget
             sampleVec.x[idx] = y
             math.updateMinMax(&yMin, &yMax, y)
         }
-        mcu.setGraphSize(graph3, 0, sampleSize - 1, yMin, yMax)
+        graphUtils.setGraphSize(graph3, 0, sampleSize - 1, yMin, yMax)
         graph3.flush()
         
         // ========== Calculating and showing PDF (from the sample + model)
@@ -910,7 +906,7 @@ begintemplate StochEditorSubWidget
             histDivider = sampleSize * binWidth
             
             // Sample PDF curve
-            graph4.color(2)         // Red
+            graph4.color(enumColours.red)
             graph4.brush(0)         // Solid
             graph4.beginline()
             x = sampleMin
@@ -931,7 +927,7 @@ begintemplate StochEditorSubWidget
             graph4.label("Sample")
             
             // Model PDF curve
-            graph4.color(3)         // Blue
+            graph4.color(enumColours.blue)
             graph4.brush(1)         // Dash
             yModelVec.line(graph4, xModelVec)
             graph4.label("Model")
@@ -950,7 +946,7 @@ begintemplate StochEditorSubWidget
             // !! major code dupl. with "Calculating and showing PDF (from the sample)"
             
             // Sample CDF curve
-            graph5.color(2)         // Red
+            graph5.color(enumColours.red)
             graph5.brush(0)         // Solid
             graph5.beginline()
             x = sampleMin
@@ -982,7 +978,7 @@ begintemplate StochEditorSubWidget
             graph2.getline(-1, xModelVec, yModelVec)
             
             // Model CDF curve
-            graph5.color(3)         // Blue
+            graph5.color(enumColours.blue)
             graph5.brush(1)         // Dash
             yModelVec.line(graph5, xModelVec)
             graph5.label("Model")
@@ -1045,7 +1041,7 @@ begintemplate StochEditorSubWidget
             
             psdVec.resize(vfr.size())
             for idx = 0, vfr.size() - 1 {
-                psdVec.x(idx) = vfr.x(idx) ^ 2 + vfi.x(idx) ^ 2
+                psdVec.x(idx) = math.sumSq(vfr.x(idx), vfi.x(idx))
                 
                 vfr.x(idx) = psdVec.x(idx)
                 vfi.x(idx) = 0
@@ -1112,7 +1108,7 @@ begintemplate StochEditorSubWidget
         vec = $o1
         graph = $o2
         
-        graph.color(2)      // Red
+        graph.color(enumColours.red)
         graph.beginline()
         n = vec.size()
         idx0 = n / 2
@@ -1130,7 +1126,7 @@ begintemplate StochEditorSubWidget
             graph.line(idx1 - idx0, y)
             math.updateMinMax(&yMin, &yMax, y)
         }
-        mcu.setGraphSize(graph, -idx0, idx0 - 1, yMin, yMax)
+        graphUtils.setGraphSize(graph, -idx0, idx0 - 1, yMin, yMax)
         graph.flush()
     }
     
@@ -1146,18 +1142,18 @@ begintemplate StochEditorSubWidget
             return
         }
         
-        if (isMechOrSynEditor) {
-            if (mth.checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar(mechIdx, varType, varName, 0)) {
+        if (isBioOrTapEditor) {
+            if (mth.checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar(varLibId.mechIdx, varLibId.varType, varName, 0)) {
                 return
             }
         } else {
-            if (isSinglePP) {
+            if (isSynAndSinglePP) {
                 // !! not implemented
                 mwh.showNotImplementedWarning("Cannot be applied for NetCon-less synapses.")
                 return
             }
             
-            isOK = synManagerMainWidget.warnIfUserHasNotSelectedPPs()
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
             if (!isOK) {
                 return
             }
@@ -1166,13 +1162,13 @@ begintemplate StochEditorSubWidget
         colourizationHelper.consumeSettings()
         
         // For synapses, this affects seh.isSefwEnabled, so must be called before changing the synapse structure
-        wasStoch = inhomAndStochLibrary.onStochApply(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex, boundingHelper, stochFuncHelpers[stochFuncIdx], stochFuncCatIdx, stochFuncIdx)
+        wasStoch = inhomAndStochLibrary.onStochApply(varLibId, boundingHelper, stochFuncHelpers[stochFuncIdx], stochFuncCatIdx, stochFuncIdx)
         
-        if (!isMechOrSynEditor) {
-            synEditorCommonPrologue()
-            // The next operation is required because synEditorCommonPrologue immediately moves the newely created stoch var to inactiveSpecVars
-            // if the click on "Apply" triggered the commit of pending changes to the synapse structure
-            inhomAndStochLibrary.restoreToActiveIfWasMadeInactiveOnSynStrucChange(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        if (!isBioOrTapEditor) {
+            tapEditorCommonPrologue()
+            // The next operation is required because tapEditorCommonPrologue immediately moves the newely created stoch var to inactiveSpecVars
+            // if the click on "Apply" triggered the commit of pending changes to the syn or gap junc structure
+            inhomAndStochLibrary.restoreToActiveIfWasMadeInactiveOnTapStrucChange(varLibId)
         }
         
         if (wasStoch) {
@@ -1194,22 +1190,22 @@ begintemplate StochEditorSubWidget
     
     proc disableHandler() { local isOK, wasStoch
     
-        if (!isMechOrSynEditor) {
-            isOK = synManagerMainWidget.warnIfUserHasNotSelectedPPs()
+        if (!isBioOrTapEditor) {
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
             if (!isOK) {
                 return
             }
         }
         
         // For synapses, this affects seh.isSefwEnabled, so must be called before changing the synapse structure
-        wasStoch = inhomAndStochLibrary.onStochDisable(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        wasStoch = inhomAndStochLibrary.onStochDisable(varLibId)
         
-        if (isMechOrSynEditor) {
+        if (isBioOrTapEditor) {
             if (isCalledFromReviewStochVars) {
                 // !! need to unmap and show the parent widget again to hide the button
             }
         } else {
-            synEditorCommonPrologue()
+            tapEditorCommonPrologue()
         }
         
         if (wasStoch) {
@@ -1220,20 +1216,29 @@ begintemplate StochEditorSubWidget
         }
     }
     
-    proc synEditorCommonPrologue() {
-        synManagerMainWidget.applyChangesToSynStrucIfNeeded()
-        synManagerMainWidget.applyChangesToDirtyHomogenVarsIfNeeded()
+    proc tapEditorCommonPrologue() {
+        if (isAstrocyteOrNeuron) {
+            gapJuncManagerMainWidget.applyChangesToGapJuncStrucIfNeeded()
+            gapJuncManagerMainWidget.applyChangesToDirtyHomogenVarsIfNeeded()
+        } else {
+            synManagerMainWidget.applyChangesToSynStrucIfNeeded()
+            synManagerMainWidget.applyChangesToDirtyHomogenVarsIfNeeded()
+        }
     }
     
     proc updateThisAndParentWidgets() { local isStoch
         isStoch = $1
         updateIsStochVarLabel(isStoch)
         if (isCalledFromVarsEditor) {
-            varsEditorSubWidget.onApplyOrDisableInStochEditor(varIdx, arrayIndex, isStoch)
+            varsEditorSubWidget.onApplyOrDisableInStochEditor(varLibId.varIdx, varLibId.arrayIndex, isStoch)
         }
-        if (!isMechOrSynEditor) {
-            // !! this was called in synEditorCommonPrologue upstream, but we updated stoch status later, so have to call it again
-            synManagerMainWidget.updateNumStochVarsLabel()
+        if (!isBioOrTapEditor) {
+            // !! this was called in tapEditorCommonPrologue upstream, but we updated stoch status later, so have to call it again
+            if (isAstrocyteOrNeuron) {
+                gapJuncManagerMainWidget.updateNumStochVarsLabel()
+            } else {
+                synManagerMainWidget.updateNumStochVarsLabel()
+            }
         }
     }
     
@@ -1304,7 +1309,7 @@ begintemplate StochEditorSubWidget
             codeContractViolation()
         }
         
-        graph.color(1)  // Black
+        graph.color(enumColours.black)
         graph.label(0.44, 0.015, xLabel)
         graph.label(0.04, 0.95, yLabel)
     }

@@ -7,14 +7,15 @@ begintemplate VarsEditorWidget
     public show, onApplyInInhomEditor, onApplyOrDisableInStochEditor, dismissHandler
     public compIdx
     
+    external isAstrocyteOrNeuron
     external mwh, math, mth, mcu, compUtils, mechSettings, inhomAndStochLibrary, seh
     external createElasticSpacer, createEmptyPanel, createMetaVarHint, dismissIfNotNil, codeContractViolation
     
     objref mainBox
     objref mechStd, buffer, isMechVarInhom, isMechVarStoch
     
-    enumDmPpNc = -1
-    isMechOrSynEditor = -1
+    enumDmPpFk = -1
+    isBioOrTapEditor = -1
     compIdx = -1
     objref comp
     mechIdx = -1
@@ -27,10 +28,10 @@ begintemplate VarsEditorWidget
     objref subWidget
     
     
-    proc init() { local numMechVars, varIdx, arraySize, arrayIndex, isInhom, isStoch localobj inhomFlagsVec, stochFlagsVec
+    proc init() { local numMechVars, varIdx, arraySize, arrayIndex, isInhom, isStoch localobj inhomFlagsVec, stochFlagsVec, varLibId
         strdef varName
         
-        enumDmPpNc = $1
+        enumDmPpFk = $1
         compIdx = $2
         mechIdx = $3
         varType = $4
@@ -39,10 +40,10 @@ begintemplate VarsEditorWidget
             codeContractViolation()
         }
         
-        mth.getMechName(enumDmPpNc, mechIdx, mechName)
+        mth.getMechName(enumDmPpFk, mechIdx, mechName)
         
-        isMechOrSynEditor = (enumDmPpNc == 0)
-        comp = compUtils.getComp(isMechOrSynEditor, compIdx)
+        isBioOrTapEditor = (enumDmPpFk == 0)
+        comp = compUtils.getComp(isBioOrTapEditor, compIdx)
         
         varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
         
@@ -54,13 +55,14 @@ begintemplate VarsEditorWidget
         isMechVarInhom = new List()
         isMechVarStoch = new List()
         for varIdx = 0, numMechVars - 1 {
-            arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
+            arraySize = mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName)
             inhomFlagsVec = new Vector(arraySize)
             stochFlagsVec = new Vector(arraySize)
             for arrayIndex = 0, arraySize - 1 {
                 isInhom = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
                 inhomFlagsVec.x(arrayIndex) = isInhom
-                isStoch = inhomAndStochLibrary.isStochEnabledFor(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+                varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+                isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
                 stochFlagsVec.x(arrayIndex) = isStoch
             }
             isMechVarInhom.append(inhomFlagsVec)
@@ -83,13 +85,13 @@ begintemplate VarsEditorWidget
             isAnyNaN = 0
             isAnyMeta = 0
             for varIdx = 0, buffer.count() - 1 {
-                arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
+                arraySize = mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName)
                 if (mcu.isMetaVar(varName)) {
                     isAnyMeta = 1
                 }
                 vec = buffer.o(varIdx)
                 for arrayIndex = 0, arraySize - 1 {
-                    mth.getVarNameWithIndexAndUnits(enumDmPpNc, mechIdx, varName, arraySize, arrayIndex, varNameWithIndexAndUnits, varNameWithIndex)
+                    mth.getVarNameWithIndexAndUnits(enumDmPpFk, mechIdx, varName, arraySize, arrayIndex, varNameWithIndexAndUnits, varNameWithIndex)
                     isThisNaN = math.isNaN(vec.x(arrayIndex))
                     
                     hBox = new HBox()
@@ -199,7 +201,7 @@ begintemplate VarsEditorWidget
     // All next staff is private
     
     
-    proc editHomogenVarHandler() { local varIdx, arrayIndex, value
+    proc editHomogenVarHandler() { local varIdx, arrayIndex, value localobj varLibId
         strdef varName
         
         // !! BUG: If user enters the editbox with "nan" and just leaves it without changing anything,
@@ -216,10 +218,11 @@ begintemplate VarsEditorWidget
             
             // !! it would be better to do this later when user clicks "Apply",
             //    but then it would be difficult to figure out what exactly inhom vars become homogen
-            inhomAndStochLibrary.onMakingVarHomogen(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+            varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+            inhomAndStochLibrary.onMakingVarHomogen(varLibId)
             
-            if (!isMechOrSynEditor) {
-                mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
+            if (!isAstrocyteOrNeuron && !isBioOrTapEditor) {
+                mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName)
                 seh.ifMetaVarThenUpdateStatus(varName, value)
             }
         }
@@ -232,14 +235,14 @@ begintemplate VarsEditorWidget
         varIdx = $1
         arrayIndex = $2
         defineSmthCommonHandler(isMechVarInhom, varIdx, arrayIndex)
-        subWidget = mcu.defineDistFuncHandler(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        subWidget = mcu.defineDistFuncHandler(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
     proc defineStochFuncHandler() { local varIdx, arrayIndex
         varIdx = $1
         arrayIndex = $2
         defineSmthCommonHandler(isMechVarStoch, varIdx, arrayIndex)
-        subWidget = mcu.defineStochFuncHandler(enumDmPpNc, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        subWidget = mcu.defineStochFuncHandler(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
     proc defineSmthCommonHandler() { local varIdx, arrayIndex localobj isMechVarSmth

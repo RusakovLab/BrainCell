@@ -55,9 +55,9 @@ begintemplate ECSCapacityInfo
             }
             delta_oOrMinus1 = $2
             if (delta_oOrMinus1 == -1) {
-                // !!! the negative values can actually make some sense,
-                //     but be careful using negatives here in combination with another source of type "point + on-off + uptake"
-                //     because it's possible to hit codeContractViolation in _ECDCalcAndConsHelper.mod -> updateOutConcGivenECSAndImp
+                // !! the negative values can actually make some sense,
+                //    but be careful using negatives here in combination with another source of type "point + on-off + uptake"
+                //    because it's possible to hit codeContractViolation in _ECDCalcAndConsHelper.mod -> updateOutConcGivenECSAndImp
                 // codeContractViolation()
             }
         } else {
@@ -65,7 +65,7 @@ begintemplate ECSCapacityInfo
         }
     }
     
-    // !!! do I need this func?
+    // !! do I need this func?
     func isEqual() { localobj other
         other = $o1
         

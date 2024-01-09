@@ -1,5 +1,6 @@
 
 // Load some test nanogeometry file
+isAstrocyteOrNeuron = 0
 { load_file("CommonPrologueForTests.hoc") }
 
 objref cellPlotShape

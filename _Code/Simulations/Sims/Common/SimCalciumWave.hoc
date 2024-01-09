@@ -3,14 +3,14 @@
 
 begintemplate SimCalciumWave
     
-    public check, show, advance, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, advance, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
     external showCaParameters
     external vBoxCadifusParams
     external addplot
     external removeItemFromList, unmapIfNotNil
-    external run
+    external altRunControlWidget
     external tstop
     external eachSecInList
     external soma_ref, dendrite_ref
@@ -18,17 +18,19 @@ begintemplate SimCalciumWave
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     // UI
     objref vBoxCaWave, vBoxPlotShapeCaWaveCai, vBoxGraphCaWaveCai, plotShapeCaWaveCai, graphCaWaveCai
     
     
     proc init() {
-        biophysJsonFileNameOrEmpty = "SimCalciumWave.json"
+        biophysJsonFileNameOrEmpty = "SimCalcium.json"
         isCustomProcAdvance = 1
+        isAltRunControl = 0
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -49,6 +51,8 @@ begintemplate SimCalciumWave
         } else {
             // setIp3ToSomaAndDendrites(0.0000001)
         }
+        
+        graphCaWaveCai.exec_menu("View = plot")
     }
     
     proc dismissHandler() {
@@ -82,8 +86,8 @@ begintemplate SimCalciumWave
             xvalue("IP3 increase onset (ms)","TimeDelayCaWave", 1,"", 0, 1)
             xvalue("IP3 peak concentration (mM)","InitIp3", 1,"", 0, 1  )
             xlabel("=========================================")
-            xvalue("Run time","tstop", 1,"", 0, 1  )
-            xbutton("Run simulation", "run()")
+            xvalue("Run time (ms)","tstop", 1,"", 0, 1  )
+            xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel()
         }
         vBoxCaWave.intercept(0)
@@ -92,7 +96,6 @@ begintemplate SimCalciumWave
         vBoxGraphCaWaveCai = new VBox()
         vBoxGraphCaWaveCai.intercept(1)
         {
-            removeItemFromList(graphList[0], graphCaWaveCai)
             graphCaWaveCai = new Graph(0)
             addplot(graphCaWaveCai, 0)
             graphCaWaveCai.erase_all()
@@ -102,12 +105,11 @@ begintemplate SimCalciumWave
             graphCaWaveCai.fastflush()
         }
         vBoxGraphCaWaveCai.intercept(0)
-        vBoxGraphCaWaveCai.map("!!!", 602, 705, 400, 200)
+        vBoxGraphCaWaveCai.map("[Ca2+]in vs Time", 602, 705, 400, 200)
         
         vBoxPlotShapeCaWaveCai = new VBox()
         vBoxPlotShapeCaWaveCai.intercept(1)
         {
-            removeItemFromList(fast_flush_list, plotShapeCaWaveCai)
             plotShapeCaWaveCai = new PlotShape(0)
             fast_flush_list.append(plotShapeCaWaveCai)
             plotShapeCaWaveCai.size(-50,50,-50,50)
@@ -120,7 +122,7 @@ begintemplate SimCalciumWave
             plotShapeCaWaveCai.scale(0,0.0006)  // mV, scale of voltage on 3D plots
         }
         vBoxPlotShapeCaWaveCai.intercept(0)
-        vBoxPlotShapeCaWaveCai.map("!!!", 601, 102, 400.64, 400.32)
+        vBoxPlotShapeCaWaveCai.map("[Ca2+]i", 601, 102, 400.64, 400.32)
     }
     
     proc setIp3ToSomaAndDendrites() { local ip3Value

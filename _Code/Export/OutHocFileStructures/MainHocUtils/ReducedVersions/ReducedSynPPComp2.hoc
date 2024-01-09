@@ -1,14 +1,14 @@
 
 begintemplate ReducedSynPPComp
 
-    public name, enumDmPpNc, enumPpRole, mechIdx, mechStds
+    public name, enumDmPpFk, enumPpRole, mechIdx, mechStds
     public applyInhomogeneity
     
-    external synGroup
+    external tapGroup, smAllSyns
     external codeContractViolation
     
     strdef name
-    enumDmPpNc = -1
+    enumDmPpFk = -1
     enumPpRole = -1
     mechIdx = -1
     objref mechStds[1][1]   // All nil-s except some col(s) of mechIdx row
@@ -19,7 +19,7 @@ begintemplate ReducedSynPPComp
         enumPpRole = $2
         mechIdx = $3
         
-        enumDmPpNc = 1
+        enumDmPpFk = 1
         
         mechType = new MechanismType(1) // 1: "Point Processes"
         numMechs = mechType.count
@@ -43,7 +43,7 @@ begintemplate ReducedSynPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for synGroup.applyInhomogeneityIter(syn, distFuncHelper) {
+        for tapGroup.applyInhomogeneityIter(syn, smAllSyns, distFuncHelper) {
             thisPp = syn.getPointProcess(enumPpRole)
             mechStd.in(thisPp)
             y = distFuncHelper.calculateAt(syn.dist)

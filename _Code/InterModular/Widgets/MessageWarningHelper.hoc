@@ -46,7 +46,7 @@ begintemplate MessageWarningHelper
             if (intMsgLines.count() != 0) {
                 intMsgLines.append(new String("--------------------"))
             }
-            // !!! keep in sync with similar cycle below
+            // !! keep in sync with similar cycle below
             for i = 1, numArg - 1 {
                 argType = argtype(i)
                 if (argType == 2) {         // 2: strdef
@@ -68,7 +68,7 @@ begintemplate MessageWarningHelper
         msgWarnBox.intercept(1)
         {
             xpanel("")
-            // !!! keep in sync with similar cycle above
+            // !! keep in sync with similar cycle above
             for i = 1, numArg - 1 {
                 argType = argtype(i)
                 if (argType == 2) {         // 2: strdef
@@ -99,7 +99,7 @@ begintemplate MessageWarningHelper
             if (intWarnLines.count() != 0) {
                 intWarnLines.append(new String("--------------------"))
             }
-            // !!! keep in sync with similar cycle below
+            // !! keep in sync with similar cycle below
             for i = 1, numArg {
                 argType = argtype(i)
                 if (argType == 2) {         // 2: strdef
@@ -120,7 +120,7 @@ begintemplate MessageWarningHelper
         msgWarnBox.intercept(1)
         {
             xpanel("")
-            // !!! keep in sync with similar cycle above
+            // !! keep in sync with similar cycle above
             for i = 1, numArg {
                 argType = argtype(i)
                 if (argType == 2) {         // 2: strdef
@@ -143,7 +143,7 @@ begintemplate MessageWarningHelper
     // Restriction: Cannot be called in the process of construction of a panel (applied if !isIntMode)
     // $s1 (optional) - The first line of the warning
     // $s2 (optional) - The second line of the warning
-    // !!!! $s3, $s4, $s5
+    // !! $s3, $s4, $s5
     proc showNotImplementedWarning() { local numArg
         strdef line1, line2
         getNotImplementedLines(line1, line2)

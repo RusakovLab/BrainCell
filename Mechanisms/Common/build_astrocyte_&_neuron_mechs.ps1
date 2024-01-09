@@ -13,7 +13,7 @@ function BuildMechsForThisCellType {
     $buildScriptPath = "$Env:NEURONHOME\bin\mknrndll.bat"
     
     $cellTypeFolderName = $cellType
-    $modFilesFolderName = "MOD files"
+    $modFilesFolderName = "MOD_files"
     $tempFolderName = "temp_folder"
     
     Push-Location ..

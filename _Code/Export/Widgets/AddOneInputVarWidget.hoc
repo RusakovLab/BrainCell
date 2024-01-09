@@ -1,12 +1,17 @@
 
+// !!!! BUG: (astrocyte) user creates some Ext GJs, then adds an Ext GJ var, then removes all Ext GJs and creates some Int GJs, then tries to correct the old added var => error
+//           (neuron) similar error when user adds a NetCon var, then switches to NetCon-less synapses, then tries to correct the old added var
+// !!!! BUG: (astrocyte) user removes all GJs (both Ext and Int) and opens this widget => error
+
 begintemplate AddOneInputVarWidget
 
     public show, dismissHandler
     
     external mwh, mth, compUtils, mechsDllUtils
-    external synGroup
-    external createEmptyPanel, createMetaVarHint, findItemInListByStringAndSelect, unmapIfNotNil, codeContractViolation
-    external enumSynCompIdxs
+    external isAstrocyteOrNeuron, gapJuncGroups, gjmAllGapJuncs, synGroup
+    external stringEmpty, createEmptyPanel, createMetaVarHint, findItemInListByStringAndSelect, unmapIfNotNil, codeContractViolation
+    external enumGapJuncCompIdxs, enumSynCompIdxs
+    external pyObj
     
     objref mainBox, deck
     objref parentWidget
@@ -14,7 +19,7 @@ begintemplate AddOneInputVarWidget
     
     isExposedOrSwept = -1
     
-    isDmOrSynPart = -1
+    isDmOrTapPart = -1
     
     selCompIdx = -1
     selMechIdx = -1
@@ -36,7 +41,7 @@ begintemplate AddOneInputVarWidget
         aoivWidIdx = $2
         parentWidget = $o3
         
-        isDmOrSynPart = 1 - aoivWidIdx
+        isDmOrTapPart = 1 - aoivWidIdx
         
         compList = new List()
         mechList = new List()
@@ -81,12 +86,17 @@ begintemplate AddOneInputVarWidget
             hBox = new HBox()
             hBox.intercept(1)
             {
-                if (isDmOrSynPart) {
+                if (isDmOrTapPart) {
                     compText = "Compartment"
                     mechText = "Mechanism"
                 } else {
-                    compText = "Synapse part"
-                    mechText = "PP or NetCon"
+                    if (isAstrocyteOrNeuron) {
+                        compText = "Gap junction type"
+                        mechText = "PP or Stub"
+                    } else {
+                        compText = "Synapse part"
+                        mechText = "PP or NetCon"
+                    }
                 }
                 showOneList(compText, compList, "compSelectHandler")
                 showOneList(mechText, mechList, "mechSelectHandler")
@@ -139,10 +149,11 @@ begintemplate AddOneInputVarWidget
     
     
     proc populateCompList() { local numComps, compIdx localobj comp
-    
+        strdef actPpName
+        
         compList.remove_all()
         
-        if (isDmOrSynPart) {
+        if (isDmOrTapPart) {
             numComps = compUtils.getNumDistMechComps()
             for compIdx = 0, numComps - 1 {
                 comp = compUtils.getComp(1, compIdx)
@@ -150,20 +161,36 @@ begintemplate AddOneInputVarWidget
             }
             compList.append(new ItemOfFilteredBrowsedList(-1, "@All"))
         } else {
-            if (synGroup.is3Or1PartInSynStruc()) {
-                addOneSynCompToList(enumSynCompIdxs.srcPp)
-                addOneSynCompToList(enumSynCompIdxs.netCon)
-                addOneSynCompToList(enumSynCompIdxs.trgPp)
+            if (isAstrocyteOrNeuron) {
+                if (gjmAllGapJuncs[1].count() != 0) {   // External GJs
+                    addOneTapCompToList(enumGapJuncCompIdxs.extGjPp)
+                    gapJuncGroups[1].getPpNameOrEmpty(actPpName)
+                    if (stringEmpty(actPpName)) {
+                        codeContractViolation()
+                    }
+                    if (pyObj.ms_doesGapJuncHavePtr(actPpName)) {
+                        addOneTapCompToList(enumGapJuncCompIdxs.extGjExtValue)
+                    }
+                }
+                if (gjmAllGapJuncs[0].count() != 0) {   // Internal GJs
+                    addOneTapCompToList(enumGapJuncCompIdxs.intGjPp)
+                }
             } else {
-                addOneSynCompToList(enumSynCompIdxs.sngPp)
+                if (synGroup.is3Or1PartInSynStruc()) {
+                    addOneTapCompToList(enumSynCompIdxs.srcPp)
+                    addOneTapCompToList(enumSynCompIdxs.netCon)
+                    addOneTapCompToList(enumSynCompIdxs.trgPp)
+                } else {
+                    addOneTapCompToList(enumSynCompIdxs.sngPp)
+                }
             }
         }
     }
     
-    proc addOneSynCompToList() { local synCompIdx localobj comp
-        synCompIdx = $1
-        comp = compUtils.getComp(isDmOrSynPart, synCompIdx)
-        compList.append(new ItemOfFilteredBrowsedList(synCompIdx, comp.name))
+    proc addOneTapCompToList() { local tapCompIdx localobj comp
+        tapCompIdx = $1
+        comp = compUtils.getComp(isDmOrTapPart, tapCompIdx)
+        compList.append(new ItemOfFilteredBrowsedList(tapCompIdx, comp.name))
     }
     
     proc showOneList() { localobj list, vBox
@@ -195,7 +222,7 @@ begintemplate AddOneInputVarWidget
         }
     }
     
-    proc compSelectHandler() { local compListIdx, isAll, enumDmPpNc, numMechs, mechIdx, mechListIdx localobj comp
+    proc compSelectHandler() { local compListIdx, isAll, enumDmPpFk, numMechs, mechIdx, mechListIdx localobj comp
         strdef mechName
         
         compListIdx = $1
@@ -222,15 +249,15 @@ begintemplate AddOneInputVarWidget
             return
         }
         
-        comp = compUtils.getComp(isDmOrSynPart, selCompIdx)
+        comp = compUtils.getComp(isDmOrTapPart, selCompIdx)
         
         // Populate mechList
-        if (isDmOrSynPart) {
-            enumDmPpNc = 0
+        if (isDmOrTapPart) {
+            enumDmPpFk = 0
             
-            numMechs = mth.getNumMechs(enumDmPpNc)
+            numMechs = mth.getNumMechs(enumDmPpFk)
             for mechIdx = 0, numMechs - 1 {
-                mth.getMechName(enumDmPpNc, mechIdx, mechName)
+                mth.getMechName(enumDmPpFk, mechIdx, mechName)
                 if (mechsDllUtils.isThisMechForIntUseOnly(mechName)) {
                     continue
                 }
@@ -240,21 +267,32 @@ begintemplate AddOneInputVarWidget
                 mechList.append(new ItemOfFilteredBrowsedList(mechIdx, mechName))
             }
         } else {
-            if (selCompIdx == enumSynCompIdxs.netCon) {
-                enumDmPpNc = 2
-                mechIdx = 0
-                comp.mechStds[mechIdx][0].name(mechName)
-                deck.flip_to(2)
+            if (isAstrocyteOrNeuron) {
+                if (selCompIdx == enumGapJuncCompIdxs.extGjExtValue) {
+                    enumDmPpFk = 2
+                    mechIdx = 0
+                    comp.mechStds[mechIdx][0].name(mechName)
+                } else {
+                    enumDmPpFk = 1
+                    mechIdx = gapJuncGroups[comp.isExtOrInt].getMechIdxAndOptionalName(mechName)
+                }
             } else {
-                enumDmPpNc = 1
-                mechIdx = synGroup.getMechIdxAndOptionalName(comp.enumPpRole, mechName)
+                if (selCompIdx == enumSynCompIdxs.netCon) {
+                    enumDmPpFk = 2
+                    mechIdx = 0
+                    comp.mechStds[mechIdx][0].name(mechName)
+                    deck.flip_to(2)
+                } else {
+                    enumDmPpFk = 1
+                    mechIdx = synGroup.getMechIdxAndOptionalName(comp.enumPpRole, mechName)
+                }
             }
             mechList.append(new ItemOfFilteredBrowsedList(mechIdx, mechName))
         }
         
         // Select an item in mechList
         if (!isRecallMode) {
-            if (isDmOrSynPart) {
+            if (isDmOrTapPart) {
                 if (numMechs != 0) {
                     mechListIdx = 0
                     mechList.select(mechListIdx)
@@ -269,14 +307,14 @@ begintemplate AddOneInputVarWidget
             }
         } else {
             selMechIdx = oldListItem.mechIdx
-            mth.getMechName(enumDmPpNc, selMechIdx, mechName)
+            mth.getMechName(enumDmPpFk, selMechIdx, mechName)
             mechListIdx = findItemInListByStringAndSelect(mechList, mechName)
         }
         
         mechSelectHandler(mechListIdx)
     }
     
-    proc mechSelectHandler() { local mechListIdx, enumDmPpNc, varType, numVarTypes, varTypeListIdx localobj comp
+    proc mechSelectHandler() { local mechListIdx, enumDmPpFk, varType, numVarTypes, varTypeListIdx localobj comp
         strdef varTypeName
         
         mechListIdx = $1
@@ -290,16 +328,16 @@ begintemplate AddOneInputVarWidget
         
         selMechIdx = mechList.o(mechListIdx).idx
         
-        comp = compUtils.getComp(isDmOrSynPart, selCompIdx)
-        enumDmPpNc = comp.enumDmPpNc
+        comp = compUtils.getComp(isDmOrTapPart, selCompIdx)
+        enumDmPpFk = comp.enumDmPpFk
         
         // Populate varTypeList
         varType = -1    // GLOBAL
-        if (mth.doesMechHaveGlobalVars(enumDmPpNc, selMechIdx)) {
+        if (mth.doesMechHaveGlobalVars(enumDmPpFk, selMechIdx)) {
             addItemToVarTypeList(varType)
         }
         varType = 1     // PARAMETER
-        if (mth.getNumMechVars(enumDmPpNc, selMechIdx, varType) != 0) {
+        if (mth.getNumMechVars(enumDmPpFk, selMechIdx, varType) != 0) {
             addItemToVarTypeList(varType)
         }
         
@@ -323,7 +361,7 @@ begintemplate AddOneInputVarWidget
         varTypeSelectHandler(varTypeListIdx)
     }
     
-    proc varTypeSelectHandler() { local varTypeListIdx, enumDmPpNc, numVars, numInhomVars, varIdx, arraySize, arrayIndex localobj comp
+    proc varTypeSelectHandler() { local varTypeListIdx, enumDmPpFk, numVars, numInhomVars, varIdx, arraySize, arrayIndex localobj comp
         strdef varName, varNameWithIndex
         
         varTypeListIdx = $1
@@ -337,14 +375,14 @@ begintemplate AddOneInputVarWidget
         
         selVarType = varTypeList.o(varTypeListIdx).idx
         
-        comp = compUtils.getComp(isDmOrSynPart, selCompIdx)
-        enumDmPpNc = comp.enumDmPpNc
+        comp = compUtils.getComp(isDmOrTapPart, selCompIdx)
+        enumDmPpFk = comp.enumDmPpFk
         
         // Populate varNameWithIndexList
-        numVars = mth.getNumMechVars(enumDmPpNc, selMechIdx, selVarType)
+        numVars = mth.getNumMechVars(enumDmPpFk, selMechIdx, selVarType)
         numInhomVars = 0
         for varIdx = 0, numVars - 1 {
-            arraySize = mth.getVarNameAndArraySize(enumDmPpNc, selMechIdx, selVarType, varIdx, varName)
+            arraySize = mth.getVarNameAndArraySize(enumDmPpFk, selMechIdx, selVarType, varIdx, varName)
             for arrayIndex = 0, arraySize - 1 {
                 if (enumHomInhomStoch == 0 && !comp.isMechVarInhom(selMechIdx, selVarType, varName, arrayIndex)) {
                     varNameWithIndexList.append(new WatchedOutputVar(varName, arraySize, arrayIndex))
@@ -375,7 +413,7 @@ begintemplate AddOneInputVarWidget
         selVarNameWithIndexIdx = $1
     }
     
-    proc selectHandler() { local isUnique localobj itemOfVarsList, newItem
+    proc selectHandler() { local enumDmTpCeSt, isUnique localobj itemOfVarsList, newItem
         if (selVarNameWithIndexIdx == -1) {
             mwh.showWarningBox("Please select a variable.")
             return
@@ -383,7 +421,8 @@ begintemplate AddOneInputVarWidget
         
         itemOfVarsList = varNameWithIndexList.o(selVarNameWithIndexIdx)
         
-        newItem = new ExposedOrSweptInputVar(isExposedOrSwept, isDmOrSynPart, selCompIdx, selMechIdx, selVarType, itemOfVarsList.varName, itemOfVarsList.arraySize, itemOfVarsList.arrayIndex)
+        enumDmTpCeSt = 1 - isDmOrTapPart
+        newItem = new ExposedOrSweptInputVar(isExposedOrSwept, enumDmTpCeSt, selCompIdx, selMechIdx, selVarType, itemOfVarsList.varName, itemOfVarsList.arraySize, itemOfVarsList.arrayIndex)
         
         if (isAddOrCorrect) {
             isUnique = parentWidget.onVarAddHandler(newItem)

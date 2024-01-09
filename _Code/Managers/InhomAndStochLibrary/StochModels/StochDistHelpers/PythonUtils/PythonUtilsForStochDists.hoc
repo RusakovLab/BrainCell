@@ -38,7 +38,7 @@ begintemplate SpecialMath
         sprint(pyCommand, pyCommandTemplate, pyMathFuncName)
         status = nrnpython(pyCommand)
         if (!status) {
-            // !!!!! printPythonErrMsgAndStop
+            // !! printPythonErrMsgAndStop
             printMsgAndRaiseError("Exception raised in Python code (caught in _callPythonMathFunc)")
         }
         

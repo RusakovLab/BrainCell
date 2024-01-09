@@ -1,5 +1,6 @@
 
 // Load some test nanogeometry file
+isAstrocyteOrNeuron = 0
 { load_file("CommonPrologueForTests.hoc") }
 
 obfunc createTestPlotShape() { local y, slotIdx, min_scale, max_scale localobj plotShape
@@ -50,12 +51,12 @@ y4 = 450
 min_scale_1 = 2
 min_scale_2 = 0.5
 min_scale_3 = 139
-min_scale_4 = 0.5   // !!! just to compare GLU "point + on-off" with Ca2+ "point + static" or "point + spike"
+min_scale_4 = 0.5   // !! just to compare GLU "point + on-off" with Ca2+ "point + static" or "point + spike"
 
 max_scale_1 = 5
 max_scale_2 = 2
 max_scale_3 = 145
-max_scale_4 = 2     // !!! just to compare GLU "point + on-off" with Ca2+ "point + static" or "point + spike"
+max_scale_4 = 2     // !! just to compare GLU "point + on-off" with Ca2+ "point + static" or "point + spike"
 
 // Insert all ions into all sections in advance to have no problems with the test PlotShape-s and Graph-s created below
 forall {
@@ -73,7 +74,7 @@ objref testPlotShape1, testPlotShape2, testPlotShape3, testPlotShape4
 testPlotShape1 = createTestPlotShape("ko", y1, 3, min_scale_1, max_scale_1)
 testPlotShape2 = createTestPlotShape("cao", y2, 4, min_scale_2, max_scale_2)
 testPlotShape3 = createTestPlotShape("nao", y3, 5, min_scale_3, max_scale_3)
-// !!! testPlotShape4 = createTestPlotShape("gluo", y4, 6, min_scale_4, max_scale_4)
+// !! testPlotShape4 = createTestPlotShape("gluo", y4, 6, min_scale_4, max_scale_4)
 
 tstop = 40
 
@@ -82,9 +83,9 @@ objref testGraph1, testGraph2, testGraph3, testGraph4
 testGraph1 = createTestGraph("s.ko(0.5)", "dendA5_01111111111111111.ko(0.5)", y1, min_scale_1, max_scale_1)
 testGraph2 = createTestGraph("s.cao(0.5)", "dendA5_0111110.cao(0.5)", y2, min_scale_2, max_scale_2)
 testGraph3 = createTestGraph("s.nao(0.5)", "dendA5_01111111111111111.nao(0.5)", y3, min_scale_3, max_scale_3)
-// !!! testGraph4 = createTestGraph("s.gluo(0.5)", "dendA5_0111110.gluo(0.5)", y4, min_scale_4, max_scale_4)
+// !! testGraph4 = createTestGraph("s.gluo(0.5)", "dendA5_0111110.gluo(0.5)", y4, min_scale_4, max_scale_4)
 
-{ load_file("../_Code/Managers/CommonLoads.hoc") }  // !!! no need to load everything from this file
+{ load_file("../_Code/Managers/CommonLoads.hoc") }  // !! no need to load everything from this file
 { load_file("../_Code/Extracellular/ExtracellularManager.hoc") }
 
 showExtracellularManagerBaseWidget()

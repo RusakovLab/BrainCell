@@ -1,11 +1,14 @@
 
 begintemplate ReducedMechTypeHelper
 
-    public getVarNameWithIndex, isWeightNetConVar
+    public getVarNameWithIndex, isWeightNetConVar, createMechStd
     
+    external isAstrocyteOrNeuron
     external stringsEqual
     
     strdef weightVarName
+    
+    objref this
     
     
     proc init() {
@@ -30,6 +33,33 @@ begintemplate ReducedMechTypeHelper
         strdef varName
         varName = $s1
         return stringsEqual(varName, weightVarName)
+    }
+    
+    objref _fms
+    
+    obfunc createMechStd() { local enumDmPpFk, mechIdx, varType, mechTypeIdx localobj mechType, fms, nil
+        strdef mechName, templName, hocCommand
+        enumDmPpFk = $1
+        mechIdx = $2
+        varType = $3
+        if (enumDmPpFk < 2) {
+            mechTypeIdx = enumDmPpFk    // 0: "Distributed Membrane Mechanisms", 1: "Point Processes"
+            mechType = new MechanismType(mechTypeIdx)
+            mechType.select(mechIdx)
+            mechType.selected(mechName)
+            return new MechanismStandard(mechName, varType)
+        } else {
+            if (isAstrocyteOrNeuron) {
+                templName = "FakeMechanismStandardForExtValue"  // The template is not loaded for neurons
+            } else {
+                templName = "FakeMechanismStandardForNetCon"    // The template is not loaded for astrocytes
+            }
+            sprint(hocCommand, "_fms = new %s()", templName)
+            execute(hocCommand, this)
+            fms = _fms
+            _fms = nil
+            return fms
+        }
     }
     
 endtemplate ReducedMechTypeHelper

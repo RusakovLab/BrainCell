@@ -6,31 +6,28 @@ if (!isBaseOrNanoStart) {
 begintemplate InhomAndStochTarget
 
     public makeOrUpdateInhom, makeOrUpdateStoch, isEqual, isStochEnabled, getInhomModelData, getStochModelData, setPlayIfPossible, stopPlayingVars, onInit, onStep, restoreInhomogeneity, disableInhomOrStoch
-    public isDmOrSynPart, compIdx, mechIdx, mechName, varType, varIdx, arrayIndex, isInhom, distFuncCatIdx, distFuncIdx, distFuncHelper, isStoch, stochFuncCatIdx, stochFuncIdx
+    public varLibId, isDmOrTapPart, mechName, isInhom, distFuncCatIdx, distFuncIdx, distFuncHelper, isStoch, stochFuncCatIdx, stochFuncIdx
     
-    external smAllSyns
+    external isAstrocyteOrNeuron
+    external gjmAllGapJuncs, smAllSyns
     external mwh, rngUtils, mth, compUtils
     external codeContractViolation
     external eachItemInList, eachSecInList, eachSegmInSecList
     
     // "init" args
-    enumDmPpNc = -1
-    isDmOrSynPart = -1
+    objref varLibId
+    isDmOrTapPart = -1
     enumPpRoleOrMinus1 = -1
-    compIdx = -1
-    mechIdx = -1
     strdef mechName
-    varType = -1
     varTypeIdx = -1
-    varIdx = -1
     strdef varName
     arraySize = -1
-    arrayIndex = -1
     
     objref segmentationHelper, distFuncHelper
     objref boundingHelper, stochFuncHelper
     
     objref list_ref
+    objref gjmAllGapJuncsOfThisType
     
     isInhom = -1
     distFuncCatIdx = -1
@@ -47,51 +44,47 @@ begintemplate InhomAndStochTarget
     proc init() { local numArg localobj impRedObj, comp, nil
         numArg = numarg()
         
-        if (numArg == 1) {
-            // Load data from the imported reduced template (part 1)
-            impRedObj = $o1
-            enumDmPpNc = impRedObj.enumDmPpNc
-            compIdx = impRedObj.compIdx
-            mechIdx = impRedObj.mechIdx
-            varType = impRedObj.varType
-            varIdx = impRedObj.varIdx
-            arrayIndex = impRedObj.arrayIndex
-        } else if (numArg == 6) {
-            enumDmPpNc = $1
-            compIdx = $2
-            mechIdx = $3
-            varType = $4
-            varIdx = $5
-            arrayIndex = $6
-        } else {
+        if (numArg < 1 || numArg > 2) {
             codeContractViolation()
         }
         
-        isDmOrSynPart = (enumDmPpNc == 0)
+        varLibId = $o1
         
-        comp = compUtils.getComp(isDmOrSynPart, compIdx)
-        if (isDmOrSynPart) {
-            list_ref = comp.list_ref
+        if (numArg == 2) {
+            // Load data from the imported reduced template (part 1)
+            impRedObj = $o2
         }
         
-        if (enumDmPpNc == 1) {
+        isDmOrTapPart = (varLibId.enumDmPpFk == 0)
+        
+        comp = compUtils.getComp(isDmOrTapPart, varLibId.compIdx)
+        
+        if (isDmOrTapPart) {
+            list_ref = comp.list_ref
+        } else if (isAstrocyteOrNeuron) {
+            gjmAllGapJuncsOfThisType = gjmAllGapJuncs[comp.isExtOrInt]
+        }
+        
+        // !!!!! try to replace this IF with simple assignment enumPpRoleOrMinus1 = comp.enumPpRole
+        if (varLibId.enumDmPpFk == 1) {
             enumPpRoleOrMinus1 = comp.enumPpRole
         } else {
-            enumPpRoleOrMinus1 = -1
+            if (isAstrocyteOrNeuron) {
+                enumPpRoleOrMinus1 = 2      // !!!! keep in sync with EnumGapJuncPpRoles
+            } else {
+                enumPpRoleOrMinus1 = -1
+            }
         }
         
-        mth.getMechName(enumDmPpNc, mechIdx, mechName)
-        arraySize = mth.getVarNameAndArraySize(enumDmPpNc, mechIdx, varType, varIdx, varName)
+        mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
+        arraySize = mth.getVarNameAndArraySize(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varName)
         
-        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
-        baseMechStd = comp.mechStds[mechIdx][varTypeIdx]
-        if (enumDmPpNc != 2) {
-            tempMechStd = new MechanismStandard(mechName, varType)
-        } else {
-            // !! need to test if using this "Fake*" template with "in-set-out" workflow we still achieve better performance
-            //    than "sprint"-ing and executing a HOC-command for direct var assignment
-            execute("tempMechStd = new FakeMechanismStandardForNetCon()", this)     // The template is not loaded for astrocytes
-        }
+        varTypeIdx = mth.convertVarTypeToVarTypeIdx(varLibId.varType)
+        baseMechStd = comp.mechStds[varLibId.mechIdx][varTypeIdx]
+        
+        // !! need to test if using the "Fake*" templates with "in-set-out" workflow we still achieve better performance
+        //    than "sprint"-ing and executing a HOC-command for direct var assignment
+        tempMechStd = mth.createMechStd(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType)
         
         if (impRedObj == nil) {
             return
@@ -137,8 +130,9 @@ begintemplate InhomAndStochTarget
         setIsPlayable()
     }
     
-    func isEqual() {
-        return (enumDmPpNc == $1 && compIdx == $2 && mechIdx == $3 && varType == $4 && varIdx == $5 && arrayIndex == $6)
+    func isEqual() { localobj otherVarLibId
+        otherVarLibId = $o1
+        return varLibId.isEqual(otherVarLibId)
     }
     
     proc getInhomModelData() {
@@ -161,20 +155,22 @@ begintemplate InhomAndStochTarget
         $&4 = stochFuncIdx
     }
     
+    _x = -1
+    
     // Keep in sync with ReducedInhomAndStochTarget.setPlayIfPossible
-    func setPlayIfPossible() { local x, homogenValue
+    func setPlayIfPossible() { local homogenValue
         strdef hocCommand
         
         if (!isPlayable) {
             return 0
         }
         
-        for eachSegmInSecList(&x, list_ref) {
-            sprint(hocCommand, "stochFuncHelper.rng.play(&%s(%.15e))", varName, x)
+        for eachSegmInSecList(&_x, list_ref) {
+            sprint(hocCommand, "stochFuncHelper.rng.play(&%s(_x))", varName)
             execute(hocCommand, this)
         }
         
-        homogenValue = baseMechStd.get(varName, arrayIndex)
+        homogenValue = baseMechStd.get(varName, varLibId.arrayIndex)
         distFuncHelper.setMeanOnStartPlaying(homogenValue)
         
         return 1
@@ -209,7 +205,7 @@ begintemplate InhomAndStochTarget
             // One unused value to set up the generator and the colourizer
             boundingHelper.generateFirstBoundedValue(stochFuncHelper)
             
-            if (!isDmOrSynPart) {
+            if (!isDmOrTapPart) {
                 // Stochastic synaptic vars can hold the values from the previous simulation for a long time before the first synaptic event on this simulation,
                 // and this is why we restore the base values here for reproducibility of the experiments
                 // Notice that stochastic biophys vars change their values on each iteration, so there is no need to restore their base values here
@@ -228,12 +224,12 @@ begintemplate InhomAndStochTarget
             codeContractViolation()
         }
         
-        comp = compUtils.getComp(isDmOrSynPart, compIdx)
-        if (isDmOrSynPart) {
+        comp = compUtils.getComp(isDmOrTapPart, varLibId.compIdx)
+        if (isDmOrTapPart) {
             // !!
             mwh.showNotImplementedWarning()
         } else {
-            comp.applyInhomogeneity(mechName, varType, varName, arraySize, arrayIndex, distFuncHelper)
+            comp.applyInhomogeneity(mechName, varLibId.varType, varName, arraySize, varLibId.arrayIndex, distFuncHelper)
         }
     }
     
@@ -262,10 +258,10 @@ begintemplate InhomAndStochTarget
     
     
     // Keep in sync with ReducedInhomAndStochTarget.makeStepOrRestoreBaseValues and "restoreInhomogeneity"
-    // !!! maybe BUG: (ASSIGNED or STATE) and (isInhom and isStoch) => the inhom model is applied on each iter;
-    //                maybe the correct behaviour would be to ignore the inhom model (especially if VerbatimDistFunc) and just to take the current value and add the noise to it
-    proc makeStepOrRestoreBaseValues() { local isStepOrRestore, isStoch_, homogenValue, x, value, dist, isWeightVar localobj prevSec_ref, nil, syn, synPart
-    
+    // !! maybe BUG: (ASSIGNED or STATE) and (isInhom and isStoch) => the inhom model is applied on each iter;
+    //               maybe the correct behaviour would be to ignore the inhom model (especially if VerbatimDistFunc) and just to take the current value and add the noise to it
+    proc makeStepOrRestoreBaseValues() { local isStepOrRestore, isStoch_, homogenValue
+        
         isStepOrRestore = $1
         
         if (isStepOrRestore) {
@@ -289,59 +285,38 @@ begintemplate InhomAndStochTarget
         if (isInhom) {
             distFuncHelper.onJustBeforeFirstSection()
         } else {
-            homogenValue = baseMechStd.get(varName, arrayIndex)
+            homogenValue = baseMechStd.get(varName, varLibId.arrayIndex)
         }
         
-        if (isDmOrSynPart) {
-            for eachSecInList(list_ref) {
-                if (isInhom) {
-                    distFuncHelper.onJustBeforeNewSection()
-                }
-                for (x, 0) {
-                    // The base value
-                    if (isInhom) {
-                        dist = distance(x)
-                        value = distFuncHelper.calculateAt(dist)
-                    } else {
-                        value = homogenValue
-                    }
-                    
-                    // The additive noise
-                    if (isStoch_) {
-                        value += boundingHelper.generateNextBoundedValue(stochFuncHelper)
-                    }
-                    
-                    // This approach is 20-30% faster than "sprint"-ing a HOC-command
-                    // of type "varName(x) = value" or "varName[arrayIndex](x) = value" and then "execute"-ing it
-                    tempMechStd.in(x)
-                    tempMechStd.set(varName, value, arrayIndex)
-                    tempMechStd.out(x)
-                }
-            }
+        if (isDmOrTapPart) {
+            dmStep(isStoch_, homogenValue)
         } else {
-            isWeightVar = mth.isWeightNetConVar(varName)
-            prevSec_ref = nil
-            for eachItemInList(syn, smAllSyns) {
-                if (syn.sec_ref != prevSec_ref && isInhom) {
-                    distFuncHelper.onJustBeforeNewSection()
-                }
-                
-                if (isStepOrRestore && !syn.sefwPp.isAnyEventsOnThisIter) {
-                    prevSec_ref = syn.sec_ref
-                    continue
-                }
-                
-                if (enumDmPpNc == 1) {
-                    synPart = syn.getPointProcess(enumPpRoleOrMinus1)
-                } else if (enumDmPpNc == 2) {
-                    synPart = syn.netCon
-                } else {
-                    codeContractViolation()
-                }
-                
+            if (isAstrocyteOrNeuron) {
+                gapJuncPartStep(isStoch_, homogenValue)
+            } else {
+                synPartStepOrRestore(isStepOrRestore, isStoch_, homogenValue)
+            }
+        }
+        
+        if (isInhom) {
+            distFuncHelper.onJustAfterLastSection()
+        }
+    }
+    
+    proc dmStep() { local isStoch_, homogenValue, x, dist, value
+        
+        isStoch_ = $1
+        homogenValue = $2
+        
+        for eachSecInList(list_ref) {
+            if (isInhom) {
+                distFuncHelper.onJustBeforeNewSection()
+            }
+            for (x, 0) {
                 // The base value
                 if (isInhom) {
-                    value = distFuncHelper.calculateAt(syn.dist)
+                    dist = distance(x)
+                    value = distFuncHelper.calculateAt(dist)
                 } else {
                     value = homogenValue
                 }
@@ -351,23 +326,107 @@ begintemplate InhomAndStochTarget
                     value += boundingHelper.generateNextBoundedValue(stochFuncHelper)
                 }
                 
-                // !! if synPart is a NetCon, then see the comment for tempMechStd in ctor
-                tempMechStd.in(synPart)
-                tempMechStd.set(varName, value, arrayIndex)
-                tempMechStd.out(synPart)
-                
-                if (enumDmPpNc == 2 && isWeightVar) {
-                    syn.sefwNetCon.weight = value
-                    // Here we could also have similar logic to sync the value from "syn.netCon.@release_probability" to "syn.sefwPp.release_probability",
-                    // but it's not needed because the button "Define stoch model" is hidden for "@release_probability"
-                }
-                
-                prevSec_ref = syn.sec_ref
+                // This approach is 20-30% faster than "sprint"-ing a HOC-command
+                // of type "varName(x) = value" or "varName[varLibId.arrayIndex](x) = value" and then "execute"-ing it
+                tempMechStd.in(x)
+                tempMechStd.set(varName, value, varLibId.arrayIndex)
+                tempMechStd.out(x)
             }
         }
+    }
+    
+    // !!!! major code dup. with proc synPartStepOrRestore
+    proc gapJuncPartStep() { local isStoch_, homogenValue, value localobj prevSec_ref, gapJunc, gapJuncPart, nil
         
-        if (isInhom) {
-            distFuncHelper.onJustAfterLastSection()
+        isStoch_ = $1
+        homogenValue = $2
+        
+        if (varLibId.enumDmPpFk == 0) {
+            codeContractViolation()
+        }
+        
+        prevSec_ref = nil
+        for eachItemInList(gapJunc, gjmAllGapJuncsOfThisType) {
+            if (gapJunc.sec_ref != prevSec_ref && isInhom) {
+                distFuncHelper.onJustBeforeNewSection()
+            }
+            
+            gapJuncPart = gapJunc.getPointProcess(enumPpRoleOrMinus1)
+            
+            // The base value
+            if (isInhom) {
+                value = distFuncHelper.calculateAt(gapJunc.dist)
+            } else {
+                value = homogenValue
+            }
+            
+            // The additive noise
+            if (isStoch_) {
+                value += boundingHelper.generateNextBoundedValue(stochFuncHelper)
+            }
+            
+            // !! if gapJuncPart is an External Value, then see the comment for tempMechStd in ctor
+            tempMechStd.in(gapJuncPart)
+            tempMechStd.set(varName, value, varLibId.arrayIndex)
+            tempMechStd.out(gapJuncPart)
+            
+            prevSec_ref = gapJunc.sec_ref
+        }
+    }
+    
+    // !!! code dup. with proc gapJuncPartStep
+    proc synPartStepOrRestore() { local isStepOrRestore, isStoch_, homogenValue, isWeightVar, value localobj prevSec_ref, syn, synPart, nil
+        
+        isStepOrRestore = $1
+        isStoch_ = $2
+        homogenValue = $3
+        
+        isWeightVar = mth.isWeightNetConVar(varName)
+        prevSec_ref = nil
+        for eachItemInList(syn, smAllSyns) {
+            if (syn.sec_ref != prevSec_ref && isInhom) {
+                distFuncHelper.onJustBeforeNewSection()
+            }
+            
+            if (isStepOrRestore && !syn.sefwPp.isAnyEventsOnThisIter) {
+                prevSec_ref = syn.sec_ref
+                continue
+            }
+            
+            // !!!!! try to simplify this to: synPart = syn.getPointProcess(enumPpRoleOrMinus1)
+            //       and then rename getPointProcess to getSynPart, enumPpRoleOrMinus1 to enumTapPartOrMinus1
+            if (varLibId.enumDmPpFk == 1) {
+                synPart = syn.getPointProcess(enumPpRoleOrMinus1)
+            } else if (varLibId.enumDmPpFk == 2) {
+                synPart = syn.netCon
+            } else {
+                codeContractViolation()
+            }
+            
+            // The base value
+            if (isInhom) {
+                value = distFuncHelper.calculateAt(syn.dist)
+            } else {
+                value = homogenValue
+            }
+            
+            // The additive noise
+            if (isStoch_) {
+                value += boundingHelper.generateNextBoundedValue(stochFuncHelper)
+            }
+            
+            // !! if synPart is a NetCon, then see the comment for tempMechStd in ctor
+            tempMechStd.in(synPart)
+            tempMechStd.set(varName, value, varLibId.arrayIndex)
+            tempMechStd.out(synPart)
+            
+            if (varLibId.enumDmPpFk == 2 && isWeightVar) {
+                syn.sefwNetCon.weight = value
+                // Here we could also have similar logic to sync the value from "syn.netCon.@release_probability" to "syn.sefwPp.release_probability",
+                // but it's not needed because the button "Define stoch model" is hidden for "@release_probability"
+            }
+            
+            prevSec_ref = syn.sec_ref
         }
     }
     

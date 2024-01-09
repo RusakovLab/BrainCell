@@ -1,0 +1,48 @@
+
+{ load_file("GapJuncManagerLoads.hoc") }
+
+// !!! code dup. with synapses
+
+proc createOrImportGapJuncComps() { local isCreateOrImport localobj editableComps
+    isCreateOrImport = $1
+    
+    if (isCreateOrImport) {
+        gjmAllComps = new List()
+        gjmAllComps.append(new GapJuncPPComp("External GJ", 1))
+        gjmAllComps.append(new GapJuncExtValueComp("External GJ"))
+        gjmAllComps.append(new GapJuncPPComp("Internal GJ", 0))
+    } else {
+        if (gjmAllComps.count() != 3) {
+            codeContractViolation()
+        }
+        editableComps = new List()
+        editableComps.append(new GapJuncPPComp(gjmAllComps.o(0)))
+        editableComps.append(new GapJuncExtValueComp(gjmAllComps.o(1)))
+        editableComps.append(new GapJuncPPComp(gjmAllComps.o(2)))
+        gjmAllComps = editableComps
+    }
+}
+
+proc makeSureGapJuncCompsCreatedOrImported() { localobj nil
+
+    if (!isAstrocyteOrNeuron) {
+        codeContractViolation()
+    }
+    
+    if (gjmAllComps == nil) {
+        createOrImportGapJuncComps(1)
+    } else if (!isBaseOrNanoStart && mcu4t.isReducedComps(gjmAllComps)) {
+        createOrImportGapJuncComps(0)
+    }
+}
+
+proc makeSureGapJuncCompsCreatedOrImportedThenShowGapJuncManagerBaseWidget() {
+
+    makeSureGapJuncCompsCreatedOrImported()
+    
+    dismissIfNotNil(manageAndRunWidget)
+    manageAndRunWidget = new ManageAndRunWidget(1)
+    manageAndRunWidget.show()
+    manageAndRunWidget.showGapJuncManagerHandler()
+    manageAndRunWidget.showAltRunControlHandler()
+}

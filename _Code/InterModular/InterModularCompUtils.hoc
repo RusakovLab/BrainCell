@@ -3,9 +3,9 @@ begintemplate InterModularCompUtils
 
     public makeSureAllCompsCreatedOrImportedAndRescanned, getNumDistMechComps, getAllDistMechCompNames, getReservedNanoDistMechCompNames, findDistMechCompByName, getComp
     
-    external mmAllComps, smAllComps
+    external mmAllComps, gjmAllComps, smAllComps
     external isAstrocyteOrNeuron
-    external makeSureSynCompsCreatedOrImported, stringsEqual, codeContractViolation
+    external makeSureGapJuncCompsCreatedOrImported, makeSureSynCompsCreatedOrImported, stringsEqual, codeContractViolation
     external mmIcrHelper
     external eachItemInList
     
@@ -13,7 +13,9 @@ begintemplate InterModularCompUtils
     // !! not intermodular actually
     proc makeSureAllCompsCreatedOrImportedAndRescanned() { localobj nil
         mmIcrHelper.makeSureMechCompsCreatedOrImportedAndRescanned()
-        if (!isAstrocyteOrNeuron) {
+        if (isAstrocyteOrNeuron) {
+            makeSureGapJuncCompsCreatedOrImported()
+        } else {
             makeSureSynCompsCreatedOrImported()
         }
     }
@@ -67,13 +69,17 @@ begintemplate InterModularCompUtils
         }
     }
     
-    obfunc getComp() { local isDmOrSynPart, compIdx
-        isDmOrSynPart = $1
+    obfunc getComp() { local isDmOrTapPart, compIdx
+        isDmOrTapPart = $1
         compIdx = $2
-        if (isDmOrSynPart) {
+        if (isDmOrTapPart) {
             return mmAllComps.o(compIdx)
         } else {
-            return smAllComps.o(compIdx)
+            if (isAstrocyteOrNeuron) {
+                return gjmAllComps.o(compIdx)
+            } else {
+                return smAllComps.o(compIdx)
+            }
         }
     }
     

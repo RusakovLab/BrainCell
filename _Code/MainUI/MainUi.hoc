@@ -10,7 +10,9 @@ if (isBaseOrNanoStart) {
 
 { load_file("../Managers/CommonLoads.hoc") }
 { load_file("../Managers/MechManager/MechManager.hoc") }
-if (!isAstrocyteOrNeuron) {
+if (isAstrocyteOrNeuron) {
+    load_file("../Managers/GapJuncManager/GapJuncManager.hoc")
+} else {
     load_file("../Managers/SynManager/SynManager.hoc")
 }
 { load_file("../Extracellular/ExtracellularManager.hoc") }
@@ -19,7 +21,6 @@ if (!isAstrocyteOrNeuron) {
 
 { load_file("../Simulations/SimManagerLoads.hoc") }
 
-objref seedingDensityWidget
 { load_file("MainUiLockHelper.hoc") }
 
 // UI
@@ -55,8 +56,8 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBoxLeftPanel, vBoxCentral
                 createNanoGeomAndBiophysDeck()
                 
                 if (isAstrocyteOrNeuron) {
-                    // !!! do we need to show this for neuron as well?
-                    // !!! need to hide it once user performs any comp op in Manager of Biophysics
+                    // !! do we need to show this for neuron as well?
+                    // !! need to hide it once user performs any comp op in Manager of Biophysics
                     xpanel("")
                     xlabel("==== Volume modification. Changes of diams and lengths of segments ====")
                     xlabel("============ Change diameters in % to diameters ===================")
@@ -73,7 +74,7 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBoxLeftPanel, vBoxCentral
                 //xlabel("of each segment from - 1 to 1 um")
                 //xvalue("Z coordinate Random number","Z_coordinate", 1, "stretch(Z_coordinate, ScalingDiam)", 0, 1)
                 
-                    // !!! need to hide it once user performs any comp op on dendrites in Manager of Biophysiscs
+                    // !! need to hide it once user performs any comp op on dendrites in Manager of Biophysiscs
                    xvalue("Scaling of diameter","ScalingDiam", 1, "stretch(Z_coordinate, ScalingDiam)", 0, 1)
                 
                 //xvalue("Length x and Y","LengthXY", 1, "stretchXY(LengthXY, LengthZ)", 0, 1)
@@ -86,8 +87,10 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBoxLeftPanel, vBoxCentral
                 xpanel()
             } else {
                 // !! maybe something must be available
-                xpanel("Not available")
-                xlabel("Not available in \"Start with Nano geometry\" mode")
+                xpanel("")
+                xlabel("This panel is not available")
+                xlabel("when you start with")
+                xlabel("\"BrainCell export\" file")
                 xpanel()
             }
         }
@@ -110,7 +113,7 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBoxLeftPanel, vBoxCentral
             plotShapeMainV.show(0)
             if (isAstrocyteOrNeuron) {
                 minV1 = -85
-                minV2 = -85
+                minV2 = -90
                 maxV = -80
             } else {
                 minV1 = -65
@@ -136,7 +139,9 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBoxLeftPanel, vBoxCentral
         {
             xpanel("")
             xbutton("Edit biophysics", "startMechManager()")
-            if (!isAstrocyteOrNeuron) {
+            if (isAstrocyteOrNeuron) {
+                xbutton("Edit gap junctions", "startGapJuncManager()")
+            } else {
                 xbutton("Edit synapses", "startSynManager()")
             }
             xbutton("Edit extracellular sources", "startECSManager()")
@@ -169,22 +174,24 @@ proc createNanoReseedingDeck() { localobj deckNanoReseeding
         xbutton("Reseed", "seededDendritesChangedHandler()")
         xlabel("")
         if (isAstrocyteOrNeuron) {
-            // !!!! dup. with initAstrocyte.hoc
-            xpvalue("Max number of stalks per dendrite", &nanoBranchesManager.MaxNumberBranchesPerDendrite, 1, "seedingDensityHelper.applyCore()")
-            // !!!! commented just because it's not about "Where to Seed the Nanostructures"
-            // xpvalue("Number of leaves per stalk", &NumberLeavesPerStalk, 1, "seedingDensityHelper.applyCore()")
+            // !! dup. with initAstrocyte.hoc
+            xpvalue("Max number of stalks per dendrite", &nanoBranchesManager.maxNumBranchesPerDend, 1, "nanoGeomSeedingDensityHelper.applyCore()")
+            // !! commented just because it's not about "Where to Seed the Nanostructures"
+            // xpvalue("Number of leaves per stalk", &NumberLeavesPerStalk, 1, "nanoGeomSeedingDensityHelper.applyCore()")
         } else {
-            // !!!! dup. with initNeuron.hoc
-            xpvalue("Max number of spines per dendrite", &nanoBranchesManager.MaxNumberBranchesPerDendrite, 1, "seedingDensityHelper.applyCore()")
+            // !! dup. with initNeuron.hoc
+            xpvalue("Max number of spines per dendrite", &nanoBranchesManager.maxNumBranchesPerDend, 1, "nanoGeomSeedingDensityHelper.applyCore()")
         }
-        xbutton("Edit Min distribution over branches", "showSeedingDensityWidget()")
+        xbutton("Edit Min distribution over branches", "showSeedingDensityWidget(nanoGeomSeedingDensityHelper)")
         xpanel()
         xpanel("")
         xlabel("============ Where to Seed the Nanostructures =============")
         xlabel("")
         xlabel("Not available after the first interaction with any of these widgets:")
         xlabel("    * Manager of Biophysics")
-        if (!isAstrocyteOrNeuron) {
+        if (isAstrocyteOrNeuron) {
+            xlabel("    * Manager of Gap Junctions")
+        } else {
             xlabel("    * Manager of Synapses")
         }
         xlabel("    * Manager of Extracellular Sources")
@@ -232,7 +239,10 @@ proc createNanoGeomAndBiophysDeck() { local w, h localobj deckNanoGeomAndBiophys
         xlabel("nanogeometry in Manager of Biophysics:")
         xlabel("    * Compartment Split / Merge / Rename")
         xlabel("    * Defining any mech variable as a func(dist)")
-        if (!isAstrocyteOrNeuron) {
+        if (isAstrocyteOrNeuron) {
+            xlabel("or this operation applied in Manager of Gap Junctions:")
+            xlabel("    * Defining any PP variable as a func(dist)")
+        } else {
             xlabel("or this operation applied in Manager of Synapses:")
             xlabel("    * Defining any PP / NetCon variable as a func(dist)")
         }
@@ -243,34 +253,21 @@ proc createNanoGeomAndBiophysDeck() { local w, h localobj deckNanoGeomAndBiophys
     deckNanoGeomAndBiophys.map("", -1, -1, w, h)
 }
 
-proc showRunControlPanel() {
-    xpanel("RunControl", 0)
-    xvalue("Init","v_init", 1,"stdinit()", 1, 1 )
-    xbutton("Init & Run","run()")
-    xbutton("Stop","stoprun=1")
-    xvalue("Continue til","runStopAt", 1,"{continuerun(runStopAt) stoprun=1}", 1, 1 )
-    xvalue("Continue for","runStopIn", 1,"{continuerun(t + runStopIn) stoprun=1}", 1, 1 )
-    xbutton("Single Step","steprun()")
-    xvalue("t","t", 2 )
-    xvalue("Tstop","tstop", 1,"tstop_changed()", 0, 1 )
-    xvalue("dt","dt", 1,"setdt()", 0, 1 )
-    xvalue("Points plotted/ms","steps_per_ms", 1,"setdt()", 0, 1 )
-    xvalue("Scrn update invl","screen_update_invl", 1,"", 0, 1 )
-    xvalue("Real Time","realtime", 0,"", 0, 1 )
-    xpanel(0, 125)
-}
+objref runControlPanel
 
-proc showSeedingDensityWidget() { localobj nil
-    if (seedingDensityWidget == nil) {
-        execute("seedingDensityWidget = new SeedingDensityWidget()")    // The template is not loaded in "start with nano" mode
-    } else {
-        seedingDensityWidget.dismissHandler()
+proc showRunControlPanel() {
+    runControlPanel = new Deck()
+    runControlPanel.intercept(1)
+    {
+        nrncontrolmenu()
     }
-    seedingDensityWidget.show()
+    runControlPanel.intercept(0)
+    runControlPanel.flip_to(0)
+    runControlPanel.map("RunControl", 0, 125, -1, -1)
 }
 
 proc insertElectrode() {
-    load_file(1, "_Code/Prologue/Neuron/Electrod.hoc")
+    load_file(1, "_Code/Clamps/IClampPointProcessGroupManager.hoc")
     mwh.showMessageBox("IClamp was inserted into the centre of the first soma section.", "Please be advised that it will be deleted immediately once you close the \"PointProcessGroupManager\" widget.", "IClamp inserted")
 }
 
@@ -281,6 +278,15 @@ proc startMechManager() { local isCancel
     }
     
     makeSureMechCompsCreatedOrImportedAndRescannedThenShowMechManagerBaseWidget()
+}
+
+proc startGapJuncManager() { local isCancel
+    isCancel = mainUiLocker.makeSureNanoReseedingLocked()
+    if (isCancel) {
+        return
+    }
+    
+    makeSureGapJuncCompsCreatedOrImportedThenShowGapJuncManagerBaseWidget()
 }
 
 proc startSynManager() { local isCancel

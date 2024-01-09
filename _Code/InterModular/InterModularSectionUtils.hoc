@@ -1,5 +1,6 @@
 
-{ load_file("Exported/InterModularSectionUtils_Exported.hoc") }
+{ load_file("Exported/InterModularSectionUtilsPart1_Exported.hoc") }
+{ load_file("Exported/InterModularSectionUtilsPart2_Exported.hoc") }
 
 
 // Get the name of the currently accessed section (either object name or array name)
@@ -16,8 +17,8 @@
 // $s1 (output) - The section name
 proc getCurrentSecName() {
     strdef pyCommand
-    // !!! for better performance, maybe don't use the regular expression here at all
-    //     or, at least, compile it once with re.compile and then reuse
+    // !! for better performance, maybe don't use the regular expression here at all
+    //    or, at least, compile it once with re.compile and then reuse
     sprint(pyCommand, "(exec('import re'), re.sub(r'(\\[\\d+\\])+$', '', '%s'))[1]", secname())
     $s1 = pyObj.ev(pyCommand)
 }
@@ -45,8 +46,8 @@ obfunc getAllSectionNames() { local isFound localobj secNamesHocList, secNamesPy
     return secNamesHocList
 }
 
-// !!! the range returned by this func depends on the initial segmentation;
-//     do I need to apply some default segmentation before calling it?
+// !! the range returned by this func depends on the initial segmentation;
+//    do I need to apply some default segmentation before calling it?
 func getDistRangeGivenSections() { local distMin, distMax, isDisconnected, x, dist localobj list_ref
     
     list_ref = $o1
@@ -74,6 +75,36 @@ func getDistRangeGivenSections() { local distMin, distMax, isDisconnected, x, di
     
     $&2 = distMin
     $&3 = distMax
+    
+    return 0
+}
+
+// !! the range returned by this func depends on the initial segmentation;
+//    do I need to apply some default segmentation before calling it?
+// !!! major code dup. with getDistRangeGivenSections
+func getMaxDist() { local maxDist, isDisconnected, x, dist
+    
+    maxDist = -1
+    
+    isDisconnected = 0
+    // We could check just 2 end points for each section for higher performance,
+    // but there is no guarantee that the distance centre was not placed somewhere in this compartment inside a section
+    forall {
+        for (x) {
+            dist = distance(x)
+            if (isDisconnectedDistance(dist)) {
+                isDisconnected = 1
+                break
+            }
+            maxDist = math.max(maxDist, dist)
+        }
+    }
+    
+    if (isDisconnected) {
+        return 1
+    }
+    
+    $&1 = maxDist
     
     return 0
 }

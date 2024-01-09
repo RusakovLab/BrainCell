@@ -113,10 +113,10 @@ begintemplate RoadmapWidget
         _isExternalSimStart = $1
         
         line1 = "* You need to prepare a new DLL merging external MOD files with our ones (we'll have a helper PS1-script for this);"
-        // !!!!!!! don't forget to create this helper PS1-script
+        // !! don't forget to create this helper PS1-script
         line2 = "   this DLL file should be placed in the same folder with the simulation entry point HOC file."
         line3 = "* We expect that the external simulation doesn't start immediately, but rather waits for a button like \"Run\"."
-        line4 = "* After the import, we seed the nanobranches and (in case of neuron cell type) the synapses%s"
+        line4 = "* After the import, we seed the nanobranches and gap junctions or synapses (depending on the cell type)%s"
         if (!_isExternalSimStart) {
             sprint(line4, line4, ",")
         } else {

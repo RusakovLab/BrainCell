@@ -72,7 +72,7 @@ begintemplate MechManagerCompOpMergeSubWidget
             return
         }
         
-        if (mainUiLocker != nil) {  // !!! nil in tests
+        if (mainUiLocker != nil) {  // !! nil in tests
             isCancel = mainUiLocker.ifNanoCompThenMakeSureNanoUpdateLocked(mergeCheckBoxStates)
             if (isCancel) {
                 return

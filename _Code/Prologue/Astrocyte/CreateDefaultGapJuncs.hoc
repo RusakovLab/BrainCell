@@ -1,0 +1,65 @@
+
+{ load_file("../../Managers/GapJuncManager/Exported/GapJuncEnums.hoc") }
+{ load_file("Exported/GapJunction.hoc") }
+
+objref randomGapJuncSeeder
+randomGapJuncSeeder = rngUtils.getFor_gapJuncSeeder()
+
+
+defIsExtOrIntGapJuncs = 1
+defMaxNumGapJuncsPerSec = 10    // For both external and internal gap juncs
+defMinSeedingDistanceForExtGapJuncs = -1    // Will be set in the proc reseedAstrocyteGapJuncs below
+defMinSeedingDistanceForIntGapJuncs = -1    //
+
+// Create, init and connect all default gap junctions; the number is probabilistic
+// Called each time after astrocyte nanogeometry reseeding
+// !!! keep in sync with GapJuncGroup.applyChangesToLoc and NanoBranchesManager.reseedBranches
+proc reseedAstrocyteGapJuncs() { local defMinSeedingDistanceForGapJuncs, slotIdx, connectionPoint, controlFactor, invNormFactor localobj gjmAllGapJuncsOfThisType, sngPp, sec_ref, gapJunc
+    
+    // Choose the default seeding densities for external and internal gap juncs to have approx these numbers
+    defMinSeedingDistanceForExtGapJuncs = _getDefMinSeedingDistanceForGapJuncs(350)
+    defMinSeedingDistanceForIntGapJuncs = _getDefMinSeedingDistanceForGapJuncs(100)
+    
+    if (defIsExtOrIntGapJuncs) {
+        defMinSeedingDistanceForGapJuncs = defMinSeedingDistanceForExtGapJuncs
+    } else {
+        defMinSeedingDistanceForGapJuncs = defMinSeedingDistanceForIntGapJuncs
+    }
+    
+    gjmAllGapJuncsOfThisType = gjmAllGapJuncs[defIsExtOrIntGapJuncs]
+    
+    forall {
+        insert ca_ion   // !!!!
+        
+        for slotIdx = 0, defMaxNumGapJuncsPerSec - 1 {
+            connectionPoint = (slotIdx + 0.5) / defMaxNumGapJuncsPerSec
+            
+            controlFactor = defMinSeedingDistanceForGapJuncs * defMaxNumGapJuncsPerSec
+            invNormFactor = L / controlFactor                           // !! this can be > 1
+            if (randomGapJuncSeeder.uniform(0, 1) < invNormFactor) {    // !! use .repick() for performance
+                sngPp = new GapCaExtr(connectionPoint)
+                
+                sec_ref = new SectionRef()
+                
+                gapJunc = new GapJunction(sngPp, sec_ref, connectionPoint)
+                gjmAllGapJuncsOfThisType.append(gapJunc)
+            }
+        }
+    }
+}
+
+// Called each time before astrocyte nanogeometry deletion
+proc deleteAstrocyteGapJuncs() {
+    gjmAllGapJuncs[0].remove_all()
+    gjmAllGapJuncs[1].remove_all()
+}
+
+
+func _getDefMinSeedingDistanceForGapJuncs() { local defApproxNumGapJuncs, totalSecLen
+    defApproxNumGapJuncs = $1
+    totalSecLen = 0
+    forall {
+        totalSecLen += L
+    }
+    return totalSecLen / defApproxNumGapJuncs
+}

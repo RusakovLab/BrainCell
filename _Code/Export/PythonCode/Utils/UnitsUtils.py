@@ -40,10 +40,10 @@ class UnitsUtils:
         return comment
         
     # e.g. '    // (mV)'
-    def getUnitsCommentOrEmptyForDmOrSynPart(isDmOrSynPart, compIdx, mechIdx, varName, varNameWithIndex):
-        enumDmPpNc = hocObj.compUtils.getComp(isDmOrSynPart, compIdx).enumDmPpNc
+    def getUnitsCommentOrEmptyForDmOrTapPart(isDmOrTapPart, compIdx, mechIdx, varName, varNameWithIndex):
+        enumDmPpFk = hocObj.compUtils.getComp(isDmOrTapPart, compIdx).enumDmPpFk
         units = h.ref('')
-        hocObj.mth.getVarUnits(enumDmPpNc, mechIdx, varName, varNameWithIndex, units)
+        hocObj.mth.getVarUnits(enumDmPpFk, mechIdx, varName, varNameWithIndex, units)
         units = units[0]
         if units:
             unitsCommentOrEmpty = '    // ({})'.format(units)

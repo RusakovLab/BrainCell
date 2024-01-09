@@ -1,18 +1,18 @@
 
-# !!! BUGs:
-#     * the markers for distant points are shown in front of the markers for close points
-#     * the markers don't change their size on scaling the scene
-#     * too many ticks on the slider for real records
-#     * when isUseOpacitiesOrColours is True, the animation preparation stage takes too much time
-#     * when isUseOpacitiesOrColours is True, the slider shows frameIdx rather than "t (ms)"
-#     * (?) when isUseOpacitiesOrColours is True, if clicking "Stop", it has some inertia before the actual stop
-#     * when isUseOpacitiesOrColours is False, the garbage in the last digits of the label "t (ms)=..." and the slider tick labels
+# !! BUGs:
+#    * the markers for distant points are shown in front of the markers for close points
+#    * the markers don't change their size on scaling the scene
+#    * too many ticks on the slider for real records
+#    * when isUseOpacitiesOrColours is True, the animation preparation stage takes too much time
+#    * when isUseOpacitiesOrColours is True, the slider shows frameIdx rather than "t (ms)"
+#    * (?) when isUseOpacitiesOrColours is True, if clicking "Stop", it has some inertia before the actual stop
+#    * when isUseOpacitiesOrColours is False, the garbage in the last digits of the label "t (ms)=..." and the slider tick labels
 
 # https://plotly.com/python/3d-scatter-plots/
 # https://plotly.com/python/animations/
 
-import plotly.express as px
 import plotly.graph_objects as go
+import plotly.express as px
 
 import pandas as pd
 import numpy as np
@@ -61,8 +61,10 @@ class PlotlyPlayer:
     def _initForOpacities(self, x, y, z, rangeVar, numFrames, varNameWithIndexAndUnits, rangeVar_min, rangeVar_max):
         
         # Make a linear transformation of the data to fit [0, 1] range
-        # !!! code dup. with PyplotPlayer ctor
+        # !! code dup. with PyplotPlayer ctor
         rangeVar_range = rangeVar_max - rangeVar_min
+        if rangeVar_range == 0:
+            rangeVar_range = 1  # Just to avoid division by 0 below
         rangeVar0To1 = (rangeVar - rangeVar_min) / rangeVar_range
         
         # Create initial figure with a single trace
@@ -72,7 +74,7 @@ class PlotlyPlayer:
         frames = []
         for frameIdx in range(numFrames):
             frames.append(go.Frame(
-                data=self._getOneFrameForOpacities(x, y, z, rangeVar0To1[frameIdx]),    # !!! reuse the very first frame we created just above
+                data=self._getOneFrameForOpacities(x, y, z, rangeVar0To1[frameIdx]),    # !! reuse the very first frame we created just above
                 name=str(frameIdx)
             ))
         fig.frames = frames
@@ -130,7 +132,7 @@ class PlotlyPlayer:
         numSegms = len(x)
         numFrames = len(t)
         
-        # !!!!!!!! here we perform the inverse operation to the one done in RangeVarAnimationPlayer.play - not optimal
+        # !! here we perform the inverse operation to the one done in RangeVarAnimationPlayer.play - not optimal
         rangeVar = np.reshape(rangeVar, (numFrames * numSegms))
         
         data = {

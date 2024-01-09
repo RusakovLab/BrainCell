@@ -1,16 +1,17 @@
 
 begintemplate SimFrequencyElectricalSimulation
     
-    public check, show, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
-    external run
+    external altRunControlWidget
     external tstop
     external unmapIfNotNil
     external soma_ref
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     // UI
     objref vBoxFrequencySimulations
@@ -22,9 +23,10 @@ begintemplate SimFrequencyElectricalSimulation
     proc init() {
         biophysJsonFileNameOrEmpty = ""
         isCustomProcAdvance = 0
+        isAltRunControl = 1
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -34,14 +36,28 @@ begintemplate SimFrequencyElectricalSimulation
         showFrequencyUi()
     }
     
+    func preRun() {
+        // !! it would be better to split "proc simulateFrequency" into two parts and move the first one to "proc show":
+        //    part 1 - creation of stimFreq (it will be destroyed in "proc dismissHandler")
+        //    part 2 - initialization of stimFreq based on GUI
+        simulateFrequency(stimdel, stimdur, stimfreqency, stimamp, stimphase)
+        return 0
+    }
+    
+    func preContinue() {
+        return 0
+    }
+    
+    proc postRun() {
+        // Empty by design
+    }
+    
     proc dismissHandler() {
         
         unmapIfNotNil(vBoxFrequencySimulations)
         
-        /* !!!
         // Remove IClampSin after simulation
         objref stimFreq
-        */
     }
     
     // All next staff is private
@@ -62,15 +78,6 @@ begintemplate SimFrequencyElectricalSimulation
             stimFreq.amp = $4       // nA
             stimFreq.phase = $5     // rad
         }
-    }
-    
-    // Sets soma params and starts the simulation.
-    proc runFrequency() {
-        simulateFrequency(stimdel, stimdur, stimfreqency, stimamp, stimphase)
-        run()
-        
-        // Remove IClampSin after simulation
-        objref stimFreq
     }
     
     // Inits UI and simulation parameters.
@@ -94,8 +101,8 @@ begintemplate SimFrequencyElectricalSimulation
             xvalue("Amplitude of current (nA)","stimamp", 1,"", 0, 1)
             xvalue("Frequency of Sinusoid (Hz)","stimfreqency", 1,"", 0, 1)
             xlabel("---------------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time","tstop", 1,"", 0, 1  )
-            xbutton("Run simulation", "runFrequency()")
+            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1  )
+            xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel()
         }
         vBoxFrequencySimulations.intercept(0)

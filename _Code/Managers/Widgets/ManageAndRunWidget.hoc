@@ -2,28 +2,29 @@
 { load_file("../../AltRunControl/Exported/alt_stdrun.hoc") }
 loadIfNotDeclared("AltRunControlWidget", "../../AltRunControl/Exported/AltRunControlWidget.hoc")
 
+{ makeSureDeclared("altRunControlWidget", "objref %s", "%s = new AltRunControlWidget()") }
+
 
 objref ecsManagerMainWidget, exportManagerMainWidget
 
 begintemplate ManageAndRunWidget
 
-    public show, showBioManagerHandler, showSynManagerHandler, showECSManagerHandler, showAltRunControlHandler, onNanoReseedOrUpdateHandler, dismissHandler
+    public show, showBioManagerHandler, showSynManagerHandler, showGapJuncManagerHandler, showECSManagerHandler, showAltRunControlHandler, onNanoReseedOrUpdateHandler, dismissHandler
     
     external isAstrocyteOrNeuron
-    external mechManagerMainWidget, synManagerMainWidget, ecsManagerMainWidget, exportManagerMainWidget
-    external mmAllComps, smAllSyns, synGroup
+    external mechManagerMainWidget, synManagerMainWidget, gapJuncManagerMainWidget, ecsManagerMainWidget, exportManagerMainWidget, altRunControlWidget
+    external mmAllComps, gjmAllGapJuncs, gapJuncGroups, smAllSyns, synGroup
     external mwh, mmIcrHelper
     external inhomAndStochLibrary
-    external dismissIfNotNil, codeContractViolation
+    external getMaxDist, dismissIfNotNil, codeContractViolation
     
     objref mainBox, this
-    objref altRunControlWidget
     
-    enumBioSynECS = -1
+    enumBioGjSynEcs = -1
     
     
     proc init() {
-        enumBioSynECS = $1
+        enumBioGjSynEcs = $1
     }
     
     proc show() {
@@ -31,11 +32,13 @@ begintemplate ManageAndRunWidget
         mainBox.intercept(1)
         {
             xpanel("")
-            if (enumBioSynECS == 0) {
+            if (enumBioGjSynEcs == 0) {
                 xbutton("Show biophys manager", "showBioManagerHandler()")
-            } else if (enumBioSynECS == 1) {
+            } else if (enumBioGjSynEcs == 1) {
+                xbutton("Show gap junc manager", "showGapJuncManagerHandler()")
+            } else if (enumBioGjSynEcs == 2) {
                 xbutton("Show synapse manager", "showSynManagerHandler()")
-            } else if (enumBioSynECS == 2) {
+            } else if (enumBioGjSynEcs == 3) {
                 xbutton("Show ECS manager", "showECSManagerHandler()")
             } else {
                 codeContractViolation()
@@ -65,6 +68,38 @@ begintemplate ManageAndRunWidget
         
         mechManagerMainWidget.show()
         mechManagerMainWidget.mechOpSelectHandler()
+    }
+    
+    proc showGapJuncManagerHandler() { local wasNil, isDisconnected, maxDist localobj nil
+        dismissIfNotNil(exportManagerMainWidget)
+        dismissIfNotNil(gapJuncManagerMainWidget)
+        
+        wasNil = (gapJuncManagerMainWidget == nil)
+        
+        if (wasNil) {
+            mwh.startIntercepting() // For the warnings shown by pyObj.ms_warnIfNoRecordForGapJunc
+            // !!! tiny BUG: the warnings are not shown again when user closes GapJuncManagerMainWidget and opens it again
+            
+            execute("gapJuncManagerMainWidget = new GapJuncManagerMainWidget()", this)
+        }
+        
+        isDisconnected = getMaxDist(&maxDist)
+        if (isDisconnected) {
+            mwh.showWarningBox("Cannot edit inhomogeneity in gap junctions", "because at least one gap junction target section doesn't have a topological connection with the distance centre.")
+            
+            // !! overkill here: we don't need to prevent opening the widget because user might wanted to do smth unrelated to inhomogeneity
+            
+            if (wasNil) {
+                mwh.endIntercepting()
+            }
+            return
+        }
+        
+        gapJuncManagerMainWidget.show(maxDist)
+        
+        if (wasNil) {
+            mwh.endIntercepting()
+        }
     }
     
     proc showSynManagerHandler() { local isDisconnected, xMin, xMax localobj nil
@@ -104,23 +139,25 @@ begintemplate ManageAndRunWidget
     
     proc showAltRunControlHandler() {
         dismissIfNotNil(altRunControlWidget)
-        altRunControlWidget = new AltRunControlWidget()
         altRunControlWidget.show()
     }
     
-    proc onNanoReseedOrUpdateHandler() { local isReseedOrUpdate, enumRescanType localobj nil
+    proc onNanoReseedOrUpdateHandler() { local isReseedOrUpdate, cond1, cond2, isExtOrInt, enumRescanType localobj nil
         isReseedOrUpdate = $1
         
-        if (isReseedOrUpdate && (mechManagerMainWidget != nil || synManagerMainWidget != nil || ecsManagerMainWidget != nil)) {
-            // !!! must not be called because we block the panel in Main UI
+        cond1 = (isReseedOrUpdate && (mechManagerMainWidget != nil || gapJuncManagerMainWidget != nil || synManagerMainWidget != nil || ecsManagerMainWidget != nil))
+        cond2 = (inhomAndStochLibrary.getNumInhomVarsForTaps() != 0)
+        if (cond1 || cond2) {
+            // Must not be called because we block the panel in Main UI
             codeContractViolation()
         }
         
-        if (!isAstrocyteOrNeuron) {
-            if (inhomAndStochLibrary.getNumInhomVarsForSyns() != 0) {
-                // !!! must not be called because we block the panel in Main UI
-                codeContractViolation()
+        // !!! BUG: we don't reach this code when ManageAndRunWidget is nil (i.e. before the 1st opening)
+        if (isAstrocyteOrNeuron) {
+            for isExtOrInt = 0, 1 {
+                gapJuncGroups[isExtOrInt].reCalcAndCacheDistInGapJuncs()
             }
+        } else {
             synGroup.reCalcAndCacheDistInSyns()
         }
         
@@ -133,7 +170,7 @@ begintemplate ManageAndRunWidget
     
     proc dismissHandler() {
         dismissManagers()
-        dismissIfNotNil(altRunControlWidget)
+        // !! dismissIfNotNil(altRunControlWidget)
         mainBox.unmap()
     }
     
@@ -142,6 +179,7 @@ begintemplate ManageAndRunWidget
     
     proc dismissManagers() {
         dismissIfNotNil(mechManagerMainWidget)
+        dismissIfNotNil(gapJuncManagerMainWidget)
         dismissIfNotNil(synManagerMainWidget)
         dismissIfNotNil(ecsManagerMainWidget)
     }

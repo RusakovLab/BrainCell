@@ -1,5 +1,5 @@
 
-// !!! some sources just for test
+// !! some sources just for test
 
 testSetIdx = 0
 
@@ -15,24 +15,24 @@ if (testSetIdx == 0) {
     ecsLibrary.addNewSource(0, "Na+", new ECSSpatialInfo(1, 40, 140, -75, 100), new ECSTemporalInfo(2, 2, 1), new ECSCapacityInfo(1, 2.5), new ECSSeriesInfo(1, 4, 1, 1))
     ecsLibrary.addNewSource(0, "Na+", new ECSSpatialInfo(1, 175, 350, 75, 125), new ECSTemporalInfo(1, 0.5, 5, 1), new ECSCapacityInfo(1, 2), new ECSSeriesInfo(5, 5, 0, 1))
     
-    // !!! BUG: Enable the 3D cross, correct 1st, then close, then Correct 2nd => the cross is shown
+    // !! BUG: Enable the 3D cross, correct 1st, then close, then Correct 2nd => the cross is shown
     
 } else if (testSetIdx == 1) {
-    // !!! comparing the asymptote of "point + on-off" with the level of "point + static"
+    // !! comparing the asymptote of "point + on-off" with the level of "point + static"
     //     (don't forget to open JSON, set the same baseOuterConc for Ca2+ and GLU and set gigantic Diff for GLU)
     
     ecsLibrary.addNewSource(0, "Ca2+", new ECSSpatialInfo(0, 115, 350, -30), new ECSTemporalInfo(0), new ECSCapacityInfo(0, 0, 5, 25))
     
     ecsLibrary.addNewSource(1, "GLU", new ECSSpatialInfo(0, 115, 350, -30), new ECSTemporalInfo(1, 5, 20, 0), new ECSCapacityInfo(0, 1, 5, 25))
 } else if (testSetIdx == 2) {
-    // !!! comparing the curves of "point + on-off" and "point + spike" when the "on" state duration is only 1 iteration
+    // !! comparing the curves of "point + on-off" and "point + spike" when the "on" state duration is only 1 iteration
     //     (don't forget to open JSON and set the same baseOuterConc and Diff for Ca2+ and GLU)
     
     ecsLibrary.addNewSource(0, "Ca2+", new ECSSpatialInfo(0, 115, 350, -30), new ECSTemporalInfo(2, 5, 0), new ECSCapacityInfo(0, 2, 1.5e8))
     
     ecsLibrary.addNewSource(1, "GLU", new ECSSpatialInfo(0, 115, 350, -30), new ECSTemporalInfo(1, 5, dt, 0), new ECSCapacityInfo(0, 1, 5000, 15))
 } else if (testSetIdx == 3) {
-    // !!! comparing the decay dynamics in "point + on-off" and "point + spike"
+    // !! comparing the decay dynamics in "point + on-off" and "point + spike"
     //     (don't forget to open JSON, set the same baseOuterConc and Diff for Ca2+ and GLU and use "View = plot" for both in the end)
     
     ecsLibrary.addNewSource(0, "Ca2+", new ECSSpatialInfo(0, 140, 30, 60), new ECSTemporalInfo(2, 8.5, 0), new ECSCapacityInfo(0, 2, 1.65e7))

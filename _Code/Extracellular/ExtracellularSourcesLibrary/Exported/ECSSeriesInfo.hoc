@@ -21,7 +21,7 @@ begintemplate ECSSeriesInfo
             other = $o1
             mechStd.in(other.mechStd)
         } else if (numArg == 4) {
-                                            // !!! was (in legacy Diffusion3D.hoc):
+                                            // !! was (in legacy Diffusion3D.hoc):
             mechStd.set("interval", $1)     //      100 (IntervalRelease1)
             mechStd.set("number", $2)       //      1 (SwtichOn1)
             mechStd.set("start", $3)        //      1 (DelayInter1)
@@ -35,7 +35,7 @@ begintemplate ECSSeriesInfo
         other = $o1
         
         for varIdx = 0, mechStd.count() - 1 {
-            // !!! maybe overkill: no arrays in NetStim PARAMETER-s (at least, in the current NEURON version)
+            // !! maybe overkill: no arrays in NetStim PARAMETER-s (at least, in the current NEURON version)
             arraySize = mechStd.name(varName, varIdx)
             for arrayIndex = 0, arraySize - 1 {
                 if (mechStd.get(varName, arrayIndex) != other.mechStd.get(varName, arrayIndex)) {

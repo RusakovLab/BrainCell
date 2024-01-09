@@ -19,12 +19,12 @@ begintemplate MechSettings
     proc init() {
         sourcePythonCode("\\PythonCode", "from MechSettings import *", "MechSettings ctor")
         
-        // !!! need to check that JSON file doesn't contain such a category
+        // !! need to check that JSON file doesn't contain such a category
         unrecSpcCatName = "Unrecognized"
         
-        // !!! maybe need to check that JSON file doesn't contain the same ion in 2+ categories
+        // !! maybe need to check that JSON file doesn't contain the same ion in 2+ categories
         
-        ionSuffix = "_ion"  // !!! find a better template for this string
+        ionSuffix = "_ion"  // !! find a better template for this string
     }
     
     proc onDllLoad() { local mechIdx localobj mechType, expIonNames, expIonNameStrObj
@@ -56,8 +56,8 @@ begintemplate MechSettings
             }
         }
         
-        // !!!! do we need this in "start with nano" mode?
-        // !!!! make sure we don't rewrite any GLOBAL-s later (in the legacy code)
+        // !! do we need this in "start with BrainCell export" mode?
+        // !! make sure we don't rewrite any GLOBAL-s later (in the legacy code)
         pyObj.ms_setIonGlobalVars()
     }
     
@@ -129,4 +129,4 @@ begintemplate MechSettings
 endtemplate MechSettings
 
 objref mechSettings
-mechSettings = new MechSettings()   // !!!! make sure it's imported when we start with nano UPD: maybe no need to import this
+mechSettings = new MechSettings()   // !! make sure it's imported when we start with BrainCell export UPD: maybe no need to import this

@@ -5,7 +5,7 @@ objref nanoProximal_ref, nanoDistal_ref
 // Create two List-s of SectionRef containing references to all the sections of nano geometry
 // Input: isAstrocyteOrNeuron (taken from the top level)
 // Output: nanoProximal_ref, nanoDistal_ref (initialized on the top level)
-// !!! deprecated: collect the references when creating sections rather than search for sections with regex afterwards
+// !! deprecated: collect the references when creating sections rather than search for sections with regex afterwards
 proc createRefsForNanoGeometry_deprecated() {
     nanoProximal_ref = new List()
     nanoDistal_ref = new List()

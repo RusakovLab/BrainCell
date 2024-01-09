@@ -71,9 +71,12 @@ class GeneratorsForMainHocFile:
             'InterModularErrWarnUtilsPart2_Exported.hoc',
             'InterModularListUtils_Exported.hoc',
             'InterModularStringUtils_Exported.hoc',
-            'InterModularSectionUtils_Exported.hoc',
-            'InterModularOtherUtils_Exported.hoc'
+            'InterModularSectionUtilsPart1_Exported.hoc',
         ]
+        if hocObj.exportOptions.isExportExtracellularLibrary():
+            fileNames.append('InterModularSectionUtilsPart2_Exported.hoc')
+        fileNames.append('InterModularOtherUtils_Exported.hoc')
+        
         for fileName in fileNames:
             newLines = self.insertAllLinesFromFile('_Code\\InterModular\\Exported\\' + fileName)
             lines.extend(newLines)
@@ -206,9 +209,11 @@ class GeneratorsForMainHocFile:
         
     def createImportabilityMeasures(self):
         
+        exportOptions = hocObj.exportOptions
+        
         lines = []
         
-        # Check whether we are in "start with nano" mode or "standalone" mode
+        # Check whether we are in "start with BrainCell export" mode or "standalone" mode
         lines.append('isLoadedFromMainProgram = 1')
         lines.append('{ makeSureDeclared("isBaseOrNanoStart", "isLoadedFromMainProgram = 0") }')
         lines.append('')
@@ -219,12 +224,12 @@ class GeneratorsForMainHocFile:
         lines.append('objref mechType')
         lines.append('if (isLoadedFromMainProgram) {')
         lines.append('    mechsDllUtils.ifMissingInThisFolderThenLoadDefaultMechsDllDependingOnCellType()')
-        if hocObj.exportOptions.isExportDistMechs or hocObj.exportOptions.isExportSyns:
+        if exportOptions.isExportDistMechs or exportOptions.isExportSyns:
             lines.append('} else {')
-            if hocObj.exportOptions.isExportDistMechs:
+            if exportOptions.isExportDistMechs:
                 newLines = self._createCheckForNumMechs(0, 'Distributed Membrane Mechanisms')
                 lines.extend(newLines)
-            if hocObj.exportOptions.isExportSyns:
+            if exportOptions.isExportSyns:
                 newLines = self._createCheckForNumMechs(1, 'Point Processes')
                 lines.extend(newLines)
         lines.append('}')
@@ -239,43 +244,44 @@ class GeneratorsForMainHocFile:
             lines.append('')
             
         # Make sure the staff from ReducedVersions\InterModular is either:
-        #   preserved ("start with nano" mode)
+        #   preserved ("start with BrainCell export" mode)
         #   created ("standalone" mode with real usage)
         #   declared as nil ("standalone" mode without real usage OR we'll use it, but first need to bound as template's external, and only then define)
         
         lines.append('{ makeSureDeclared("math", "objref %s", "%s = new ReducedBasicMath()") }')
         
-        if hocObj.exportOptions.isExportAltRunControl():
+        if exportOptions.isExportAltRunControl():
             # !! BUG: The random sequences won't be the same in the main program and the exported file until
             #         each seed given by rngUtils.getFor_stochFunc_withUniqueSeed is saved into corresponding stocDistFunc
             #         and exported/imported as a part of it
             lines.append('{ makeSureDeclared("rngUtils", "objref %s", "%s = new ReducedRNGUtils()") }')
-        elif hocObj.exportOptions.isExportSyns or hocObj.exportOptions.isExportInhomAndStochLibrary():
+        elif exportOptions.isExportSyns or exportOptions.isExportInhomAndStochLibrary():
             lines.append('{ makeSureDeclared("rngUtils") }')
             
         lines.append('')
         
         # Make sure all the required objref-s are declared as nil
         names = []
-        if hocObj.exportOptions.isExportInhomAndStochLibrary():
-            names.append('mth')
         names.append('mmAllComps')
-        if hocObj.exportOptions.isExportSyns or hocObj.exportOptions.isExportInhomAndStochLibrary():
+        if exportOptions.isExportInhomAndStochLibrary():
+            names.append('gjmAllComps')
+            names.append('gjmAllGapJuncs[2]')
+        if exportOptions.isExportInhomAndStochLibrary() or exportOptions.isExportSyns:
             names.append('smAllComps')
             names.append('smAllSyns')
             names.append('seh')
-        if hocObj.exportOptions.isExportAnyInhomSynModels():
+        if exportOptions.isExportAnyInhomSynModels():
             names.append('synGroup')
-            names.append('utils4FakeMech4NC')
-        if hocObj.exportOptions.isExportAnyInhomSynModels() or hocObj.exportOptions.isExportAnyStochFuncs():
+            names.append('utils4FakeMech4SynNetCon')
+        if exportOptions.isExportAnyInhomSynModels():
             names.append('mcu')
-        if hocObj.exportOptions.isExportAltRunControl():
+        if exportOptions.isExportAltRunControl():
             names.append('mmIcrHelper')
         line = 'objref ' + ', '.join(names)
         lines.append(line)
         
         # We export smEnumSynLoc, smSynLocP and spineNeckDiamCache just so user can work with SynLocationWidget after loading the exported file back into the main program
-        if hocObj.exportOptions.isExportSyns:
+        if exportOptions.isExportSyns:
             lines.append('')
             newLine = self.getIntegerValueFromTopLevel('smEnumSynLoc')
             lines.append(newLine)
@@ -298,6 +304,11 @@ class GeneratorsForMainHocFile:
             for idx in range(numSpines):
                 lines.append('diamsVec.x({}) = {}'.format(idx, diamsVec[idx]))
                 
+        if exportOptions.isExportInhomAndStochLibrary() or (exportOptions.isExportSyns and hocObj.synGroup.is3Or1PartInSynStruc()):
+            lines.append('')
+            newLines = self._insertAllLinesFromReducedVersionFile('ReducedMechTypeHelper.hoc')
+            lines.extend(newLines)
+            
         return lines
         
     def createInhomAndStochLibrary(self):
@@ -305,6 +316,10 @@ class GeneratorsForMainHocFile:
             return emptyParagraphHint()
             
         lines = []
+        
+        newLines = self.insertAllLinesFromFile('_Code\\Managers\\InhomAndStochLibrary\\Exported\\VarLibId.hoc')
+        lines.extend(newLines)
+        lines.append('')
         
         # !! try to avoid exporting the RNG staff in ReducedInhomAndStochTarget if not hocObj.exportOptions.isExportAnyStochFuncs()
         newLines = self._insertAllLinesFromReducedVersionFile('ReducedInhomAndStochTarget.hoc')
@@ -375,6 +390,7 @@ class GeneratorsForMainHocFile:
         # (2) stub all required objects and callables allowing them to be defined later in the main program (e.g. "specMath" and "callPythonFunction")
         lines.append('{ makeSureDeclared("mwh") }')
         lines.append('{ makeSureDeclared("eachPointInGrid", "iterator %s() { codeContractViolation() }") }')
+        lines.append('{ makeSureDeclared("graphUtils") }')
         lines.append('objref specMath')
         lines.append('func callPythonFunction() { codeContractViolation() }')
         lines.append('proc definePythonFunction() { codeContractViolation() }')
@@ -497,6 +513,10 @@ class GeneratorsForMainHocFile:
         lines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\Exported\\EnumSynCompIdxs.hoc')
         lines.append('')
         
+        newLines = self._insertAllLinesFromReducedVersionFile('ReducedTapGroup.hoc')
+        lines.extend(newLines)
+        lines.append('')
+        
         if not hocObj.exportOptions.isExportAnyInhomSynModels():
             reducedSynPPCompFileName = 'ReducedSynPPComp1.hoc'
             reducedSynNCCompFileName = 'ReducedSynNCComp1.hoc'
@@ -515,11 +535,6 @@ class GeneratorsForMainHocFile:
         
         synGroup = hocObj.synGroup
         is3Or1PartInSynStruc = synGroup.is3Or1PartInSynStruc()
-        
-        if is3Or1PartInSynStruc:
-            newLines = self._insertAllLinesFromReducedVersionFile('ReducedMechTypeHelper.hoc')
-            lines.extend(newLines)
-            lines.append('')
         
         if hocObj.exportOptions.isExportSynEventsHelper() or is3Or1PartInSynStruc:
             newLines = self._insertAllLinesFromReducedVersionFile('ReducedManagersCommonUtils.hoc')
@@ -610,6 +625,9 @@ class GeneratorsForMainHocFile:
         lines = self.insertAllLinesFromFile('_Code\\AltRunControl\\Exported\\alt_stdrun.hoc')
         lines.append('')
         
+        lines.append('{ makeSureDeclared("mwh") }')
+        lines.append('')
+        
         newLines = self.insertAllLinesFromFile('_Code\\AltRunControl\\Exported\\AltRunControlWidget.hoc')
         lines.extend(newLines)
         lines.append('')
@@ -679,7 +697,7 @@ class GeneratorsForMainHocFile:
         lines = []
         for varIdx in range(len(varsList)):
             var = varsList[varIdx]
-            if var.enumSpDmCeSt < 2:
+            if var.enumDmTpCeSt < 2:
                 continue
             varName = getVarName(varIdx)
             if isSwept:
@@ -711,11 +729,11 @@ class GeneratorsForMainHocFile:
         
     def _getHocVar(self, varName):
         return getattr(hocObj, varName)
-        """ !!!
+        """ !!
         if '.' not in varName:
             return getattr(hocObj, varName)
         else:
-            return eval(f'hocObj.{varName}')    # !!! for the sections owned by custom templates
+            return eval(f'hocObj.{varName}')    # !! for the sections owned by custom templates
         """
         
     def _generateAssignment(self, varName, isIntegerOrDouble):

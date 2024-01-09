@@ -1,18 +1,20 @@
 
 objref manageAndRunWidget, mechManagerMainWidget, synManagerMainWidget, varsEditorSubWidget
-objref mth, mmmowb, mcu, synGroup
+objref mth, mmmowb, mcu, mcu4t, gapJuncGroups[2], synGroup
 
 if (makeSureDeclared("inhomAndStochLibrary") && isBaseOrNanoStart) {
     codeContractViolation()
 }
 
-// !!!
+// !!
 if (makeSureDeclared("ecsLibrary") && isBaseOrNanoStart) {
     codeContractViolation()
 }
 
 if (isAstrocyteOrNeuron) {
     objref enumSynCompIdxs, seh
+} else {
+    objref enumGapJuncCompIdxs
 }
 
 proc loadIfNotDeclared() { local numArg, isSkipCodeContractCheck
@@ -39,6 +41,7 @@ proc loadIfNotDeclared() { local numArg, isSkipCodeContractCheck
     }
 }
 
+{ load_file("FakeMechanismType.hoc") }
 { load_file("MechTypeHelper.hoc") }
 
 { load_file("InhomAndStochLibrary/InhomAndStochLibraryLoads.hoc") }
@@ -52,7 +55,11 @@ loadIfNotDeclared("BoundingHelper", "Widgets/Stochasticity/Exported/BoundingHelp
 { load_file("Widgets/Stochasticity/StochEditorSubWidget.hoc") }
 
 { load_file("Widgets/VarsEditorWidget.hoc") }
+{ load_file("Widgets/ListsFilterWidget.hoc") }
 
 { load_file("Widgets/ManageAndRunWidget.hoc") }
 
 { load_file("ManagersCommonUtils.hoc") }
+{ load_file("ManagersCommonUtilsForTaps.hoc") }
+
+{ load_file("TapGroup.hoc") }

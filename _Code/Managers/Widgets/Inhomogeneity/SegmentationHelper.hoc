@@ -4,6 +4,7 @@ begintemplate SegmentationHelper
     public setDistRange, recalculateFactors, subdivideSection
     public segmentationMode, total_nseg, min_nseg
     
+    external isAstrocyteOrNeuron
     external math
     external codeContractViolation
     
@@ -74,7 +75,15 @@ begintemplate SegmentationHelper
             new_nseg = min_nseg
         }
         
-        nseg = new_nseg
+        if (isAstrocyteOrNeuron && new_nseg < nseg) {
+            // !!! BUG: we do nothing here as a temp workaround for the following error:
+            //              "You can not locate a point process at
+            //               position 0 or 1 if it needs an ion
+            //              ca_ion can't be inserted in this node"
+            //          (this error takes place for the default gap juncs of type "GapCaExtr")
+        } else {
+            nseg = new_nseg
+        }
     }
     
     // All next staff is private

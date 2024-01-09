@@ -1,5 +1,5 @@
 
-proc ReseedSpines() {
+proc reseedNeuronNanoBranches() {
     nanoBranchesManager.reseedBranches(createVector(isUniformOrNormalSpineGeometry))
 }
 

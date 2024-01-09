@@ -41,7 +41,7 @@ proc getWatchedVarUnits() {
     $s2 = unitsStr
 }
 
-proc getGraphedVarUnits() {
+proc getGraphedOrPointedVarUnits() {
     strdef varNameWithIndex, pyCommand, varName
     varNameWithIndex = $s1
     

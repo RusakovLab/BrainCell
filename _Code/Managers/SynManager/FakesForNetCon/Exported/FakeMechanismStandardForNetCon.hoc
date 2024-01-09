@@ -5,7 +5,7 @@ begintemplate FakeMechanismStandardForNetCon
     
     external pyObj
     external mth, mcu, seh
-    external utils4FakeMech4NC
+    external utils4FakeMech4SynNetCon
     external codeContractViolation
     
     objref pyValuesDict
@@ -20,18 +20,18 @@ begintemplate FakeMechanismStandardForNetCon
     }
     
     func count() {
-        return utils4FakeMech4NC.getNumVars(pyValuesDict)
+        return utils4FakeMech4SynNetCon.getNumVars(pyValuesDict)
     }
     
     func name() { local numArg, varIdx
         numArg = numarg()
         
         if (numArg == 1) {
-            $s1 = "NetCon"
+            $s1 = utils4FakeMech4SynNetCon.mechName
             return 0
         } else if (numArg == 2) {
             varIdx = $2
-            return utils4FakeMech4NC.getVarNameAndArraySize(pyValuesDict, varIdx, $s1)
+            return utils4FakeMech4SynNetCon.getVarNameAndArraySize(pyValuesDict, varIdx, $s1)
         } else {
             codeContractViolation()
         }
@@ -88,7 +88,7 @@ begintemplate FakeMechanismStandardForNetCon
             }
             for arrayIndex = 0, arraySize - 1 {
                 mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
-                value = utils4FakeMech4NC.getNetConVar(netCon, varNameWithIndex)
+                value = utils4FakeMech4SynNetCon.getNetConVar(netCon, varNameWithIndex)
                 set(varName, value, arrayIndex)
             }
         }
@@ -105,7 +105,7 @@ begintemplate FakeMechanismStandardForNetCon
             for arrayIndex = 0, arraySize - 1 {
                 value = get(varName, arrayIndex)
                 mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
-                utils4FakeMech4NC.setNetConVar(netCon, varNameWithIndex, value)
+                utils4FakeMech4SynNetCon.setNetConVar(netCon, varNameWithIndex, value)
             }
         }
     }

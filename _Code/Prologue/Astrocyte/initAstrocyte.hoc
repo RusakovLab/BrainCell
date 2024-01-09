@@ -49,9 +49,9 @@ objref vBoxSelectGeometry, plotShapeGeometry, vBoxEndFootGeometry, vBoxSelectGeo
 
 // Shows geometry.
 proc showSelectedGeometry() {
-    removeItemFromList(fast_flush_list, plotShapeGeometry)  // !!! maybe not needed
+    removeItemFromList(fast_flush_list, plotShapeGeometry)  // !! maybe not needed
     plotShapeGeometry = new PlotShape(0)
-    fast_flush_list.append(plotShapeGeometry)               // !!!
+    fast_flush_list.append(plotShapeGeometry)               // !!
     plotShapeGeometry.size(-40,40,-37.0217,37.0217)
     plotShapeGeometry.variable("v")
     plotShapeGeometry.view(-40, -37.0217, 80, 74.0433, 850, 300, 433.8, 401.5)
@@ -89,7 +89,7 @@ proc loadGeometryEndFootFile_afterImport() { local minDiam
     setUpExposedLengthVar("SD", minDiam)
     setUpExposedLengthVar("SL")
     
-    load_file("_Code/Prologue/Astrocyte/EndFootNew.hoc")
+    load_file("_Code/Prologue/Astrocyte/CreateDefaultEndFoot.hoc")
     
     vBoxEndFootGeometry = new VBox()
     vBoxEndFootGeometry.intercept(1)
@@ -161,6 +161,7 @@ proc initMainProgram() {
     }
     
     load_file("_Code/Prologue/CommonPrologue.hoc")
+    load_file("_Code/Prologue/Astrocyte/CreateDefaultGapJuncs.hoc")
     
     // Astrocyte simulation prologue complete
     prologueCompleteHandler()

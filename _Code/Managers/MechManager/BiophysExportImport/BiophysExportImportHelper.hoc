@@ -15,7 +15,7 @@ begintemplate BiophysExportImportHelper
     objref mmeibWidget
     
     objref biophysJsonFileHelper
-    strdef jsonFilePathName     // !!! ?? use two different vars for export and import?
+    strdef jsonFilePathName     // !! ?? use two different vars for export and import?
     
     
     proc init() {
@@ -27,21 +27,21 @@ begintemplate BiophysExportImportHelper
     proc export() { local status
         mmeibWidget = $o1
         
-        // !!!!!! check for pending changes in mech comps as well
+        // !! check for pending changes in mech comps as well
         
-        // !!!!! this is just a half-measure because user can make some changes to biophysics just before the click on "Export" button in "Export of biophysics" widget
-        // !!!!! maybe move this code to (or duplicate in) exportStage2
+        // !! this is just a half-measure because user can make some changes to biophysics just before the click on "Export" button in "Export of biophysics" widget
+        // !! maybe move this code to (or duplicate in) exportStage2
         status = mmmowb.ifDirtyThenProposeUserToApplyChanges("export")
         if (status == 1) {
             return
         }
         
         if (status == 2) {
-            // !!!!!
+            // !!
             mwh.endIntercepting()
         }
         
-        // !!!!?? mmmowb.dismissHandler()
+        // !!?? mmmowb.dismissHandler()
         
         mmeibWidget.show(1)     // --> exportStage2
     }
@@ -50,7 +50,7 @@ begintemplate BiophysExportImportHelper
         
         options = $o1
         
-        // !!! need to close it somehow once user closes any of parent widgets
+        // !! need to close it somehow once user closes any of parent widgets
         isCancel = fbh.showSaveFileDialog(pyEnumOutFileTypes.biophysJson, jsonFilePathName)
         if (isCancel) {
             return
@@ -76,7 +76,7 @@ begintemplate BiophysExportImportHelper
         
         mmeibWidget.dismissHandler()
         
-        // !!! need to close it somehow once user closes any of parent widgets
+        // !! need to close it somehow once user closes any of parent widgets
         isCancel = fbh.showLoadFileDialog(pyEnumInFileTypes.biophysJson, jsonFilePathName)
         if (isCancel) {
             return
@@ -172,7 +172,7 @@ begintemplate BiophysExportImportHelper
         return 0
     }
     
-    // !!!! maybe move to some common utils
+    // !! maybe move to some common utils
     proc showMissingCompNamesWarning() { local isForSim localobj missingCompNames
         strdef line2Templ, line1, line2
         
@@ -247,10 +247,10 @@ begintemplate BiophysExportImportHelper
         if (isExportOrImport) {
             sprint(str1, str1, "exported only by \"Manager of export\"")
         } else {
-            sprint(str1, str1, "imported only on the beginning in \"Start with Nano geometry\" mode")
+            sprint(str1, str1, "imported only on the beginning in \"Start with BrainCell export\" mode")
         }
         bulletedList.append(new String(str1))
-        if (options.isAnyStochModels()) {   // !!! false positive here when user disables export/import of a specific compartment or ASSIGNED and STATE vars
+        if (options.isAnyStochModels()) {   // !! false positive here when user disables export/import of a specific compartment or ASSIGNED and STATE vars
             bulletedList.append(new String("states of RNGs"))
         }
         

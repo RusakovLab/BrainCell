@@ -7,8 +7,8 @@ hocObj = hoc.HocObject()
 
 
 def codeContractViolation():
-    # !!! we don't pass the message to Exception ctor just because in this case the shown call stack will be split into two parts:
-    #     the Python call stack (printed above our text) and the HOC call stack (printed below our text)
+    # !! we don't pass the message to Exception ctor just because in this case the shown call stack will be split into two parts:
+    #    the Python call stack (printed above our text) and the HOC call stack (printed below our text)
     print('\n    Bug in BrainCell program: Code contract violation\n    Please report this problem to the developer along with the call stack shown below\n')
     raise Exception()
     
@@ -30,8 +30,8 @@ def isNanoGeometrySection(secName):
     return secName.startswith('AstrocyteNanoBranch[') or secName.startswith('NeuronNanoBranch[')    # !! hardcode
     
 # Called from both Python and HOC
-# !!!! fragile logic in the callers of this method:
-#      there is no guarantee that user didn't apply, say, liner function to g_pas in LargeGlia and then clicked "Deep rescan" making it verbatim
+# !! fragile logic in the callers of this method:
+#    there is no guarantee that user didn't apply, say, liner function to g_pas in LargeGlia and then clicked "Deep rescan" making it verbatim
 def isAstrocyteSpecificInhomVar(compIdx, mechIdx, varType, varIdx, arrayIndex):
     
     mth = hocObj.mth
@@ -47,8 +47,8 @@ def isAstrocyteSpecificInhomVar(compIdx, mechIdx, varType, varIdx, arrayIndex):
     mth.getMechName(0, mechIdx, mechName)
     mth.getVarNameAndArraySize(0, mechIdx, varType, varIdx, varName)
     
-    # !!! checking the comp name below is a fragile solution because user could rename the comp;
-    #     a better approach would be to have a Boolean flag in each comp (but what to do with it on comp split and merge ops?)
+    # !! checking the comp name below is a fragile solution because user could rename the comp;
+    #    a better approach would be to have a Boolean flag in each comp (but what to do with it on comp split and merge ops?)
     cond = (hocObj.isAstrocyteOrNeuron and
         compName == 'Large Glia' and
         mechName[0] == 'pas' and
@@ -58,14 +58,14 @@ def isAstrocyteSpecificInhomVar(compIdx, mechIdx, varType, varIdx, arrayIndex):
         
     return cond
     
-# !!! find a better place for this (not intermodular actually)
+# !! find a better place for this (not intermodular actually)
 def isInPySet(theSet, theItem):
     return theItem in theSet
     
 def getDirPath(anyFilePathName):
     return os.path.dirname(anyFilePathName)
     
-# !!! not intermodular actually
+# !! not intermodular actually
 def getDllFilePathName(anyFilePathName):
     dirPath = getDirPath(anyFilePathName)
     sepChar = anyFilePathName[len(dirPath)]

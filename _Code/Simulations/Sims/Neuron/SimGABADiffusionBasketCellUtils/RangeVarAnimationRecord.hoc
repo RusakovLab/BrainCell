@@ -2,9 +2,9 @@
 begintemplate RangeVarAnimationRecord
     
     public onJustAfterRun, loadFromBinFile
-    public varNameWithIndexAndUnits, timeVec, xVec, yVec, zVec, rangeVarVec     // !!! think about Matrix for the latter
+    public varNameWithIndexAndUnits, timeVec, xVec, yVec, zVec, rangeVarVec     // !! think about Matrix for the latter
     
-    external _interpEachSegmCentreCoordsFromSec3DPointCoords    // !!! remove "_" in the proc name and move it intermodular utils (it's exported)
+    external interpEachSegmCentreCoordsFromSec3DPointCoords
     external getRecSectsListAndNumSegms, closeFileAndShowCompleteMsg, stringEmpty, codeContractViolation
     external mwh
     external eachSecInList
@@ -13,12 +13,12 @@ begintemplate RangeVarAnimationRecord
     objref timeVec, xVec, yVec, zVec, rangeVarVec
     
     
-    // !!! just some test data here
+    // !! just some test data here
     proc init() { local numFrames, timeStep
         
-        varNameWithIndexAndUnits = "varName[idx] (units)"   // !!!
+        varNameWithIndexAndUnits = "varName[idx] (units)"   // !!
         
-        // !!! remove this call later (added just for test)
+        // !! remove this call later (added just for test)
         setStaticData()
         
         // Prepare time grid
@@ -33,7 +33,7 @@ begintemplate RangeVarAnimationRecord
         binFilePathNameOrEmpty = $s1
         txtFilePathNameOrEmpty = $s2
         
-        // !!! maybe do it in onJustBeforeRun ?
+        // !! maybe do it in onJustBeforeRun ?
         setStaticData()
         
         if (rangeVarVec.size() != timeVec.size() * xVec.size()) {
@@ -77,7 +77,7 @@ begintemplate RangeVarAnimationRecord
         zVec = readVectorFromFile(inFile, numSegms)
         rangeVarVec = readVectorFromFile(inFile, numFrames * numSegms)
         if (!inFile.eof()) {
-            // !!! replace with a user-friendly error message
+            // !! replace with a user-friendly error message
             codeContractViolation()
         }
         inFile.close()
@@ -98,7 +98,7 @@ begintemplate RangeVarAnimationRecord
         zVec = new Vector(numSegms)
         dstStartIdx = 0
         for eachSecInList(list_ref) {
-            _interpEachSegmCentreCoordsFromSec3DPointCoords(xSegmVec, ySegmVec, zSegmVec)
+            interpEachSegmCentreCoordsFromSec3DPointCoords(xSegmVec, ySegmVec, zSegmVec)
             xVec.copy(xSegmVec, dstStartIdx)
             yVec.copy(ySegmVec, dstStartIdx)
             zVec.copy(zSegmVec, dstStartIdx)
@@ -131,8 +131,8 @@ begintemplate RangeVarAnimationRecord
         closeFileAndShowCompleteMsg(outFile, 1)
     }
     
-    // !!! maybe make it possible to specify colSep (now "\t") and oneValueFormat (now "%g") like we do in "runner.hoc";
-    // !!! maybe optimize for Origin: write "Long Name" to 1st row and "Units" to 2nd row
+    // !! maybe make it possible to specify colSep (now "\t") and oneValueFormat (now "%g") like we do in "runner.hoc";
+    // !! maybe optimize for Origin: write "Long Name" to 1st row and "Units" to 2nd row
     proc saveToTxtFile() { local numFrames, numSegms, frameIdx, segmIdx localobj outFile
         strdef txtFilePathName
         

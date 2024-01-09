@@ -1,13 +1,13 @@
 
-# !!! BUGs:
-#     * when the first pyplot figure is created, all NEURON widgets become smaller;
-#       this happens only when "Size of text, apps, and other items" parameter in Display settings of Windows OS is greater than 100%;
-#       the root cause is that the command "plt.figure()" changes the DPI awareness of the process from False to True and increases its DPI from 96 to a higher value
-#     * when creating the second animation using "Pyplot (desktop)" front end, it stops shortly, the button and the slider become unresponsive and the next message is printed to console:
-#           QCoreApplication::exec: The event loop is already running
-#     * when _isUseOpacitiesOrColours is True and rotating the scene, the markers disappear randomly
-#     * when resizing the figure to full screen, the "Max" TextBox obstructs the RangeSlider label
-#       (and the same problem when showing the default random test data)
+# !! BUGs:
+#    * when the first pyplot figure is created, all NEURON widgets become smaller;
+#      this happens only when "Size of text, apps, and other items" parameter in Display settings of Windows OS is greater than 100%;
+#      the root cause is that the command "plt.figure()" changes the DPI awareness of the process from False to True and increases its DPI from 96 to a higher value
+#    * when creating the second animation using "Pyplot (desktop)" front end, it stops shortly, the button and the slider become unresponsive and the next message is printed to console:
+#          QCoreApplication::exec: The event loop is already running
+#    * when _isUseOpacitiesOrColours is True and rotating the scene, the markers disappear randomly
+#    * when resizing the figure to full screen, the "Max" TextBox obstructs the RangeSlider label
+#      (and the same problem when showing the default random test data)
 
 # https://matplotlib.org/stable/gallery/animation/random_walk.html
 
@@ -72,10 +72,10 @@ class PyplotPlayer:
     
     def __init__(self, x, y, z, rangeVar, numFrames, varNameWithIndexAndUnits, isUseOpacitiesOrColours, isDesktopOrBrowser, rangeVar_min, rangeVar_max):
         
-        # !!! not enough to avoid "QCoreApplication::exec: The event loop is already running" message and hanging
+        # !! not enough to avoid "QCoreApplication::exec: The event loop is already running" message and hanging
         # plt.close('all')
         
-        self._numFrames = numFrames
+        self._numFrames = numFrames     # !! pyplot prints UserWarning-s if numFrames == 1
         self._isUseOpacitiesOrColours = isUseOpacitiesOrColours
         self._isDesktopOrBrowser = isDesktopOrBrowser
         
@@ -84,8 +84,10 @@ class PyplotPlayer:
             
         if isUseOpacitiesOrColours:
             # Make a linear transformation of the data to fit [0, 1] range
-            # !!! code dup. with PlotlyPlayer._initForOpacities
+            # !! code dup. with PlotlyPlayer._initForOpacities
             rangeVar_range = rangeVar_max - rangeVar_min
+            if rangeVar_range == 0:
+                rangeVar_range = 1  # Just to avoid division by 0 below (however, pyplot will print UserWarning-s anyway)
             self._rangeVar0To1 = (rangeVar - rangeVar_min) / rangeVar_range
             
             self._balance = self._defaultBalance
@@ -136,7 +138,7 @@ class PyplotPlayer:
         
         fig.suptitle(varNameWithIndexAndUnits)
         
-        # !!! use blit=True and update method _onNewFrame when we show the extracellular sources
+        # !! use blit=True and update method _onNewFrame when we show the extracellular sources
         interval = 0 if isDesktopOrBrowser else 1
         self._ani = FuncAnimation(fig, self._onNewFrame, frames=numFrames, interval=interval)
         self._ani.frame_seq = self._getFrameSeq()
@@ -146,7 +148,7 @@ class PyplotPlayer:
             sh = 0.05
             
             ax = plt.axes([0.1, 0.05, 0.8, sh])
-            # !!! maybe show "t (ms)" instead of "Frame"
+            # !! maybe show "t (ms)" instead of "Frame"
             self._sliderFrame = Slider(ax, 'Frame', valmin=0, valmax=numFrames - 1, valstep=1)
             self._sliderFrame.on_changed(self._onSliderFrameChange)
             
@@ -161,7 +163,7 @@ class PyplotPlayer:
             ax = plt.axes([0.1, 0.02, 0.8, 0.03])
             x = np.linspace(0, numFrames - 1, numFrames)
             if isUseOpacitiesOrColours:
-                data = self._rangeVar0To1Balanced
+                data = self._rangeVar0To1
             else:
                 data = self._rangeVar
             y = [row.mean() for row in data]
@@ -316,7 +318,7 @@ class PyplotPlayer:
         max0To1 = (self._max - self._rangeVar_min) / self._rangeVar_range
         mask = (self._rangeVar0To1 < min0To1) | (self._rangeVar0To1 > max0To1)
         self._rangeVar0To1Balanced[mask] = 0
-        # !!! np.clip(self._rangeVar0To1Balanced, min0To1, max0To1, out=self._rangeVar0To1Balanced)
+        # !! np.clip(self._rangeVar0To1Balanced, min0To1, max0To1, out=self._rangeVar0To1Balanced)
         
         if not self._isRunning:
             self._setOpacitiesOrColours(self._frameIdx)

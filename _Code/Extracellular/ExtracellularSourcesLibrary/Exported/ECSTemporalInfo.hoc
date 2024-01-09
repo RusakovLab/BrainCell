@@ -7,11 +7,11 @@ begintemplate ECSTemporalInfo
     external codeContractViolation
     
     enumStaticSwitchSpike = -1
-    offsetTimeOrMinus1 = -1 // For "switch" or "spike" dynamics only
+    offsetTimeOrMinus1 = -1 // For "switch" or "spike" dynamics only and only when not a series
     durationOrMinus1 = -1   // For "switch" dynamics only
     isSeriesOrMinus1 = -1   // For "switch" or "spike" dynamics only
     
-    // !!! add the series info here
+    // !! add the series info here
     
     
     proc init() { local numArg

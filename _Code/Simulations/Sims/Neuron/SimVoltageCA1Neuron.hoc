@@ -1,19 +1,19 @@
 
-// !!! in showMainSubCore, don't call addPointsForVoltageInDendrites like in showFallbackSubCore,
-//     but rather take the equidistant points along the _rangeVarPlot path starting at {sec1_ref, u1} and ending at {sec2_ref, u2}
+// !! in showMainSubCore, don't call addPointsForVoltageInDendrites like in showFallbackSubCore,
+//    but rather take the equidistant points along the _rangeVarPlot path starting at {sec1_ref, u1} and ending at {sec2_ref, u2}
 
-// !!! add coloured markers on pathPlotShape indicating the observation points
-// !!! add vertical coloured lines on rangeGraph indicating the observation points
+// !! add coloured markers on pathPlotShape indicating the observation points
+// !! add vertical coloured lines on rangeGraph indicating the observation points
 
-// !!! maybe move this file to "Neuron" subfolder?
+// !! maybe move this file to "Neuron" subfolder?
 
-// !!! keeping it on the top level to be accessible from "execute"-ed HOC command
+// !! keeping it on the top level to be accessible from "execute"-ed HOC command
 objref _rangeVarPlot
 
 begintemplate SimVoltageCA1Neuron
     
-    public check, show, dismissHandler
-    public biophysJsonFileNameOrEmpty, isCustomProcAdvance
+    public preShowCheck, show, dismissHandler
+    public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
     external getDistRangeGivenSections, isDisconnectedDistance, secListToListOfSecRef, addVarToGraph, removeItemFromList, unmapIfNotNil, codeContractViolation
     external math, compUtils, mwh
@@ -23,9 +23,11 @@ begintemplate SimVoltageCA1Neuron
     external graphList, flush_list
     external tstop
     external _rangeVarPlot
+    external enumColours
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
+    isAltRunControl = -1
     
     objref timeGraphBox, pathAndRangeBox
     objref timeGraph, rangeGraph
@@ -38,15 +40,16 @@ begintemplate SimVoltageCA1Neuron
     proc init() {
         biophysJsonFileNameOrEmpty = "SimVoltageCA1Neuron.json"
         isCustomProcAdvance = 0
+        isAltRunControl = 0
         
-        // !!! for numDendPts > 7, we have 2 bad colours and then repetition of colours:
-        //     colourIdx = 10 is white, colourIdx = 11 is black, colourIdx = 12 is red etc.
+        // !! for numDendPts > 7, we have 2 bad colours and then repetition of colours:
+        //    colourIdx = 10 is white, colourIdx = 11 is black, colourIdx = 12 is red etc.
         numDendPts = 5
         y_min = -80     // (mV)
         y_max = 40      // (mV)
     }
     
-    func check() {
+    func preShowCheck() {
         return 0
     }
     
@@ -91,22 +94,22 @@ begintemplate SimVoltageCA1Neuron
         
         pathPlotShape = $o1
         
-        // pathPlotShape.menu_remove("3D Rotate")   // !!! error here: menu_remove not a public member of PlotShape
-        pathPlotShape.color_all(9)                  // Grey
+        // pathPlotShape.menu_remove("3D Rotate")   // !! error here: menu_remove not a public member of PlotShape
+        pathPlotShape.color_all(enumColours.grey)
         
         pyVarsSet = pyObj.set()
         _rangeVarPlot = new RangeVarPlot("v")
         
-        // !!!! move the legend to the top-right corner
+        // !! move the legend to the top-right corner
         
         soma_ref.o(0).sec {
             sprint(var, "%s.v(0.5)", secname())
         }
         pyVarsSet.add(var)
-        colourIdx = 2   // Red      !!! maybe use Blue here not to confuse with pathPlotShape and rangeGraph palette
-        /* !!!!
+        colourIdx = enumColours.red     // !! maybe use Blue here not to confuse with pathPlotShape and rangeGraph palette
+        /* !!
         getSegmXYZ(secName, 0.5, &x, &y, &z)
-        pathPlotShape.mark(x, y, "o", colourIdx)
+        pathPlotShape.mark(x, y, "o", marker_size, colourIdx)
         */
         addVarToGraph(timeGraph, var, colourIdx)
         colourIdx += 1
@@ -117,13 +120,13 @@ begintemplate SimVoltageCA1Neuron
         if (proxDendCompOrNil != nil && distDendCompOrNil != nil) {
             isDisconnected = showMainSubCore(pathPlotShape, proxDendCompOrNil.list_ref, distDendCompOrNil.list_ref, pyVarsSet, colourIdx, &x_min, &x_max)
             if (isDisconnected) {
-                return
+                return          // !! it would be better to handle this case in preShowCheck
             }
         } else {
             // We'll use dendrite_ref
             x_max = showFallbackSubCore(pathPlotShape, pyVarsSet, colourIdx)
             if (x_max == -1) {
-                return
+                return          // !! it would be better to handle this case in preShowCheck
             }
             x_min = 0
         }
@@ -132,14 +135,14 @@ begintemplate SimVoltageCA1Neuron
         setXYLabels(timeGraph, "Time (ms)")
         graphList[0].append(timeGraph)
         
-        rangeGraph.addobject(_rangeVarPlot, 2, 0)    // Red
+        rangeGraph.addobject(_rangeVarPlot, enumColours.red, 0)
         rangeGraph.size(x_min, x_max, y_min, y_max)
         setXYLabels(rangeGraph, "Distance (um)")
         flush_list.append(rangeGraph)
         
         pathSecList = new SectionList()
-        _rangeVarPlot.list(pathSecList)     // !!! we have called this in showMainSubCore - just reuse
-        pathPlotShape.color_list(pathSecList, 2)    // Red
+        _rangeVarPlot.list(pathSecList)     // !! we have called this in showMainSubCore - just reuse
+        pathPlotShape.color_list(pathSecList, enumColours.red)
     }
     
     func showMainSubCore() { local colourIdx, dist1_best, u1, dist2_best, u2, dist_max localobj pathPlotShape, proxDendSec_list, distDendSec_list, pyVarsSet, sec1_ref, sec2_ref, secList, list_ref
@@ -173,8 +176,8 @@ begintemplate SimVoltageCA1Neuron
         list_ref = new List()
         secListToListOfSecRef(secList, list_ref)
         
-        // !!!! instead of calling this like in showFallbackSubCore,
-        //      take the equidistant points along the _rangeVarPlot path starting at {sec1_ref, u1} and ending at {sec2_ref, u2}
+        // !! instead of calling this like in showFallbackSubCore,
+        //    take the equidistant points along the _rangeVarPlot path starting at {sec1_ref, u1} and ending at {sec2_ref, u2}
         dist_max = addPointsForVoltageInDendrites(list_ref, pathPlotShape, timeGraph, pyVarsSet, colourIdx)
         if (dist_max == -1) {
             codeContractViolation()
@@ -198,14 +201,14 @@ begintemplate SimVoltageCA1Neuron
         
         dist_max = addPointsForVoltageInDendrites(dendrite_ref, pathPlotShape, timeGraph, pyVarsSet, colourIdx)
         if (dist_max == -1) {   //
-            return -1           // !!! maybe remove this
+            return -1           // !! maybe remove this
         }                       //
         
         return dist_max
     }
     
     // Here we choose some quite random points on dendrites equidistantly spaced by "distance" ("numDendPts" points in total);
-    // !!! an alternative implementation may choose "numDendPts" farthest from each other points on dendrites (using the graph theory)
+    // !! an alternative implementation may choose "numDendPts" farthest from each other points on dendrites (using the graph theory)
     func addPointsForVoltageInDendrites() { local colourIdx, isDisconnected, dist_min, dist_max, u, isFirstPoint, dist localobj list_ref, pathPlotShape, timeGraph, pyVarsSet
         strdef sec_name, var, hocCommand
         
@@ -233,11 +236,11 @@ begintemplate SimVoltageCA1Neuron
             findSpecificDistancePointInDendrites(dist, sec_name, &u)
             sprint(var, "%s.v(%g)", sec_name, u)
             if (pyObj.isInPySet(pyVarsSet, var)) {
-                continue    // !!! maybe it would be better to get back to findSpecificDistancePointInDendrites and find the next candidate
+                continue    // !! maybe it would be better to get back to findSpecificDistancePointInDendrites and find the next candidate
             }
-            /* !!!!
+            /* !!
             getSegmXYZ(secName, u, &x, &y, &z)
-            pathPlotShape.mark(x, y, "o", colourIdx)
+            pathPlotShape.mark(x, y, "o", marker_size, colourIdx)
             */
             addVarToGraph(timeGraph, var, colourIdx)
             pyVarsSet.add(var)
@@ -245,7 +248,7 @@ begintemplate SimVoltageCA1Neuron
         }
         
         if (u == -1) {
-            // !!!
+            // !!
             codeContractViolation()
         }
         
@@ -271,7 +274,7 @@ begintemplate SimVoltageCA1Neuron
         }
         
         if (dist_best == -1) {
-            // !!!!!
+            // !!
             codeContractViolation()
         }
         
@@ -300,7 +303,7 @@ begintemplate SimVoltageCA1Neuron
         }
         
         if (u_best == -1) {
-            // !!!!!
+            // !!
             codeContractViolation()
         }
         

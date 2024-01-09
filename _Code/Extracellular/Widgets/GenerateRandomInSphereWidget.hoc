@@ -4,7 +4,7 @@ begintemplate GenerateRandomInSphereWidget
     public show, dismissHandler
     
     external createExtracellularGeneratorHintsPanel, unmapIfNotNil
-    external mwh, math, ecsLibrary, rngUtils
+    external mwh, math, geomMath, ecsLibrary, rngUtils
     
     objref mainBox
     objref randomCoord
@@ -34,7 +34,7 @@ begintemplate GenerateRandomInSphereWidget
             xpanel("")
             xlabel("1. Create a single extracellular source.")
             xlabel("2. Click \"Generate sources\" to create \"Number of sources - 1\" copies within \"Radius of generation\"")
-            // !!! for "sphere" src shape, the generated sources will stick out the "Radius of generation"
+            // !! for "sphere" src shape, the generated sources will stick out the "Radius of generation"
             xlabel("    filling the sphere uniformly (but the initial source will remain in the centre of the sphere).")
             xpanel()
             xpanel("")
@@ -57,7 +57,7 @@ begintemplate GenerateRandomInSphereWidget
     // All next staff is private
     
     
-    proc generateHandler() { local numECSs, isCancel, x_base, y_base, z_base, x_min, x_max, y_min, y_max, z_min, z_max, radiusSqGen, srcIdx, x_new, y_new, z_new, distSq localobj ecsList, baseECS, spatialInfo, newECS
+    proc generateHandler() { local numECSs, isCancel, baseEcsRadiusOrMinus1, radiusGenCorr, srcIdx, x_new, y_new, z_new localobj ecsList, baseECS, spatialInfo, newECS
         strdef line1, line2
         
         ecsList = ecsLibrary.ecsList
@@ -81,31 +81,16 @@ begintemplate GenerateRandomInSphereWidget
         }
         
         spatialInfo = baseECS.spatialInfo
-        x_base = spatialInfo.x
-        y_base = spatialInfo.y
-        z_base = spatialInfo.z
         
-        x_min = x_base - radiusGen
-        x_max = x_base + radiusGen
-        y_min = y_base - radiusGen
-        y_max = y_base + radiusGen
-        z_min = z_base - radiusGen
-        z_max = z_base + radiusGen
-        
-        radiusSqGen = radiusGen ^ 2
+        baseEcsRadiusOrMinus1 = spatialInfo.radiusOrMinus1
+        if (baseEcsRadiusOrMinus1 == -1) {
+            radiusGenCorr = radiusGen
+        } else {
+            radiusGenCorr = radiusGen - baseEcsRadiusOrMinus1
+        }
         
         for srcIdx = 1, numSrcs - 1 {
-            while (1) {
-                x_new = randomCoord.uniform(x_min, x_max)
-                y_new = randomCoord.uniform(y_min, y_max)
-                z_new = randomCoord.uniform(z_min, z_max)
-                
-                distSq = getDistSquareBetweenTwo3DPoints(x_base, y_base, z_base, x_new, y_new, z_new)
-                if (distSq <= radiusSqGen) {
-                    break
-                }
-            }
-            
+            geomMath.rndPt3D_unifByVolInSphere(randomCoord, spatialInfo.x, spatialInfo.y, spatialInfo.z, radiusGenCorr, &x_new, &y_new, &z_new)
             newECS = baseECS.createShiftedCopy(x_new, y_new, z_new)
             ecsList.append(newECS)
         }
@@ -117,11 +102,6 @@ begintemplate GenerateRandomInSphereWidget
         mwh.showMessageBox(line1, line2, "Generated")
         
         dismissHandler()
-    }
-    
-    // See also: ExtracellularApplicatorUtils_Exported.hoc -> _getDistBetweenTwo3DPoints
-    func getDistSquareBetweenTwo3DPoints() {
-        return ($1 - $4) ^ 2 + ($2 - $5) ^ 2 + ($3 - $6) ^ 2
     }
     
 endtemplate GenerateRandomInSphereWidget

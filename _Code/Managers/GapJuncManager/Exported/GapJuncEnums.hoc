@@ -1,0 +1,35 @@
+
+// !!! not exported at the moment
+
+
+begintemplate EnumGapJuncCompIdxs
+    
+    public extGjPp, extGjExtValue, intGjPp
+    
+    // !!!! Keep in sync with hoc:createOrImportSynComps, py:createReducedSynComps and py:initHomogenSynVars
+    proc init() {
+        extGjPp = 0
+        extGjExtValue = 1
+        intGjPp = 2
+    }
+    
+endtemplate EnumGapJuncCompIdxs
+
+objref enumGapJuncCompIdxs
+enumGapJuncCompIdxs = new EnumGapJuncCompIdxs()
+
+
+begintemplate EnumGapJuncPpRoles
+    
+    public sngPp, ptrMarkerPp, extValue
+    
+    proc init() {
+        sngPp = 0
+        ptrMarkerPp = 1     // For internal GJs only
+        extValue = 2        // For external GJs only      // !!!! keep in sync with InhomAndStochTarget ctor
+    }
+    
+endtemplate EnumGapJuncPpRoles
+
+objref enumGapJuncPpRoles
+enumGapJuncPpRoles = new EnumGapJuncPpRoles()

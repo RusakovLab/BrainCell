@@ -1,16 +1,16 @@
 
 begintemplate SynPPComp
 
-    public name, enumDmPpNc, enumPpRole, isMechVarTypeInhom, mechStds
-    public isMechVarInhom, prepareVarsEditorHeader, getDistRange, getSecList, markMechDirty, updateStatsCurve, updateVerbatimModelCurve, applyInhomogeneity, isAnyVarInhom
+    public name, enumDmPpFk, enumPpRole, isMechVarTypeInhom, mechStds
+    public isMechVarInhom, prepareVarsEditorHeader, getDistRange, getSecList, markMechDirty, updateStatsCurve, updateVerbatimModelCurve, applyInhomogeneity
     public isMechVarTypeInhom, mechStds, isMechDirty
     
     external mwh, mth, math, mcu
-    external smAllSyns, synGroup
+    external smAllSyns, synGroup, tapGroup
     external stringsEqual, codeContractViolation
     
     strdef name
-    enumDmPpNc = -1
+    enumDmPpFk = -1
     enumPpRole = -1
     
     double isMechVarTypeInhom[1][1]     // 0/1 flags
@@ -37,9 +37,9 @@ begintemplate SynPPComp
             codeContractViolation()
         }
         
-        enumDmPpNc = 1
+        enumDmPpFk = 1
         
-        numMechs = mth.getNumMechs(enumDmPpNc)
+        numMechs = mth.getNumMechs(enumDmPpFk)
         
         double isMechVarTypeInhom[numMechs][3]  // 0/1 flags
         objref mechStds[numMechs][3]            // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
@@ -56,7 +56,7 @@ begintemplate SynPPComp
                 
                 if (stringsEqual(thisPpName, actPpName)) {
                     // It's a code contract that all the syns have homogeneous PP-s at the time of new SynPPComp-s construction
-                    // (but this does not apply to "start with nano" mode)
+                    // (but this does not apply to "start with BrainCell export" mode)
                     mechStd.in(actFirstPp)
                 }
                 
@@ -144,7 +144,7 @@ begintemplate SynPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for synGroup.updateStatsCurveIter(syn, graph, &y, &yMin, &yMax) {
+        for tapGroup.updateStatsCurveIter(syn, smAllSyns, graph, &y, &yMin, &yMax) {
             pp = syn.getPointProcess(enumPpRole)
             mechStd.in(pp)
             y = mechStd.get(varName, arrayIndex)
@@ -176,7 +176,7 @@ begintemplate SynPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for synGroup.applyInhomogeneityIter(syn, distFuncHelper) {
+        for tapGroup.applyInhomogeneityIter(syn, smAllSyns, distFuncHelper) {
             thisPp = syn.getPointProcess(enumPpRole)
             mechStd.in(thisPp)
             y = distFuncHelper.calculateAt(syn.dist)
@@ -185,11 +185,6 @@ begintemplate SynPPComp
             mechStd.set(varName, y, arrayIndex)
             mechStd.out(thisPp)
         }
-    }
-    
-    func isAnyVarInhom() { local mechIdx
-        mechIdx = $1
-        return synGroup.isAnyVarInhom(this, mechIdx)
     }
     
 endtemplate SynPPComp

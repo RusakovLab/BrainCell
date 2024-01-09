@@ -9,7 +9,7 @@ begintemplate SimpleModelStochFuncHelper
     public mainBox, distHelper, rng
     public parentWidget
     
-    external mwh, math, rngUtils, mcu
+    external mwh, math, rngUtils, graphUtils
     external codeContractViolation
     external eachPointInGrid
     
@@ -86,7 +86,7 @@ begintemplate SimpleModelStochFuncHelper
         }
         math.restoreGreedyComparison()
         
-        mcu.setGraphSize(graph, xMin, xMax, 0, yMax)
+        graphUtils.setGraphSize(graph, xMin, xMax, 0, yMax)
         graph.flush()
     }
     
@@ -108,7 +108,7 @@ begintemplate SimpleModelStochFuncHelper
         }
         math.restoreGreedyComparison()
         
-        mcu.setGraphSize(graph, xMin, xMax, 0, 1)
+        graphUtils.setGraphSize(graph, xMin, xMax, 0, 1)
         graph.flush()
     }
     

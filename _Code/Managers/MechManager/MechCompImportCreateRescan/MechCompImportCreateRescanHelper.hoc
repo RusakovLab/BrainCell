@@ -18,11 +18,11 @@ begintemplate MechCompImportCreateRescanHelper
     // 0 - no rescan scheduled
     // 1 - full rescan: create all the comps from scratch (used by MechManagerMainWidget.rescanHandler; cannot be scheduled, and always applied immediately)
     // 2 - all mechs in all comps (used by MechManagerMainWidget.rescanHandler; slower, but simpler solution compared to all next rescan types)
-    // 3 - (!!! never called) only nanogeometry on reseed (used by ManageAndRunWidget.onNanoReseedOrUpdateHandler)
+    // 3 - (!! never called) only nanogeometry on reseed (used by ManageAndRunWidget.onNanoReseedOrUpdateHandler)
     // 4 - only nanogeometry on update (used by ManageAndRunWidget.onNanoReseedOrUpdateHandler)
     // 5 - only spine_neck.diam and ions in dendrite_ref or spine_head (used by SynGroup.applyChangesToLoc)
     // 6 - only "*o" ion vars (used by ExtracellularManagerMainWidget.applyHandler)
-    // !!! some ideas:
+    // !! some ideas:
     //     * maybe split type 4 into three: geometry, LargeGlia.g_pas, spine_neck/head.nseg
     //     * in addition to type 5, maybe add a type of rescan to use after we created synapses
     //       (if Target PPs use some ions, these ions are inserted into the section automatically;
@@ -34,7 +34,7 @@ begintemplate MechCompImportCreateRescanHelper
         sourcePythonCode("\\PythonCode", "from MechCompAutoSplitUtils import *", "MechCompImportCreateRescanHelper ctor")
         
         isConvertedFromReducedMechCompTemplates = 0
-        enumScheduledRescanType = 0                     // !!!! maybe assign 1 by default (but must be 0 in "start with nano" mode)
+        enumScheduledRescanType = 0                     // !! maybe assign 1 by default (but must be 0 in "start with BrainCell export" mode)
     }
     
     proc rescanNow() { local numArg, enumNewRescanType
@@ -70,12 +70,12 @@ begintemplate MechCompImportCreateRescanHelper
             rescanNanoComps()
         } else if (enumScheduledRescanType == 5) {
             // Rescan spine_neck.diam and ions in dendrite_ref or spine_head
-            // !!! need to investigate if insertion of a PP into a sec can result in insertion of not only ions, but also dist mechs
-            // rescanTheseVarsInTheseComps(compNames, !!!)  // Faster solution
+            // !! need to investigate if insertion of a PP into a sec can result in insertion of not only ions, but also dist mechs
+            // rescanTheseVarsInTheseComps(compNames, !!)   // Faster solution
             codeContractViolation()
         } else if (enumScheduledRescanType == 6) {
             // Rescan outer concs for all ions in all comps
-            // rescanTheseVarsInAllComps(!!!)               // Faster solution
+            // rescanTheseVarsInAllComps(!!)                // Faster solution
             codeContractViolation()
         } else {
             codeContractViolation()
@@ -102,7 +102,7 @@ begintemplate MechCompImportCreateRescanHelper
         } else if (!isBaseOrNanoStart && !isConvertedFromReducedMechCompTemplates) {
             editableComps = new List()
             getPleaseWaitMsg("Importing all", msg)
-            mwh.showPleaseWaitBox(msg)      // !!! maybe not needed because the import is quite fast
+            mwh.showPleaseWaitBox(msg)      // !! maybe not needed because the import is quite fast
             {
                 for eachItemInList(reducedComp, mmAllComps) {
                     editableComps.append(new MechComp(reducedComp))
@@ -138,8 +138,8 @@ begintemplate MechCompImportCreateRescanHelper
         }
         
         if (mergedRescanType > 4) {
-            // !!! just a temp stub: fallback to "Light rescan" until we have all specialized rescanners implemented
-            //     (simpler, but slower solution than rescanning only a subset of mechs or vars)
+            // !! just a temp stub: fallback to "Light rescan" until we have all specialized rescanners implemented
+            //    (simpler, but slower solution than rescanning only a subset of mechs or vars)
             mergedRescanType = 2
         }
         
@@ -211,7 +211,7 @@ begintemplate MechCompImportCreateRescanHelper
     proc replaceNanoComps() { local idx, compIdx localobj compNames, secRefs, placeholder, comp
         strdef msg, compName
         
-        // !!! never called because we block the panel in Main UI (but may be called in the future)
+        // !! never called because we block the panel in Main UI (but may be called in the future)
         codeContractViolation()
         
         compNames = compUtils.getReservedNanoDistMechCompNames()
