@@ -9,7 +9,7 @@ begintemplate ExportManagerMainWidget
     external exportOptions
     external pyObj
     
-    objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6
+    objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7
     objref childWidgets[1]
     
     numChildWidgets = -1
@@ -73,19 +73,14 @@ begintemplate ExportManagerMainWidget
             }
             hBox.intercept(0)
             hBox.map()
-            hBox = new HBox()
-            hBox.intercept(1)
-            {
-                numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps()
-                numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps()
-                if (isAstrocyteOrNeuron) {
-                    deck2 = createGapJuncOrSynBlock("All gap junctions", &exportOptions.isExportGapJuncs, "gapJuncsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportGapJuncAssignedAndState, &exportOptions.isExportGapJuncInhoms, &exportOptions.isExportGapJuncStochs)
-                } else {
-                    deck2 = createGapJuncOrSynBlock("All synapses", &exportOptions.isExportSyns, "synsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportSynAssignedAndState, &exportOptions.isExportSynInhoms, &exportOptions.isExportSynStochs)
-                }
+            numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps(1, -1)
+            numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps(1, -1)
+            deck2 = createGapJuncOrSynBlock("All gap junctions", &exportOptions.isExportGapJuncs, "gapJuncsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportGapJuncAssignedAndState, &exportOptions.isExportGapJuncInhoms, &exportOptions.isExportGapJuncStochs)
+            if (!isAstrocyteOrNeuron) {
+                numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps(0, -1)
+                numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps(0, -1)
+                deck3 = createGapJuncOrSynBlock("All synapses", &exportOptions.isExportSyns, "synsCheckBoxHandler()", numInhomVars, numStochVars, &exportOptions.isExportSynAssignedAndState, &exportOptions.isExportSynInhoms, &exportOptions.isExportSynStochs)
             }
-            hBox.intercept(0)
-            hBox.map()
             hBox = new HBox()
             hBox.intercept(1)
             {
@@ -97,7 +92,7 @@ begintemplate ExportManagerMainWidget
                     xpanel()
                 }
                 closeDeck(deck, 0, firstColWidth, slotHeight)
-                deck3 = openDeck()
+                deck4 = openDeck()
                 {
                     templ = "       They will be %s before the export (%d detected)"
                     numECSs = ecsLibrary.getNumECSs()
@@ -114,7 +109,7 @@ begintemplate ExportManagerMainWidget
                     xlabel(text)
                     xpanel()
                 }
-                closeDeck(deck3, exportOptions.isExportECSs, secondColWidth, slotHeight)
+                closeDeck(deck4, exportOptions.isExportECSs, secondColWidth, slotHeight)
             }
             hBox.intercept(0)
             hBox.map()
@@ -133,7 +128,7 @@ begintemplate ExportManagerMainWidget
                     xpanel()
                 }
                 closeDeck(deck, 0, firstColWidth, slotHeight)
-                deck4 = openDeck()
+                deck5 = openDeck()
                 {
                     createEmptyPanel()
                     xpanel("")
@@ -142,7 +137,7 @@ begintemplate ExportManagerMainWidget
                     xcheckbox("Expose some other vars (I will select them)", &exportOptions.isExposeModelVars, "varsSelectorCheckBoxHandler(0, exportOptions.isExposeModelVars)")
                     xpanel()
                 }
-                closeDeck(deck4, exportOptions.isCreateParamsHoc, secondColWidth, slotHeight)
+                closeDeck(deck5, exportOptions.isCreateParamsHoc, secondColWidth, slotHeight)
             }
             hBox.intercept(0)
             hBox.map()
@@ -157,7 +152,7 @@ begintemplate ExportManagerMainWidget
                     xpanel()
                 }
                 closeDeck(deck, 0, firstColWidth, slotHeight)
-                deck5 = openDeck()
+                deck6 = openDeck()
                 {
                     createEmptyPanel()
                     xpanel("")
@@ -166,7 +161,7 @@ begintemplate ExportManagerMainWidget
                     xcheckbox("Repeat several times to collect stats (I will select how many)", &exportOptions.isRepeatForStats, "varsSelectorCheckBoxHandler(3, exportOptions.isRepeatForStats)")
                     xpanel()
                 }
-                closeDeck(deck5, exportOptions.isCreateRunnerHoc, secondColWidth, slotHeight)
+                closeDeck(deck6, exportOptions.isCreateRunnerHoc, secondColWidth, slotHeight)
             }
             hBox.intercept(0)
             hBox.map()
@@ -181,7 +176,7 @@ begintemplate ExportManagerMainWidget
                     xpanel()
                 }
                 closeDeck(deck, 0, firstColWidth, slotHeight)
-                deck6 = openDeck()
+                deck7 = openDeck()
                 {
                     createEmptyPanel()
                     xpanel("")
@@ -189,11 +184,13 @@ begintemplate ExportManagerMainWidget
                     xradiobutton("Build and copy a new DLL (it will contain only used mechs)", "copyDllRadioButtonHandler(1)", exportOptions.isNewOrExistingDll == 1)
                     xpanel()
                 }
-                closeDeck(deck6, exportOptions.isCopyDll, secondColWidth, slotHeight)
+                closeDeck(deck7, exportOptions.isCopyDll, secondColWidth, slotHeight)
             }
             hBox.intercept(0)
             hBox.map()
             xpanel("")
+            xlabel("")
+            xcheckbox("Export as a ZIP archive compatible with Neuroscience Gateway supercomputer (the \"Data\" file)", &exportOptions.isCreateNsgDataZipFile)
             xlabel("")
             xbutton("Export", "exportHandler()")
             xpanel()
@@ -211,7 +208,7 @@ begintemplate ExportManagerMainWidget
     // All next staff is private
     
     
-    obfunc createGapJuncOrSynBlock() { local numInhomVars, numStochVars, slotHeight localobj deck
+    obfunc createGapJuncOrSynBlock() { local numInhomVars, numStochVars, slotHeight localobj hBox, deck1, deck2
         strdef checkBoxLabel, checkBoxHandler
         checkBoxLabel = $s1
         checkBoxHandler = $s3
@@ -220,14 +217,22 @@ begintemplate ExportManagerMainWidget
         
         slotHeight = 53
         
-        deck = openDeck()
+        hBox = new HBox()
+        hBox.intercept(1)
         {
-            xpanel("")
-            xcheckbox(checkBoxLabel, &$&2, checkBoxHandler)
-            xpanel()
+            deck1 = openDeck()
+            {
+                xpanel("")
+                xcheckbox(checkBoxLabel, &$&2, checkBoxHandler)
+                xpanel()
+            }
+            closeDeck(deck1, 0, firstColWidth, slotHeight)
+            deck2 = createInhomStochDeck(0, numInhomVars, numStochVars, &$&6, &$&7, &$&8, $&2, slotHeight)
         }
-        closeDeck(deck, 0, firstColWidth, slotHeight)
-        return createInhomStochDeck(0, numInhomVars, numStochVars, &$&6, &$&7, &$&8, $&2, slotHeight)
+        hBox.intercept(0)
+        hBox.map()
+        
+        return deck2
     }
     
     // !! keep in sync with ExportImportBiophysicsWidget.show
@@ -267,27 +272,24 @@ begintemplate ExportManagerMainWidget
     
     proc gapJuncsCheckBoxHandler() {
         deck2.flip_to(exportOptions.isExportGapJuncs)
-        if (exportOptions.isExportGapJuncs) {
-            mwh.showNotImplementedWarning()     // !!!
-        }
     }
     
     proc synsCheckBoxHandler() {
-        deck2.flip_to(exportOptions.isExportSyns)
+        deck3.flip_to(exportOptions.isExportSyns)
     }
     
     proc ECSsCheckBoxHandler() {
-        deck3.flip_to(exportOptions.isExportECSs)
+        deck4.flip_to(exportOptions.isExportECSs)
     }
     
     proc createParamsHocCheckBoxHandler() {
         dismissChilds()
-        deck4.flip_to(exportOptions.isCreateParamsHoc)
+        deck5.flip_to(exportOptions.isCreateParamsHoc)
     }
     
     proc createRunnerHocCheckBoxHandler() {
         dismissChilds()
-        deck5.flip_to(exportOptions.isCreateRunnerHoc)
+        deck6.flip_to(exportOptions.isCreateRunnerHoc)
     }
     
     proc varsSelectorCheckBoxHandler() { local childWidIdx, isChecked
@@ -300,7 +302,7 @@ begintemplate ExportManagerMainWidget
     }
     
     proc copyDllCheckBoxHandler() {
-        deck6.flip_to(exportOptions.isCopyDll)
+        deck7.flip_to(exportOptions.isCopyDll)
         if (exportOptions.isCopyDll && exportOptions.isNewOrExistingDll) {
             mwh.showNotImplementedWarning()
         }

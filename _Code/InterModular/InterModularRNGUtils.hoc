@@ -8,7 +8,7 @@
 // Keep in sync with ReducedRNGUtils
 begintemplate RNGUtils
 
-    public getFor_diameters, getFor_nano_branchSeeder, getFor_nano_diamAndLen, getFor_nano_spineRadius, getFor_nano_neckLen, getFor_nano_neckDiam, getFor_gapJuncSeeder, getFor_synLoc, getFor_ecd, getFor_sim_gabaDiffusion, getFor_sim_frapCircle, getFor_sim_calciumDynamics, getFor_stochFunc_withUniqueSeed, getFor_stretch_withCustomSeed, getSeedFor_SEFW
+    public getFor_diameters, getFor_nano_branchSeeder, getFor_nano_diamAndLen, getFor_nano_spineRadius, getFor_nano_neckLen, getFor_nano_neckDiam, getFor_gapJuncSeeder, getFor_synLoc, getFor_ecd, getFor_sim_xcDiffusion, getFor_sim_frapCircle, getFor_sim_calciumDynamics, getFor_stochFunc_withUniqueSeed, getFor_stretch_withCustomSeed, getSeedFor_SEFW
     
     uniqueSeedForHoc = -1
     uniqueSeedForMod = -1
@@ -67,7 +67,7 @@ begintemplate RNGUtils
         return new Random(8)
     }
     
-    obfunc getFor_sim_gabaDiffusion() {
+    obfunc getFor_sim_xcDiffusion() {
         return new Random(9)
     }
     

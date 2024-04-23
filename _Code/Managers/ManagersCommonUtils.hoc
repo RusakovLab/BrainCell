@@ -3,21 +3,23 @@ begintemplate ManagersCommonUtils
 
     public defineDistFuncHandler, defineStochFuncHandler, showCannotUninsertMechWarning, createApplyReminder, createEditorSubWidgetDigest, copyAllVarsValuesExceptInhom, setOneIfNeededIn_isMechVarTypeInhom, update_isMechVarTypeInhom, isMetaVar
     
-    external isAstrocyteOrNeuron
     external mwh, math, mth, compUtils
     external stringStartsWith, codeContractViolation
     
     
-    obfunc defineDistFuncHandler() { local enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex, isBioOrTapEditor, isDisconnected, xMin, xMax localobj comp, varLibId, defineDistFuncSubWidget, nil
+    obfunc defineDistFuncHandler() { local enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex, isBioOrTapEditor, isDisconnected, xMin, xMax localobj comp, varLibId, defineDistFuncSubWidget, nil
         enumDmPpFk = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
-        varIdx = $5
-        arrayIndex = $6
+        isGapJuncOrSyn = $2     // For taps only
+        tapSetIdx = $3          //
+        compIdx = $4
+        mechIdx = $5
+        varType = $6
+        varIdx = $7
+        arrayIndex = $8
         
         isBioOrTapEditor = (enumDmPpFk == 0)
-        comp = compUtils.getComp(isBioOrTapEditor, compIdx)
+        
+        comp = compUtils.getComp(isBioOrTapEditor, isGapJuncOrSyn, tapSetIdx, compIdx)
         
         isDisconnected = comp.getDistRange(&xMin, &xMax)
         if (isDisconnected) {
@@ -27,22 +29,24 @@ begintemplate ManagersCommonUtils
             return nil
         }
         
-        varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = new VarLibId(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
         defineDistFuncSubWidget = new InhomEditorSubWidget(varLibId, xMin, xMax)
         defineDistFuncSubWidget.show()
         
         return defineDistFuncSubWidget
     }
     
-    obfunc defineStochFuncHandler() { local enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex localobj varLibId, defineStochFuncSubWidget
+    obfunc defineStochFuncHandler() { local enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex localobj varLibId, defineStochFuncSubWidget
         enumDmPpFk = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
-        varIdx = $5
-        arrayIndex = $6
+        isGapJuncOrSyn = $2     // For taps only
+        tapSetIdx = $3          //
+        compIdx = $4
+        mechIdx = $5
+        varType = $6
+        varIdx = $7
+        arrayIndex = $8
         
-        varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = new VarLibId(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
         defineStochFuncSubWidget = new StochEditorSubWidget(varLibId)
         defineStochFuncSubWidget.show()
         
@@ -65,18 +69,19 @@ begintemplate ManagersCommonUtils
         mwh.showWarningBox(msg)
     }
     
-    proc createApplyReminder() { local isBioOrTapEditor, isOrLeave
+    proc createApplyReminder() { local isBioOrTapEditor, isGapJuncOrSyn, isOrLeave
         strdef textTempl, targetName, textEnd, text
         
         isBioOrTapEditor = $1
-        isOrLeave = $2
+        isGapJuncOrSyn = $2     // For taps only
+        isOrLeave = $3
         
         textTempl = "No changes will be applied to %s until you click the \"Apply\" button%s"
         
         if (isBioOrTapEditor) {
             targetName = "sections biophysics"
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 targetName = "gap junctions"
             } else {
                 targetName = "synapses"
@@ -94,14 +99,15 @@ begintemplate ManagersCommonUtils
         xlabel(text)
     }
     
-    proc createEditorSubWidgetDigest() { local enumDmPpFk, isBioOrTapEditor
+    proc createEditorSubWidgetDigest() { local enumDmPpFk, isGapJuncOrSyn, isBioOrTapEditor
         strdef compName, mechName, varTypeName, varNameWithIndexAndUnits, compClassName, mechClassName, textTempl, text
         
         enumDmPpFk = $1
-        compName = $s2
-        mechName = $s3
-        varTypeName = $s4
-        varNameWithIndexAndUnits = $s5
+        isGapJuncOrSyn = $2     // For taps only
+        compName = $s3
+        mechName = $s4
+        varTypeName = $s5
+        varNameWithIndexAndUnits = $s6
         
         isBioOrTapEditor = (enumDmPpFk == 0)
         
@@ -109,7 +115,7 @@ begintemplate ManagersCommonUtils
             compClassName = "Compartment"
             mechClassName = "Mechanism"
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 compClassName = "Gap junction type"
             } else {
                 compClassName = "Synapse part"
@@ -172,13 +178,22 @@ begintemplate ManagersCommonUtils
         }
     }
     
-    proc update_isMechVarTypeInhom() { local enumDmPpFk, numMechs, numVarTypes, mechIdx, varType, varTypeIdx localobj comp
+    proc update_isMechVarTypeInhom() { local enumDmPpFk, numVarTypes, firstMechIdx, numMechs, lastMechIdx, mechIdx, varType, varTypeIdx localobj comp
         comp = $o1
         
         enumDmPpFk = comp.enumDmPpFk
-        numMechs = mth.getNumMechs(enumDmPpFk)
         numVarTypes = mth.getNumVarTypes(enumDmPpFk)
-        for mechIdx = 0, numMechs - 1 {
+        
+        if (enumDmPpFk != 2) {
+            firstMechIdx = 0
+            numMechs = mth.getNumMechs(enumDmPpFk)
+            lastMechIdx = numMechs - 1
+        } else {
+            firstMechIdx = comp.fixedMechIdx
+            lastMechIdx = firstMechIdx
+        }
+        
+        for mechIdx = firstMechIdx, lastMechIdx {
             for varType = 1, numVarTypes {      // 1: "PARAMETER", 2: "ASSIGNED", 3: "STATE"
                 varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
                 comp.isMechVarTypeInhom[mechIdx][varTypeIdx] = 0
@@ -188,7 +203,7 @@ begintemplate ManagersCommonUtils
     }
     
     // Keep in sync with ReducedManagersCommonUtils.isMetaVar
-    // !!! move to TapManagersCommonUtils
+    // !!! maybe move to ManagersCommonUtilsForTaps
     func isMetaVar() {
         strdef varName
         varName = $s1

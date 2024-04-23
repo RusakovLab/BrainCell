@@ -8,6 +8,9 @@ begintemplate SimPotassium
     public preShowCheck, show, preRun, preContinue, advance, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public PX, PY, PZ, RFRAP, TimeBegin, Kduration, PX2, KCurrent, DCoef, KpLeak, KResting
+    
     external PotassiumIteration
     external mwh, seClampHelper, ecsLibrary
     external altRunControlWidget
@@ -132,17 +135,17 @@ begintemplate SimPotassium
         {
             xpanel("")
             xlabel("================= Potassium input =================")
-            xvalue("X coordinate [K]in (um)","PX", 1,"", 0, 1 )
-            xvalue("Y coordinate [K]in (um)","PY", 1,"", 0, 1 )
-            xvalue("Z coordinate [K]in (um)","PZ ", 1,"", 0, 1 )
-            xvalue("Potassium [K]in input radius (um)","RFRAP", 1,"", 0, 1 )
-            xvalue("Potassium [K]in input onset (ms)","TimeBegin", 1,"", 0, 1 )
-            xvalue("Duration of potassium input (ms)","Kduration", 1,"", 0, 1 )
-            //xvalue("Distance between two release (um)","PX2", 1,"", 0, 1 )
-            xvalue("Peak K+ current (mA/cm2)","KCurrent", 1,"", 0, 1 )
-            xvalue("Diffusion coefficient (um2/ms)","DCoef", 1,"", 0, 1 )
-            xvalue("K+ leak rate (mA/cm2)","KpLeak", 1,"", 0, 1 )
-            xvalue("Basal [K+]in concentration (mM)","KResting", 1,"", 0, 1 )
+            xpvalue("X coordinate [K]in (um)", &PX, 1)
+            xpvalue("Y coordinate [K]in (um)", &PY, 1)
+            xpvalue("Z coordinate [K]in (um)", &PZ, 1)
+            xpvalue("Potassium [K]in input radius (um)", &RFRAP, 1)
+            xpvalue("Potassium [K]in input onset (ms)", &TimeBegin, 1)
+            xpvalue("Duration of potassium input (ms)", &Kduration, 1)
+            //xpvalue("Distance between two release (um)", &PX2, 1)
+            xpvalue("Peak K+ current (mA/cm2)", &KCurrent, 1)
+            xpvalue("Diffusion coefficient (um2/ms)", &DCoef, 1)
+            xpvalue("K+ leak rate (mA/cm2)", &KpLeak, 1)
+            xpvalue("Basal [K+]in concentration (mM)", &KResting, 1)
             xlabel("========= Extracellular potassium distribution =========")
             xbutton("Show ECS manager", "showExtracellularManagerBaseWidget()")
             xlabel("================================================")
@@ -150,10 +153,10 @@ begintemplate SimPotassium
             
             xpanel("")
             xlabel("============== Voltage clamp of soma ==============")
-            xpvalue("Somatic voltage clamp", &seClampHelper.seClamp.amp1, 1, "", 0, 1)
-            xpvalue("Clamp duration", &seClampHelper.seClamp.dur1, 1, "", 0, 1)
+            xpvalue("Somatic voltage clamp", &seClampHelper.seClamp.amp1, 1)
+            xpvalue("Clamp duration", &seClampHelper.seClamp.dur1, 1)
             xlabel("-------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1)
+            xpvalue("Simulation time (ms)", &tstop, 1)
             xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel(328,129)
         }

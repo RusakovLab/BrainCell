@@ -1,7 +1,11 @@
 
-import os, re
+import os
 from OtherInterModularUtils import *
 
+
+# Keep in sync with the skeleton TXT files
+parHdrStart = '/' * 20
+parHdrTotalLen = 74
 
 indentSize = 4
 stdIndent = ' ' * indentSize
@@ -28,6 +32,10 @@ def getAllLinesFromFile(relFilePathName):
         inText = inFile.read()
     return inText.strip().splitlines()  # All newline characters are removed here
     
+def getAllLinesFromReducedVersionFile(redVerRelFilePathName):
+    relFilePathName = '_Code\\Export\\OutHocFileStructures\\MainHocUtils\\ReducedVersions\\' + redVerRelFilePathName
+    return getAllLinesFromFile(relFilePathName)
+    
 def exportTheseTemplatesFromThisDir(lines, relDirPath, templNames):
     isFirstTemplate = True
     for templName in templNames:
@@ -39,14 +47,6 @@ def exportTheseTemplatesFromThisDir(lines, relDirPath, templNames):
         lines.append('')
         isFirstTemplate = False
         
-def prepareUniqueNameId(name):
-    if name == '' or name[0] == ' ' or name[-1] == ' ' or '  ' in name:
-        # Keep in sync with hoc:chooseUniqueNameForCompartmentForMechManager
-        codeContractViolation()
-    # !! BUG: multiple different names are mapped to the same ID, e.g. "A1", "A 1", "A (1)" etc.
-    # !! compile the expression once with re.compile and then reuse for better performance
-    return re.sub(r'[^0-9A-Za-z_]', '', name)
-    
 def getExposedVarName(exposedVarIdx):
     return f'EXPOSED_VAR_{exposedVarIdx + 1}'
     

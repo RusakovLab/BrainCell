@@ -90,6 +90,7 @@ func disableExtracellularSources() { local wasEnabled
 }
 
 func getExtracellularSourcesStatus() { local isEnabled
+    // It's a code contract that this mech is either inserted in all or uninserted from all the sections (at least for now)
     soma_ref.o(0).sec {
         isEnabled = ismembrane("ECDCalcAndConsHelper")
     }

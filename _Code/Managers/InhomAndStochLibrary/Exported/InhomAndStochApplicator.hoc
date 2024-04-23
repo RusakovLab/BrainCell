@@ -3,14 +3,16 @@ begintemplate InhomAndStochApplicator
     
     public startPlayingVars, stopPlayingVars, onInit, onStep
     
-    external smAllSyns
-    external inhomAndStochLibrary, seh
+    external isAstrocyteOrNeuron
+    external smAllSynSets
+    external inhomAndStochLibrary
     external eachItemInList
     external codeContractViolation
     
     
     iterator eachActiveSpecialVarFromLib() { codeContractViolation() }
     
+    // out: isWaitingForCallbacks
     func startPlayingVars() { local isAllPlayed, isThisPlayed localobj specVar
         isAllPlayed = 1
         for eachActiveSpecialVarFromLib(specVar) {
@@ -20,7 +22,11 @@ begintemplate InhomAndStochApplicator
         if (!isAllPlayed) {
             return 1
         }
-        return isMinRPlt1()
+        if (isAstrocyteOrNeuron) {
+            return 0
+        } else {
+            return isMinRPlt1ForNeuron()
+        }
     }
     
     proc stopPlayingVars() { localobj specVar
@@ -39,7 +45,9 @@ begintemplate InhomAndStochApplicator
         for eachActiveSpecialVarFromLib(specVar) {
             specVar.onStep()
         }
-        afterStep()
+        if (!isAstrocyteOrNeuron) {
+            afterStepForNeuron()
+        }
     }
     
     // All next staff is private
@@ -53,29 +61,27 @@ begintemplate InhomAndStochApplicator
         }
     }
     
-    proc afterStep() { localobj syn
-        if (!isSefwEnabled()) {
-            return
-        }
-        for eachItemInList(syn, smAllSyns) {
-            // !! it would be better to set it back to 0 in MOD code rather than here,
-            //    but I couldn't figure out what type of block in MOD file should contain the assignment operator to execute it in the right time
-            syn.sefwPp.isAnyEventsOnThisIter = 0
+    proc afterStepForNeuron() { localobj synSet, syn
+        for eachItemInList(synSet, smAllSynSets) {
+            if (!synSet.seh.isSefwEnabled()) {
+                continue
+            }
+            for eachItemInList(syn, synSet.allSyns) {
+                // !! it would be better to set it back to 0 in MOD code rather than here,
+                //    but I couldn't figure out what type of block in MOD file should contain the assignment operator to execute it in the right time
+                syn.sefwPp.isAnyEventsOnThisIter = 0
+            }
         }
     }
     
-    func isMinRPlt1() { localobj nil
-        if (seh == nil) {
-            return 0
+    func isMinRPlt1ForNeuron() { local synSetIdx localobj synSet
+        for synSetIdx = 0, smAllSynSets.count() - 1 {   // Don't replace with "eachItemInList" because we return
+            synSet = smAllSynSets.o(synSetIdx)
+            if (synSet.seh.isMinRPlt1) {
+                return 1
+            }
         }
-        return seh.isMinRPlt1
-    }
-    
-    func isSefwEnabled() { localobj nil
-        if (seh == nil) {
-            return 0
-        }
-        return seh.isSefwEnabled()
+        return 0
     }
     
 endtemplate InhomAndStochApplicator

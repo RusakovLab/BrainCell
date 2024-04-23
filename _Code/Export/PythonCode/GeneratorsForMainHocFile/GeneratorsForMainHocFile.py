@@ -1,7 +1,16 @@
 
+# !!!!!
+# * don't forget to get rid of the old gens/utils for syns (see the old skeleton)
+# * make sure we export each "Reduced*" template somewhere
+# * maybe replace everywhere:
+#   * exportOptions.isExportGapJuncs -> exportOptions.isExportAnyGapJuncSets()
+#   * exportOptions.isExportSyns -> exportOptions.isExportAnySynSets()
+
 from neuron import h, nrn
+from Utils.CleanupHelper import CleanupHelper
 from GeneratorsForMainHocFile.GensForHomogenVars import GensForHomogenVars
 from GeneratorsForMainHocFile.GensForInhomAndStochModels import GensForInhomAndStochModels
+from GeneratorsForMainHocFile.GensForTaps import GensForTaps
 from GeneratorsForMainHocFile.GensForExtracellularDiffusion import GensForExtracellularDiffusion
 from Utils.LoopUtils import LoopUtils
 from Utils.UnitsUtils import UnitsUtils
@@ -13,8 +22,11 @@ class GeneratorsForMainHocFile:
     _defaultNseg = 1
     _defaultRa = 35.4
     
+    _cleanupHelper = CleanupHelper()
+    
     _gensForHomogenVars = GensForHomogenVars()
     _gensForInhomAndStochModels = GensForInhomAndStochModels()
+    _gensForTaps = GensForTaps(_cleanupHelper, _gensForHomogenVars, _gensForInhomAndStochModels)
     _gensForExtracellularDiffusion = GensForExtracellularDiffusion()
     
     def getUtilsPrologue(self):
@@ -85,12 +97,12 @@ class GeneratorsForMainHocFile:
         # The instances of the next reduced templates from "InterModular" folder are created
         # only in standalone mode; otherwise we just reuse the instances created earlier in the main program
         
-        newLines = self._insertAllLinesFromReducedVersionFile('InterModular\\ReducedBasicMath.hoc')     # Keep in sync with hoc:loadNanoHocFile
+        newLines = getAllLinesFromReducedVersionFile('InterModular\\ReducedBasicMath.hoc')  # Keep in sync with hoc:loadNanoHocFile
         lines.extend(newLines)
         
         if hocObj.exportOptions.isExportAltRunControl():
             lines.append('')
-            newLines = self._insertAllLinesFromReducedVersionFile('InterModular\\ReducedRNGUtils.hoc')
+            newLines = getAllLinesFromReducedVersionFile('InterModular\\ReducedRNGUtils.hoc')
             lines.extend(newLines)
             
         if hocObj.exportOptions.isAnySweptVars() and not hocObj.exportOptions.isAnyCustomSweptVars():
@@ -112,6 +124,7 @@ class GeneratorsForMainHocFile:
         lines.append('objref pyObj')
         lines.append('pyObj = new PythonObject()')
         
+        # !!!!!
         if hocObj.exportOptions.isExportSyns:
             lines.append('')
             newLines = self.insertAllLinesFromFile('_Code\\InterModular\\Exported\\InterModularPythonUtils_Exported.hoc')
@@ -207,7 +220,7 @@ class GeneratorsForMainHocFile:
             lines.append('}')
         return lines
         
-    def createImportabilityMeasures(self):
+    def createImportAndEditMeasures(self):
         
         exportOptions = hocObj.exportOptions
         
@@ -219,17 +232,28 @@ class GeneratorsForMainHocFile:
         lines.append('')
         
         # Make sure "nrnmech.dll" is loaded and valid
-        # (doing it even though user could disable the export of biophysics and synapses)
+        # (doing it even though user could disable the export of biophysics, gap juncs and syns)
         lines.append('{ makeSureDeclared("mechsDllUtils") }')
         lines.append('objref mechType')
         lines.append('if (isLoadedFromMainProgram) {')
         lines.append('    mechsDllUtils.ifMissingInThisFolderThenLoadDefaultMechsDllDependingOnCellType()')
-        if exportOptions.isExportDistMechs or exportOptions.isExportSyns:
+        if exportOptions.isExportDistMechs or exportOptions.isExportGapJuncs or exportOptions.isExportSyns:
             lines.append('} else {')
+            lines.append('    platformId = unix_mac_pc()')
+            lines.append('    strdef msg')
+            lines.append('    if (platformId == 1) {')
+            lines.append('        // Assuming NSG supercomputer environment')
+            lines.append('        msg = "Please make sure the file \\"x86_64/.libs/libnrnmech.so\\" was built successfully."')
+            lines.append('    } else if (platformId == 3) {')
+            lines.append('        // Assuming desktop environment')
+            lines.append('        msg = "Please make sure the correct file \\"nrnmech.dll\\" is present in the same folder with this HOC file."')
+            lines.append('    } else {')
+            lines.append('        codeContractViolation()')
+            lines.append('    }')
             if exportOptions.isExportDistMechs:
                 newLines = self._createCheckForNumMechs(0, 'Distributed Membrane Mechanisms')
                 lines.extend(newLines)
-            if exportOptions.isExportSyns:
+            if exportOptions.isExportGapJuncs or exportOptions.isExportSyns:
                 newLines = self._createCheckForNumMechs(1, 'Point Processes')
                 lines.extend(newLines)
         lines.append('}')
@@ -255,60 +279,38 @@ class GeneratorsForMainHocFile:
             #         each seed given by rngUtils.getFor_stochFunc_withUniqueSeed is saved into corresponding stocDistFunc
             #         and exported/imported as a part of it
             lines.append('{ makeSureDeclared("rngUtils", "objref %s", "%s = new ReducedRNGUtils()") }')
-        elif exportOptions.isExportSyns or exportOptions.isExportInhomAndStochLibrary():
+        elif exportOptions.isExportSyns or exportOptions.isExportInhomAndStochLibrary():    # !!!!!
             lines.append('{ makeSureDeclared("rngUtils") }')
             
+        # !!!!!!!!!! review vvvvv
+        
         lines.append('')
         
         # Make sure all the required objref-s are declared as nil
         names = []
         names.append('mmAllComps')
-        if exportOptions.isExportInhomAndStochLibrary():
-            names.append('gjmAllComps')
-            names.append('gjmAllGapJuncs[2]')
+        if exportOptions.isExportInhomAndStochLibrary() or exportOptions.isExportGapJuncs:
+            names.append('gjmAllGapJuncSets')
         if exportOptions.isExportInhomAndStochLibrary() or exportOptions.isExportSyns:
-            names.append('smAllComps')
-            names.append('smAllSyns')
-            names.append('seh')
-        if exportOptions.isExportAnyInhomSynModels():
-            names.append('synGroup')
-            names.append('utils4FakeMech4SynNetCon')
-        if exportOptions.isExportAnyInhomSynModels():
-            names.append('mcu')
+            names.append('smAllSynSets')
+        if exportOptions.isExportAnyInhomSynModels() or exportOptions.isExportAnyInhomGapJuncModels():  # review !!!!!
+            names.append('mcu')     # !!!!! how about mcu4t ?
         if exportOptions.isExportAltRunControl():
             names.append('mmIcrHelper')
         line = 'objref ' + ', '.join(names)
         lines.append(line)
         
-        # We export smEnumSynLoc, smSynLocP and spineNeckDiamCache just so user can work with SynLocationWidget after loading the exported file back into the main program
-        if exportOptions.isExportSyns:
+        lines.append('objref _comp')
+        self._cleanupHelper.scheduleCleanup(lines[-1])
+        
+        # !!!!! was: if exportOptions.isExportInhomAndStochLibrary() or (exportOptions.isExportSyns and hocObj.synSet.is3Or1PartInSynStruc()):
+        if exportOptions.isExportInhomAndStochLibrary() or exportOptions.isExportSyns and exportOptions.isExportGapJuncs:
             lines.append('')
-            newLine = self.getIntegerValueFromTopLevel('smEnumSynLoc')
-            lines.append(newLine)
-            if hocObj.smEnumSynLoc == 2:
-                # We export smSynLocP just to restore the state of SynLocationWidget after loading the exported file back into the main program
-                lines.append('')
-                newLine = self.getDoubleValueFromTopLevel('smSynLocP')
-                lines.append(newLine)
-        if not hocObj.isAstrocyteOrNeuron:
-            # We export spineNeckDiamCache just to allow user change the synapse location in SynLocationWidget
-            lines.append('')
-            newLines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\Exported\\SpineNeckDiamCache.hoc')
+            newLines = getAllLinesFromReducedVersionFile('ReducedMechTypeHelper.hoc')
             lines.extend(newLines)
-            lines.append('')
-            lines.append('objref diamsVec')
-            lines.append('diamsVec = spineNeckDiamCache.diamsVec')
-            diamsVec = hocObj.spineNeckDiamCache.diamsVec
-            numSpines = diamsVec.size()
-            lines.append('{{ diamsVec.resize({}) }}'.format(numSpines))
-            for idx in range(numSpines):
-                lines.append('diamsVec.x({}) = {}'.format(idx, diamsVec[idx]))
-                
-        if exportOptions.isExportInhomAndStochLibrary() or (exportOptions.isExportSyns and hocObj.synGroup.is3Or1PartInSynStruc()):
-            lines.append('')
-            newLines = self._insertAllLinesFromReducedVersionFile('ReducedMechTypeHelper.hoc')
-            lines.extend(newLines)
-            
+        
+        # !!!!!!!!!! review ^^^^^
+        
         return lines
         
     def createInhomAndStochLibrary(self):
@@ -322,11 +324,11 @@ class GeneratorsForMainHocFile:
         lines.append('')
         
         # !! try to avoid exporting the RNG staff in ReducedInhomAndStochTarget if not hocObj.exportOptions.isExportAnyStochFuncs()
-        newLines = self._insertAllLinesFromReducedVersionFile('ReducedInhomAndStochTarget.hoc')
+        newLines = getAllLinesFromReducedVersionFile('InhomAndStochLibrary\\ReducedInhomAndStochTarget.hoc')
         lines.extend(newLines)
         lines.append('')
         
-        newLines = self._insertAllLinesFromReducedVersionFile('ReducedInhomAndStochLibrary.hoc')
+        newLines = getAllLinesFromReducedVersionFile('InhomAndStochLibrary\\ReducedInhomAndStochLibrary.hoc')
         lines.extend(newLines)
         lines.append('')
         
@@ -335,7 +337,8 @@ class GeneratorsForMainHocFile:
             lines.extend(newLines)
             lines.append('')
             
-        lines.append('objref vecOfVals, listOfStrs')
+        lines.append('objref _vecOfVals, _listOfStrs')
+        self._cleanupHelper.scheduleCleanup(lines[-1])
         
         return lines
         
@@ -368,11 +371,12 @@ class GeneratorsForMainHocFile:
         lines.append('')
         
         if hocObj.exportOptions.isExportSegmentationHelper():
-            newLines = self._insertAllLinesFromReducedVersionFile('ReducedSegmentationHelper.hoc')
+            newLines = getAllLinesFromReducedVersionFile('MechManager\\ReducedSegmentationHelper.hoc')
             lines.extend(newLines)
             lines.append('')
             
-        lines.append('objref segmentationHelper, distFuncHelper')
+        lines.append('objref _segmentationHelper, _distFuncHelper')
+        self._cleanupHelper.scheduleCleanup(lines[-1])
         
         return lines
         
@@ -422,7 +426,8 @@ class GeneratorsForMainHocFile:
         lines.extend(newLines)
         lines.append('')
         
-        lines.append('objref colourizationHelper, boundingHelper, stochFuncHelper')
+        lines.append('objref _colourizationHelper, _boundingHelper, _stochFuncHelper')
+        self._cleanupHelper.scheduleCleanup(lines[-1])
         
         return lines
         
@@ -434,7 +439,7 @@ class GeneratorsForMainHocFile:
             fileName = 'ReducedMechComp1.hoc'   # name, list_ref
         else:
             fileName = 'ReducedMechComp2.hoc'   # name, list_ref, isMechInserted, mechStds
-        newLines = self._insertAllLinesFromReducedVersionFile(fileName)
+        newLines = getAllLinesFromReducedVersionFile('MechManager\\' + fileName)
         lines.extend(newLines)
         lines.append('')
         
@@ -447,10 +452,11 @@ class GeneratorsForMainHocFile:
         #         created so many sections on the top level, that we cannot create now in the scope of just one obfunc.
         #         To fix this error, we'll have to init all list_ref-s on the top level rather than in the obfunc-s.
         obfuncNames = []
-        for comp in mmAllComps:
-            obfuncNameId = prepareUniqueNameId(comp.name)
-            obfuncName = 'getListOfSecRefsFor{}Comp'.format(obfuncNameId)
+        for compIdx in range(len(mmAllComps)):
+            comp = mmAllComps[compIdx]
+            obfuncName = '_getListOfSecRefsForComp{}'.format(compIdx + 1)
             obfuncNames.append(obfuncName)
+            lines.append('// "{}"'.format(comp.name))
             lines.append('obfunc {}() {{ local idx1, idx2 localobj list_ref'.format(obfuncName))
             lines.append('    list_ref = new List()')
             newLines = []
@@ -462,15 +468,12 @@ class GeneratorsForMainHocFile:
             lines.append('}')
             lines.append('')
             
-        lines.append('objref comp')
-        lines.append('')
         lines.append('mmAllComps = new List()')
-        lines.append('')
         
         for (comp, obfuncName) in zip(mmAllComps, obfuncNames):
-            lines.append('comp = new ReducedMechComp("{}", {}())'.format(comp.name, obfuncName))
-            lines.append('{ mmAllComps.append(comp) }')
             lines.append('')
+            lines.append('_comp = new ReducedMechComp("{}", {}())'.format(comp.name, obfuncName))
+            lines.append('{ mmAllComps.append(_comp) }')
             
         return lines
         
@@ -483,131 +486,59 @@ class GeneratorsForMainHocFile:
     def createStochBiophysModels(self):
         return self._gensForInhomAndStochModels.createStochBiophysModels()
         
-    def createProtoSyns(self):
-        if not hocObj.exportOptions.isExportSyns:
-            return emptyParagraphHint()
-            
-        lines = []
+    def createTemplatesForTaps(self):
+        return self._gensForTaps.createTemplatesForTaps()
         
-        newLines = self.insertAllLinesFromFile('_Code\\Prologue\\Neuron\\Exported\\Synapse.hoc')
-        lines.extend(newLines)
+    def createTemplatesForGapJuncs(self):
+        return self._gensForTaps.createTemplatesForGapJuncs()
         
-        newLines = []
-        for syn in hocObj.smAllSyns:
-            newLines.append('{} smAllSyns.append(new Synapse(new SectionRef(), {}))'.format(syn.sec_ref.sec, syn.connectionPoint))
-            
-        smEnumSynLoc = hocObj.smEnumSynLoc
-        smSynLocP = hocObj.smSynLocP
-        if smEnumSynLoc == 0 or (smEnumSynLoc == 2 and smSynLocP <= 0.25):  # !! some hardcoded heuristic threshold
-            newLines = LoopUtils.tryInsertLoopsToShorten(newLines, False)
-            
-        lines.extend(newLines)
+    def createTemplatesForSyns(self):
+        return self._gensForTaps.createTemplatesForSyns()
         
-        return lines
-        
-    # Keep in sync with hoc:createSynComps
-    def createReducedSynComps(self):
-        if not hocObj.exportOptions.isExportSyns:
-            return emptyParagraphHint()
-            
-        lines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\Exported\\EnumSynCompIdxs.hoc')
-        lines.append('')
-        
-        newLines = self._insertAllLinesFromReducedVersionFile('ReducedTapGroup.hoc')
-        lines.extend(newLines)
-        lines.append('')
-        
-        if not hocObj.exportOptions.isExportAnyInhomSynModels():
-            reducedSynPPCompFileName = 'ReducedSynPPComp1.hoc'
-            reducedSynNCCompFileName = 'ReducedSynNCComp1.hoc'
+    def createLocsGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForTaps.createGapJuncLocs(tapSetIdx)
         else:
-            reducedSynPPCompFileName = 'ReducedSynPPComp2.hoc'
-            reducedSynNCCompFileName = 'ReducedSynNCComp2.hoc'
+            return self._gensForTaps.createSynLocs(tapSetIdx)
             
-        newLines = self._insertAllLinesFromReducedVersionFile(reducedSynPPCompFileName)
-        lines.extend(newLines)
-        lines.append('')
-        
-        # Note: NEURON doesn't allow appending "nil" to a List, so we don't skip exporting this template if !synGroup.is3Or1PartInSynStruc
-        newLines = self._insertAllLinesFromReducedVersionFile(reducedSynNCCompFileName)
-        lines.extend(newLines)
-        lines.append('')
-        
-        synGroup = hocObj.synGroup
-        is3Or1PartInSynStruc = synGroup.is3Or1PartInSynStruc()
-        
-        if hocObj.exportOptions.isExportSynEventsHelper() or is3Or1PartInSynStruc:
-            newLines = self._insertAllLinesFromReducedVersionFile('ReducedManagersCommonUtils.hoc')
-            lines.extend(newLines)
-            lines.append('')
+    def createReducedCompsGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForTaps.createReducedGapJuncComps(tapSetIdx)
+        else:
+            return self._gensForTaps.createReducedSynComps(tapSetIdx)
             
-            newLines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\Exported\\SynEventsHelper.hoc')
-            lines.extend(newLines)
-            lines.append('')
+    def initHomogenVarsGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForTaps.initHomogenGapJuncVars(tapSetIdx)
+        else:
+            return self._gensForTaps.initHomogenSynVars(tapSetIdx)
             
-        if is3Or1PartInSynStruc:
-            newLines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\FakesForNetCon\\Exported\\UtilsForFakeMechanismForNetCon.hoc')
-            lines.extend(newLines)
-            lines.append('')
+    def createImportAndEditMeasuresGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForTaps.createImportAndEditMeasuresForGapJuncs(tapSetIdx)
+        else:
+            return self._gensForTaps.createImportAndEditMeasuresForSyns(tapSetIdx)
             
-            newLines = self.insertAllLinesFromFile('_Code\\Managers\\SynManager\\FakesForNetCon\\Exported\\FakeMechanismStandardForNetCon.hoc')
-            lines.extend(newLines)
-            lines.append('')
+    def createMainPartGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForTaps.createMainPartForGapJuncs(tapSetIdx)
+        else:
+            return self._gensForTaps.createMainPartForSyns(tapSetIdx)
             
-        newLines = self._insertAllLinesFromReducedVersionFile('ReducedSynGroup.hoc')
-        lines.extend(newLines)
-        lines.append('')
-        
-        lines.append('smAllComps = new List()')
-        lines.append('')
-        
-        srcMechIdxOrMinus1 = int(synGroup.getMechIdxAndOptionalName(0))
-        trgMechIdxOrMinus1 = int(synGroup.getMechIdxAndOptionalName(1))
-        sngMechIdxOrMinus1 = int(synGroup.getMechIdxAndOptionalName(2))
-        
-        # Keep in sync with hoc:EnumSynCompIdxs.init, hoc:createOrImportSynComps and py:initHomogenSynVars
-        # Note: NEURON doesn't allow appending "nil" to a List, so we don't optimize this depending on is3Or1PartInSynStruc
-        self._appendNewReducedSynPPComp(lines, 'Source PP', 0, srcMechIdxOrMinus1)
-        lines.append('{ smAllComps.append(new ReducedSynNCComp()) }')
-        self._appendNewReducedSynPPComp(lines, 'Target PP', 1, trgMechIdxOrMinus1)
-        self._appendNewReducedSynPPComp(lines, 'Single PP', 2, sngMechIdxOrMinus1)
-        
-        return lines
-        
-    def initHomogenSynVars(self):
-        return self._gensForHomogenVars.initHomogenSynVars()
-        
-    def createInhomSynModels(self):
-        return self._gensForInhomAndStochModels.createInhomSynModels()
-        
-    def createStochSynModels(self):
-        return self._gensForInhomAndStochModels.createStochSynModels()
-        
-    def createSynFinale(self):
-        if not hocObj.exportOptions.isExportSyns:
-            return emptyParagraphHint()
+    def createInhomModelsGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForInhomAndStochModels.createInhomGapJuncModels(tapSetIdx)
+        else:
+            return self._gensForInhomAndStochModels.createInhomSynModels(tapSetIdx)
             
-        lines = []
-        
-        synGroup = hocObj.synGroup
-        is3Or1PartInSynStruc = int(synGroup.is3Or1PartInSynStruc())
-        srcMechName = h.ref('')
-        trgMechName = h.ref('')
-        sngMechName = h.ref('')
-        srcMechIdx = int(synGroup.getMechIdxAndOptionalName(0, srcMechName))
-        trgMechIdx = int(synGroup.getMechIdxAndOptionalName(1, trgMechName))
-        sngMechIdx = int(synGroup.getMechIdxAndOptionalName(2, sngMechName))
-        srcMechName = srcMechName[0]
-        trgMechName = trgMechName[0]
-        sngMechName = sngMechName[0]
-        lines.append('{{ synGroup.createSynStruc({}, {}, "{}", "{}", "{}") }}'.format(is3Or1PartInSynStruc, srcMechIdx, srcMechName, trgMechName, sngMechName))
-        
-        lines.append('{{ synGroup.initAllHomogenVars({}, {}, {}, {}) }}'.format(is3Or1PartInSynStruc, srcMechIdx, trgMechIdx, sngMechIdx))
-        
-        if hocObj.exportOptions.isExportAnyInhomSynModels():
-            lines.append('{ inhomAndStochLibrary.applyAllSynInhomModels() }')
+    def createStochModelsGivenTapSet(self, isGapJuncOrSyn, tapSetIdx):
+        if isGapJuncOrSyn:
+            return self._gensForInhomAndStochModels.createStochGapJuncModels(tapSetIdx)
+        else:
+            return self._gensForInhomAndStochModels.createStochSynModels(tapSetIdx)
             
-        return lines
+    def createCleanup(self):
+        return self._cleanupHelper.makeCleanup()
         
     def createDiffSpeciesLibrary(self):
         return self._gensForExtracellularDiffusion.createSpeciesLibrary()
@@ -689,15 +620,11 @@ class GeneratorsForMainHocFile:
         return lines
         
         
-    def _insertAllLinesFromReducedVersionFile(self, fileName):
-        relFilePathName = '_Code\\Export\\OutHocFileStructures\\MainHocUtils\\ReducedVersions\\' + fileName
-        return self.insertAllLinesFromFile(relFilePathName)
-        
     def _initCustOrStdExposedOrSweptVars(self, varsList, getVarName, isSwept):
         lines = []
         for varIdx in range(len(varsList)):
             var = varsList[varIdx]
-            if var.enumDmTpCeSt < 2:
+            if var.enumBioGjSynCeSt < 3:
                 continue
             varName = getVarName(varIdx)
             if isSwept:
@@ -713,19 +640,9 @@ class GeneratorsForMainHocFile:
         lines = []
         lines.append('    mechType = new MechanismType({})    // {}: "{}"'.format(isDmOrPp, isDmOrPp, hint))
         lines.append('    if (mechType.count() != {}) {{'.format(int(hocObj.mth.getNumMechs(isDmOrPp))))
-        lines.append('        printMsgAndRaiseError("Please make sure the correct file \\"nrnmech.dll\\" is present in the same folder with this HOC file.")')
+        lines.append('        printMsgAndRaiseError(msg)')
         lines.append('    }')
         return lines
-        
-    def _appendNewReducedSynPPComp(self, lines, compName, enumPpRole, mechIdxOrMinus1):
-        if mechIdxOrMinus1 != -1:
-            mechName = h.ref('')
-            hocObj.mth.getMechName(1, mechIdxOrMinus1, mechName)
-            mechName = mechName[0]
-            comment = '    // ' + mechName
-        else:
-            comment = ''
-        lines.append('{{ smAllComps.append(new ReducedSynPPComp("{}", {}, {})) }}{}'.format(compName, enumPpRole, mechIdxOrMinus1, comment))
         
     def _getHocVar(self, varName):
         return getattr(hocObj, varName)

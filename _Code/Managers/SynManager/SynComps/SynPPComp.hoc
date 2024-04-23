@@ -6,12 +6,13 @@ begintemplate SynPPComp
     public isMechVarTypeInhom, mechStds, isMechDirty
     
     external mwh, mth, math, mcu
-    external smAllSyns, synGroup, tapGroup
+    external tapSet
     external stringsEqual, codeContractViolation
     
     strdef name
     enumDmPpFk = -1
     enumPpRole = -1
+    objref synSet
     
     double isMechVarTypeInhom[1][1]     // 0/1 flags
     // !! would it make sense to create these MechanismStandard-s without 2nd ctor arg and get rid of 2nd dimension in this array?
@@ -25,14 +26,16 @@ begintemplate SynPPComp
         strdef actPpName, thisPpName
         
         numArg = numarg()
-        if (numArg == 1) {
+        if (numArg == 2) {
             // Load data from the imported reduced template (part 1)
             impRedObj = $o1
+            synSet = $o2
             name = impRedObj.name
             enumPpRole = impRedObj.enumPpRole
-        } else if (numArg == 2) {
+        } else if (numArg == 3) {
             name = $s1
             enumPpRole = $2
+            synSet = $o3
         } else {
             codeContractViolation()
         }
@@ -45,8 +48,10 @@ begintemplate SynPPComp
         objref mechStds[numMechs][3]            // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
         double isMechDirty[numMechs]            // 0/1 flags
         
-        synGroup.getPpNameOrEmpty(enumPpRole, actPpName)
-        actFirstPp = smAllSyns.o(0).getPointProcess(enumPpRole)
+        synSet.getPpNameOrEmpty(enumPpRole, actPpName)
+        if (synSet.allSyns.count() > 0) {
+            actFirstPp = synSet.allSyns.o(0).getPointProcess(enumPpRole)
+        }
         
         for mechIdx = 0, numMechs - 1 {
             mth.getMechName(1, mechIdx, thisPpName)
@@ -112,11 +117,11 @@ begintemplate SynPPComp
     }
     
     proc getDistRange() {
-        synGroup.getDistRange(&$&1, &$&2)
+        synSet.getDistRange(&$&1, &$&2)
     }
     
     obfunc getSecList() {
-        return synGroup.getSecList()
+        return synSet.getSecList()
     }
     
     proc markMechDirty() { local mechIdx
@@ -124,7 +129,7 @@ begintemplate SynPPComp
         isMechDirty[mechIdx] = 1
     }
     
-    proc updateStatsCurve() { local yMin, yMax, varType, arraySize, arrayIndex, y localobj graph, nil, mechStd, syn, pp
+    proc updateStatsCurve() { local yMin, yMax, varType, arraySize, arrayIndex, y localobj graph, mechStd, syn, pp, nil
         strdef mechName, varName, actPpName
         
         graph = $o1
@@ -136,7 +141,7 @@ begintemplate SynPPComp
         arraySize = $7  // Just a placeholder
         arrayIndex = $8
         
-        synGroup.getPpNameOrEmpty(enumPpRole, actPpName)
+        synSet.getPpNameOrEmpty(enumPpRole, actPpName)
         if (!stringsEqual(actPpName, mechName)) {
             // The actual synapses don't have PPs with this role or use different PPs
             return
@@ -144,7 +149,7 @@ begintemplate SynPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for tapGroup.updateStatsCurveIter(syn, smAllSyns, graph, &y, &yMin, &yMax) {
+        for tapSet.updateStatsCurveIter(syn, synSet.allSyns, graph, &y, &yMin, &yMax) {
             pp = syn.getPointProcess(enumPpRole)
             mechStd.in(pp)
             y = mechStd.get(varName, arrayIndex)
@@ -159,7 +164,7 @@ begintemplate SynPPComp
         codeContractViolation()
     }
     
-    // Keep in sync with ReducedSynPPComp2.applyInhomogeneity
+    // Keep in sync with GapJuncPPComp.applyInhomogeneity and ReducedPPComp2.applyInhomogeneity
     proc applyInhomogeneity() { local varType, arraySize, arrayIndex, y localobj distFuncHelper, mechStd, syn, thisPp
         strdef mechName, varName
         
@@ -176,7 +181,7 @@ begintemplate SynPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for tapGroup.applyInhomogeneityIter(syn, smAllSyns, distFuncHelper) {
+        for tapSet.applyInhomogeneityIter(syn, synSet.allSyns, distFuncHelper) {
             thisPp = syn.getPointProcess(enumPpRole)
             mechStd.in(thisPp)
             y = distFuncHelper.calculateAt(syn.dist)

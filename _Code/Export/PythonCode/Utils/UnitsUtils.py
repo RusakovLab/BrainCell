@@ -40,8 +40,7 @@ class UnitsUtils:
         return comment
         
     # e.g. '    // (mV)'
-    def getUnitsCommentOrEmptyForDmOrTapPart(isDmOrTapPart, compIdx, mechIdx, varName, varNameWithIndex):
-        enumDmPpFk = hocObj.compUtils.getComp(isDmOrTapPart, compIdx).enumDmPpFk
+    def getUnitsCommentOrEmptyForDmOrTapPart(enumDmPpFk, mechIdx, varName, varNameWithIndex):
         units = h.ref('')
         hocObj.mth.getVarUnits(enumDmPpFk, mechIdx, varName, varNameWithIndex, units)
         units = units[0]

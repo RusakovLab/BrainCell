@@ -30,6 +30,7 @@ begintemplate GraphUtils
     external addVarToGraph
     external getGraphedOrPointedVarUnits, stringEmpty, codeContractViolation
     external soma_ref
+    external enumMouseEvents
     // !! external pyObj
     external graphList
     external tstop
@@ -150,11 +151,11 @@ begintemplate GraphUtils
         eventType = $1
         x = $2
         y = $3
-        keystate = $4
+        keystate = $4   // Just a placeholder
         
         slotIdx = $5
         
-        if (eventType != 2) {   // LMB press
+        if (eventType != enumMouseEvents.press) {
             return
         }
         

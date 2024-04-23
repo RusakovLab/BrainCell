@@ -265,7 +265,7 @@ class BiophysJsonImportCore:
             
         self._importInhomModelInnerCore(compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper)
         
-        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         hocObj.inhomAndStochLibrary.onInhomApply(varLibId, segmentationHelper, distFuncHelper, distFuncCatIdx, distFuncIdx)
         
     def _importInhomModelInnerCore(self, compIdx, mechIdx, varType, varIdx, arrayIndex, segmentationHelper, distFuncHelper):
@@ -311,7 +311,7 @@ class BiophysJsonImportCore:
         stochFuncCatIdx = stochFuncHelperInfoDict['stochFuncCatIdx']
         stochFuncIdx = stochFuncHelperInfoDict['stochFuncIdx']
         
-        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         hocObj.inhomAndStochLibrary.onStochApply(varLibId, boundingHelper, stochFuncHelper, stochFuncCatIdx, stochFuncIdx)
         
     # See also: BiophysJsonExportCore._getExportedParams

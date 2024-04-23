@@ -6,6 +6,9 @@ begintemplate SimCalciumDynamics
     public preShowCheck, show, preRun, preContinue, advance, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public BasicStimulus, Interval, ECaresting, Tau1St, Tau2St, NumberStim, Noise1_NoNoise0, NoiseCaBegin, ip3i, ActiveDendrite1, ActiveDendrite2
+    
     external showCaParameters, closeFileAndShowCompleteMsg
     external vBoxCadifusParams
     external altRunControlWidget
@@ -259,32 +262,32 @@ begintemplate SimCalciumDynamics
             xpanel("")
             xlabel("Amplitude of calcium flow through single channel,") 
             xlabel("which is modelled by two-exponential function with rising and decay time")
-            xvalue("Single channel calcium entry flux (uM/sec)","BasicStimulus", 1,"", 0, 1  )
+            xpvalue("Single channel calcium entry flux (uM/sec)", &BasicStimulus, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
-            xvalue("Mean interval between two calcium channel opening (ms)","Interval", 1,"", 0, 1  )
+            xpvalue("Mean interval between two calcium channel opening (ms)", &Interval, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             xlabel("Reverse value of  [Ca]in of Ca transmembrane flux (mM)") 
-            xvalue("Ca reverse concentration (mM)","ECaresting", 1,"", 0, 1  )
+            xpvalue("Ca reverse concentration (mM)", &ECaresting, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
-            xvalue("Rise time of Ca channel influx (Tau1, ms)","Tau1St", 1,"", 0, 1  )
-            xvalue("Decay time of Ca channel influx (Tau2, ms)","Tau2St", 1,"", 0, 1  )
+            xpvalue("Rise time of Ca channel influx (Tau1, ms)", &Tau1St, 1)
+            xpvalue("Decay time of Ca channel influx (Tau2, ms)", &Tau2St, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             xlabel("Number of Ca open channels in single Ca spike") 
-            xvalue("NumberStim","NumberStim", 1,"", 0, 1  )
+            xpvalue("NumberStim", &NumberStim, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             xlabel("0 - regular Ca channels opening; 1 - stochastic Ca channels opening") 
-            xvalue("Noise1_NoNoise0","Noise1_NoNoise0", 1,"", 0, 1  )
+            xpvalue("Noise1_NoNoise0", &Noise1_NoNoise0, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             xlabel("Offset of first calcium  spike (ms) ") 
-            xvalue("NoiseCaBegin","NoiseCaBegin", 1,"", 0, 1  )
+            xpvalue("NoiseCaBegin", &NoiseCaBegin, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             // !! is that correct that we expose a RANGE variable in UI?
-            xvalue("ip3i Concentration (M)", "ip3i", 1)
+            xpvalue("ip3i Concentration (M)", &ip3i, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
-            xvalue("Active dendrite 1", "ActiveDendrite1", 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)", 0, 1  )
-            xvalue("Active dendrite 2", "ActiveDendrite2", 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)", 0, 1  )
+            xpvalue("Active dendrite 1", &ActiveDendrite1, 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)")
+            xpvalue("Active dendrite 2", &ActiveDendrite2, 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)")
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1  )
+            xpvalue("Simulation time (ms)", &tstop, 1)
             xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel()
         }

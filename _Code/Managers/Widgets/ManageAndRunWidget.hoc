@@ -12,11 +12,12 @@ begintemplate ManageAndRunWidget
     public show, showBioManagerHandler, showSynManagerHandler, showGapJuncManagerHandler, showECSManagerHandler, showAltRunControlHandler, onNanoReseedOrUpdateHandler, dismissHandler
     
     external isAstrocyteOrNeuron
-    external mechManagerMainWidget, synManagerMainWidget, gapJuncManagerMainWidget, ecsManagerMainWidget, exportManagerMainWidget, altRunControlWidget
-    external mmAllComps, gjmAllGapJuncs, gapJuncGroups, smAllSyns, synGroup
+    external mechManagerMainWidget, synSetsWidget, gapJuncSetsWidget, ecsManagerMainWidget, exportManagerMainWidget, altRunControlWidget
+    external mmAllComps, gjmAllGapJuncSets, smAllSynSets
     external mwh, mmIcrHelper
     external inhomAndStochLibrary
     external getMaxDist, dismissIfNotNil, codeContractViolation
+    external eachItemInList
     
     objref mainBox, this
     
@@ -70,60 +71,35 @@ begintemplate ManageAndRunWidget
         mechManagerMainWidget.mechOpSelectHandler()
     }
     
-    proc showGapJuncManagerHandler() { local wasNil, isDisconnected, maxDist localobj nil
+    proc showGapJuncManagerHandler() { local wasNil localobj nil
         dismissIfNotNil(exportManagerMainWidget)
-        dismissIfNotNil(gapJuncManagerMainWidget)
+        dismissIfNotNil(gapJuncSetsWidget)
         
-        wasNil = (gapJuncManagerMainWidget == nil)
+        wasNil = (gapJuncSetsWidget == nil)
         
         if (wasNil) {
             mwh.startIntercepting() // For the warnings shown by pyObj.ms_warnIfNoRecordForGapJunc
-            // !!! tiny BUG: the warnings are not shown again when user closes GapJuncManagerMainWidget and opens it again
-            
-            execute("gapJuncManagerMainWidget = new GapJuncManagerMainWidget()", this)
+            // !!!!! re-test this:
+            //       tiny BUG: the warnings are not shown again when user closes GapJuncManagerMainWidget and opens it again
+            execute("gapJuncSetsWidget = new GapJuncSetsWidget()", this)
         }
         
-        isDisconnected = getMaxDist(&maxDist)
-        if (isDisconnected) {
-            mwh.showWarningBox("Cannot edit inhomogeneity in gap junctions", "because at least one gap junction target section doesn't have a topological connection with the distance centre.")
-            
-            // !! overkill here: we don't need to prevent opening the widget because user might wanted to do smth unrelated to inhomogeneity
-            
-            if (wasNil) {
-                mwh.endIntercepting()
-            }
-            return
-        }
-        
-        gapJuncManagerMainWidget.show(maxDist)
+        gapJuncSetsWidget.show()
         
         if (wasNil) {
             mwh.endIntercepting()
         }
     }
     
-    proc showSynManagerHandler() { local isDisconnected, xMin, xMax localobj nil
+    proc showSynManagerHandler() { localobj nil
         dismissIfNotNil(exportManagerMainWidget)
-        dismissIfNotNil(synManagerMainWidget)
+        dismissIfNotNil(synSetsWidget)
         
-        if (smAllSyns.count() == 0) {
-            mwh.showWarningBox("Cannot open the synapse manager because there are no synapses.")
-            return
+        if (synSetsWidget == nil) {
+            execute("synSetsWidget = new SynSetsWidget()", this)
         }
         
-        if (synManagerMainWidget == nil) {
-            execute("synManagerMainWidget = new SynManagerMainWidget()", this)
-        }
-        
-        isDisconnected = synGroup.getDistRange(&xMin, &xMax)
-        if (isDisconnected) {
-            mwh.showWarningBox("Cannot edit inhomogeneity in synapses", "because at least one synapse target section doesn't have a topological connection with the distance centre.")
-            
-            // !! overkill here: we don't need to prevent opening the widget because user might wanted to do smth unrelated to inhomogeneity
-            return
-        }
-        
-        synManagerMainWidget.show(xMin, xMax)
+        synSetsWidget.show()
     }
     
     proc showECSManagerHandler() { localobj nil
@@ -142,23 +118,24 @@ begintemplate ManageAndRunWidget
         altRunControlWidget.show()
     }
     
-    proc onNanoReseedOrUpdateHandler() { local isReseedOrUpdate, cond1, cond2, isExtOrInt, enumRescanType localobj nil
+    proc onNanoReseedOrUpdateHandler() { local isReseedOrUpdate, cond1, cond2, enumRescanType localobj gapJuncSet, synSet, nil
         isReseedOrUpdate = $1
         
-        cond1 = (isReseedOrUpdate && (mechManagerMainWidget != nil || gapJuncManagerMainWidget != nil || synManagerMainWidget != nil || ecsManagerMainWidget != nil))
-        cond2 = (inhomAndStochLibrary.getNumInhomVarsForTaps() != 0)
+        cond1 = (isReseedOrUpdate && (mechManagerMainWidget != nil || gapJuncSetsWidget != nil || synSetsWidget != nil || ecsManagerMainWidget != nil))
+        cond2 = (inhomAndStochLibrary.getNumInhomVarsForTaps(1, -1) != 0 || inhomAndStochLibrary.getNumInhomVarsForTaps(0, -1) != 0)
         if (cond1 || cond2) {
             // Must not be called because we block the panel in Main UI
             codeContractViolation()
         }
         
         // !!! BUG: we don't reach this code when ManageAndRunWidget is nil (i.e. before the 1st opening)
-        if (isAstrocyteOrNeuron) {
-            for isExtOrInt = 0, 1 {
-                gapJuncGroups[isExtOrInt].reCalcAndCacheDistInGapJuncs()
+        for eachItemInList(gapJuncSet, gjmAllGapJuncSets) {
+            gapJuncSet.reCalcAndCacheDistInGapJuncs()
+        }
+        if (!isAstrocyteOrNeuron) {
+            for eachItemInList(synSet, smAllSynSets) {
+                synSet.reCalcAndCacheDistInSyns()
             }
-        } else {
-            synGroup.reCalcAndCacheDistInSyns()
         }
         
         inhomAndStochLibrary.onNanoReseedOrUpdate()
@@ -179,8 +156,8 @@ begintemplate ManageAndRunWidget
     
     proc dismissManagers() {
         dismissIfNotNil(mechManagerMainWidget)
-        dismissIfNotNil(gapJuncManagerMainWidget)
-        dismissIfNotNil(synManagerMainWidget)
+        dismissIfNotNil(gapJuncSetsWidget)
+        dismissIfNotNil(synSetsWidget)
         dismissIfNotNil(ecsManagerMainWidget)
     }
     

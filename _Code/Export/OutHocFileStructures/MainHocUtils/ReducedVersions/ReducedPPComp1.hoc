@@ -1,0 +1,26 @@
+
+begintemplate ReducedPPComp
+
+    public name, enumDmPpFk, enumPpRole, mechIdx, mechStds
+    
+    strdef name
+    enumDmPpFk = -1
+    enumPpRole = -1
+    mechIdx = -1
+    objref mechStds[1][1]   // All nil-s except some col(s) of mechIdx row
+    
+    
+    proc init() { local isGapJuncOrSyn, numMechs localobj mechType
+        isGapJuncOrSyn = $1     // Just a placeholder
+        name = $s2
+        enumPpRole = $3
+        mechIdx = $4
+        
+        enumDmPpFk = 1
+        
+        mechType = new MechanismType(1) // 1: "Point Processes"
+        numMechs = mechType.count
+        objref mechStds[numMechs][3]    // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
+    }
+    
+endtemplate ReducedPPComp

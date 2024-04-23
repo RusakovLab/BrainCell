@@ -94,7 +94,7 @@ begintemplate CellularCompartmentsWidget
     }
     
     // Ask user to select names of soma, dendrite and (for neuron only) axon sections used in the imported HOC file
-    proc show() { local numNames, idx, width localobj nil, hBox
+    proc show() { local numNames, idx, width localobj hBox, nil
         strdef whatElse, str
         
         if (mainBox == nil) {

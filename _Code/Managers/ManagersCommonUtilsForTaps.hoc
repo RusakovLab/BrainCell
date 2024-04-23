@@ -1,28 +1,42 @@
 
 begintemplate ManagersCommonUtilsForTaps
 
-    public updateNumInhomVarsLabel, updateNumStochVarsLabel, warnIfUserHasNotSelectedPPs, showPleaseSelectPpMsg, showApplyMsg, getSelMechIdxOrMinusOne, getSelMechNameOrEmptyString, appendAndSelectIfMechNameEqual, selectAndScroll, scroll, dismissChilds, isReducedComps
+    public isReducedTapSets, updateNumInhomVarsLabel, updateNumStochVarsLabel, addHintBelowShowAllLocationsButton, warnIfUserHasNotSelectedPPs, showPleaseSelectPpMsg, showApplyMsg, getSelMechIdxOrMinusOne, getSelMechNameOrEmptyString, appendAndSelectIfMechNameEqual, selectAndScroll, scroll, updateItemInShownTapSetsList, dismissChilds
     
-    external isAstrocyteOrNeuron
     external mwh, inhomAndStochLibrary
     external gapJuncManagerMainWidget, synManagerMainWidget
-    external stringsEqual, stringStartsWith, dismissIfNotNil
+    external stringsEqual, stringStartsWith, replaceItemInList, dismissIfNotNil
     external pyObj
     
     
-    proc updateNumInhomVarsLabel() { local numInhomVars
-        numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps()
-        sprint($s1, "Number of inhom vars: %d", numInhomVars)
+    func isReducedTapSets() { localobj xmAllTapSets
+        xmAllTapSets = $o1
+        return stringStartsWith(pyObj.getTemplateName(xmAllTapSets.o(0)), "Reduced")
     }
     
-    proc updateNumStochVarsLabel() { local numStochVars
-        numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps()
-        sprint($s1, "Number of stoch vars: %d", numStochVars)
+    proc updateNumInhomVarsLabel() { local isGapJuncOrSyn, tapSetIdx, numInhomVars
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
+        numInhomVars = inhomAndStochLibrary.getNumInhomVarsForTaps(isGapJuncOrSyn, tapSetIdx)
+        sprint($s3, "Number of inhom vars: %d", numInhomVars)
     }
     
-    func warnIfUserHasNotSelectedPPs() {
-        if (isAstrocyteOrNeuron) {
-            return gapJuncManagerMainWidget.warnIfUserHasNotSelectedPPs()
+    proc updateNumStochVarsLabel() { local isGapJuncOrSyn, tapSetIdx, numStochVars
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
+        numStochVars = inhomAndStochLibrary.getNumStochVarsForTaps(isGapJuncOrSyn, tapSetIdx)
+        sprint($s3, "Number of stoch vars: %d", numStochVars)
+    }
+    
+    proc addHintBelowShowAllLocationsButton() {
+        xlabel("* Alternatively, you can use this standard tool that shows the \"SectionName(x)\" list:")
+        xlabel("  \"NEURON Main Manu\" -> Tools -> \"Point Processes\" -> Viewers -> PointProcesses")
+    }
+    
+    func warnIfUserHasNotSelectedPPs() { local isGapJuncOrSyn
+        isGapJuncOrSyn = $1
+        if (isGapJuncOrSyn) {
+            return gapJuncManagerMainWidget.warnIfUserHasNotSelectedPP()
         } else {
             return synManagerMainWidget.warnIfUserHasNotSelectedPPs()
         }
@@ -98,6 +112,15 @@ begintemplate ManagersCommonUtilsForTaps
         }
     }
     
+    proc updateItemInShownTapSetsList() { local tapSetIdx localobj xmAllTapSets, tapSet
+        xmAllTapSets = $o1
+        tapSetIdx = $2
+        
+        tapSet = xmAllTapSets.o(tapSetIdx)
+        tapSet.prepareShownString()
+        replaceItemInList(xmAllTapSets, tapSet, tapSetIdx, 1)
+    }
+    
     proc dismissChilds() { local isIgnoreListsFilterWidget, isCondIgnoreVarsEditorWidget, tapCompIdx localobj tmlfw, varsEditorSubWidget, nil
         isIgnoreListsFilterWidget = $1
         isCondIgnoreVarsEditorWidget = $2
@@ -118,11 +141,6 @@ begintemplate ManagersCommonUtilsForTaps
         }
         
         // Notice that here we cannot dismiss the widgets created with nrnglobalmechmenu
-    }
-    
-    func isReducedComps() { localobj xmAllComps
-        xmAllComps = $o1
-        return stringStartsWith(pyObj.getTemplateName(xmAllComps.o(0)), "Reduced")
     }
     
 endtemplate ManagersCommonUtilsForTaps

@@ -60,7 +60,7 @@ proc importHocOrSwcOrZipOrOtherFile() { local numArg, isCancel localobj pyEnumIn
     }
     
     // Prepare the temporary folder
-    createOrCleanUpTempFolder("_Code/Import/temp_folder")
+    pyObj.TempFolderUtils.createOrCleanUpTempFolder("_Code/Import/temp_folder")
     
     getFileExtLowerCase(filePathName, fileExtLower)
     

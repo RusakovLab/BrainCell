@@ -8,7 +8,7 @@ proc importSwcFileFromZipArchive_layer1() {
     
     // Prepare the temporary folder
     outFolderRelPathName = "_Code/Import/temp_folder/last_unzipped"
-    createOrCleanUpTempFolder(outFolderRelPathName)
+    pyObj.TempFolderUtils.createOrCleanUpTempFolder(outFolderRelPathName)
     
     // Unzip the archive and rename the input SWC file
     outFolderPathNameTempl = "%s%s"

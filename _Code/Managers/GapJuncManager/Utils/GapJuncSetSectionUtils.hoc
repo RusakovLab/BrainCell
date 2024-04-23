@@ -1,0 +1,18 @@
+
+proc forallCallApplyChangesToLocCore() { localobj gapJuncSet
+    gapJuncSet = $o1
+    forall {
+        gapJuncSet.applyChangesToLocCore()
+    }
+}
+
+proc interpEachSegmCentreCoordsFromSec3DPointCoords_CalledFromPython() { localobj sec_ref, xSegm_vec, ySegm_vec, zSegm_vec
+    sec_ref = $o1
+    xSegm_vec = $o2
+    ySegm_vec = $o3
+    zSegm_vec = $o4
+    
+    sec_ref.sec {
+        interpEachSegmCentreCoordsFromSec3DPointCoords(xSegm_vec, ySegm_vec, zSegm_vec)
+    }
+}

@@ -3,9 +3,8 @@ begintemplate InhomEditorSubWidget
 
     public show, updateCurves, dismissHandler
     
-    external isAstrocyteOrNeuron
-    external varsEditorSubWidget, gapJuncManagerMainWidget, synManagerMainWidget
-    external mwh, math, mth, mmmowb, mcu, mcu4t, dfc, compUtils, inhomAndStochLibrary, gapJuncGroups, synGroup, seh, graphUtils, mainUiLocker
+    external mechManagerMainWidget, gapJuncManagerMainWidget, synManagerMainWidget, varsEditorSubWidget
+    external mwh, math, mth, mmmowb, mcu, mcu4t, dfc, compUtils, inhomAndStochLibrary, gjmAllGapJuncSets, smAllSynSets, graphUtils, mainUiLocker
     external getDistMechVarRangeOutside, getDistMechVarRangeInside, createEmptyPanel, createElasticSpacer, oneZeroToYesNo, codeContractViolation
     external eachPointInGrid
     external enumColours
@@ -28,6 +27,7 @@ begintemplate InhomEditorSubWidget
     
     objref varLibId
     isBioOrTapEditor = -1
+    isGapJuncOrSyn = -1     // For taps only
     objref comp
     strdef mechName
     varTypeIdx = -1
@@ -47,18 +47,19 @@ begintemplate InhomEditorSubWidget
     
     isCancelInDistFuncHelperSelectedHandler = -1
     
-    objref gapJuncGroupOfThisType
+    objref gapJuncSet, synSet
     
     
-    proc init() { local idx, isInhom1, isInhom2 localobj nil, distFuncHelper, innerDistFuncHelper
+    proc init() { local idx, isInhom1, isInhom2, tapSetIdx localobj distFuncHelper, innerDistFuncHelper, nil
     
         varLibId = $o1
         xMin = $2
         xMax = $3
         
         isBioOrTapEditor = (varLibId.enumDmPpFk == 0)
+        isGapJuncOrSyn = varLibId.isGapJuncOrSyn
         
-        comp = compUtils.getComp(isBioOrTapEditor, varLibId.compIdx)
+        comp = compUtils.getComp(varLibId)
         mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
         varTypeIdx = mth.convertVarTypeToVarTypeIdx(varLibId.varType)
         arraySize = mth.getVarNameAndArraySize(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varName)
@@ -170,8 +171,13 @@ begintemplate InhomEditorSubWidget
         
         showAllOrThisCompIdx = 0
         
-        if (!isBioOrTapEditor && isAstrocyteOrNeuron) {
-            gapJuncGroupOfThisType = gapJuncGroups[comp.isExtOrInt]
+        if (!isBioOrTapEditor) {
+            tapSetIdx = varLibId.tapSetIdx
+            if (isGapJuncOrSyn) {
+                gapJuncSet = gjmAllGapJuncSets.o(tapSetIdx)
+            } else {
+                synSet = smAllSynSets.o(tapSetIdx)
+            }
         }
     }
     
@@ -189,13 +195,13 @@ begintemplate InhomEditorSubWidget
         mainBox.intercept(1)
         {
             xpanel("")
-            mcu.createApplyReminder(isBioOrTapEditor, 0)
+            mcu.createApplyReminder(isBioOrTapEditor, isGapJuncOrSyn, 0)
             xpanel()
             hBox1 = new HBox()
             hBox1.intercept(1)
             {
                 xpanel("")
-                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, compName, mechName, varTypeName, varNameWithIndexAndUnits)
+                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, isGapJuncOrSyn, compName, mechName, varTypeName, varNameWithIndexAndUnits)
                 updateIsInhomVarLabel(isInhom)
                 xvarlabel(isInhomVarLabel)
                 oneZeroToYesNo(isStoch, yesNo)
@@ -205,7 +211,7 @@ begintemplate InhomEditorSubWidget
                 if (isBioOrTapEditor) {
                     what = compName
                 } else {
-                    if (isAstrocyteOrNeuron) {
+                    if (isGapJuncOrSyn) {
                         sprint(what, "%ss", compName)
                     } else {
                         what = "synapses"
@@ -368,7 +374,7 @@ begintemplate InhomEditorSubWidget
                                 if (varLibId.enumDmPpFk == 1) {
                                     what1 = "PPs"
                                 } else if (varLibId.enumDmPpFk == 2) {
-                                    if (isAstrocyteOrNeuron) {
+                                    if (isGapJuncOrSyn) {
                                         what1 = "PPs"
                                     } else {
                                         what1 = "NetCon-s"
@@ -376,7 +382,7 @@ begintemplate InhomEditorSubWidget
                                 } else {
                                     codeContractViolation()
                                 }
-                                if (isAstrocyteOrNeuron) {
+                                if (isGapJuncOrSyn) {
                                     what2 = "GJ"
                                 } else {
                                     what2 = "synapse"
@@ -421,7 +427,7 @@ begintemplate InhomEditorSubWidget
                                 if (isBioOrTapEditor) {
                                     what = compName
                                 } else {
-                                    if (isAstrocyteOrNeuron) {
+                                    if (isGapJuncOrSyn) {
                                         what = "GJ"
                                     } else {
                                         what = "syn"
@@ -532,12 +538,16 @@ begintemplate InhomEditorSubWidget
         updateStatsCurve()
     }
     
-    proc dismissHandler() {
+    proc dismissHandler() { localobj nil
         dismissChild()
         if (mainBox.ismapped()) {
             mainBox.unmap()
         }
         // !! graphUtils.unregister(1, 2)
+        
+        comp = nil
+        gapJuncSet = nil
+        synSet = nil
     }
     
     // All next staff is private
@@ -752,7 +762,7 @@ begintemplate InhomEditorSubWidget
         if (isBioOrTapEditor) {
             what = "sec/seg"
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 what = "GJs"
             } else {
                 what = "syns"
@@ -863,11 +873,12 @@ begintemplate InhomEditorSubWidget
             shape1.scale(yMin1, yMax1)  // All compartments
             shape2.scale(yMin2, yMax2)  // This compartment only
         } else {
-            if (isAstrocyteOrNeuron) {
-                gapJuncGroupOfThisType.updateColormap(shape1, isCalledFromShow)
-                gapJuncGroupOfThisType.updateColormap(shape2, isCalledFromShow)
+            if (isGapJuncOrSyn) {
+                gapJuncSet.updateMarks(shape1, isCalledFromShow)
+                gapJuncSet.updateMarks(shape2, isCalledFromShow)
             } else {
-                synGroup.updateColormaps(shape1, shape2)
+                synSet.updateMarks(shape1)
+                synSet.updateMarks(shape2)
             }
         }
         
@@ -926,16 +937,16 @@ begintemplate InhomEditorSubWidget
                 }
             }
         } else {
-            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs(isGapJuncOrSyn)
             if (!isOK) {
                 return
             }
             
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 gapJuncManagerMainWidget.applyChangesToGapJuncStrucIfNeeded()
             } else {
                 // It would be more correct to pass "yMin" (from stats curve, calculated just below) instead of "yMinModel" (from model curve, calculated earlier)
-                seh.ifMetaVarThenUpdateStatus(varName, yMinModel)
+                synSet.seh.ifMetaVarThenUpdateStatus(varName, yMinModel)
                 synManagerMainWidget.applyChangesToSynStrucIfNeeded()
             }
             
@@ -957,7 +968,7 @@ begintemplate InhomEditorSubWidget
             varValue = yMin
         }
         if (!isBioOrTapEditor && mcu.isMetaVar(varName)) {
-            if (!seh.isSefwEnabled()) { // Don't combine into one IF because "seh" can be nil
+            if (!synSet.seh.isSefwEnabled()) {  // Don't combine into one IF because "synSet" can be nil
                 isInhom = 0
                 varValue = 1
             }
@@ -996,8 +1007,12 @@ begintemplate InhomEditorSubWidget
             if (mmmowb.lastMechOpIdx == 2 && !isInhom) {
                 // !! need to unmap and show MechOpWidgetBase again to hide the button
             }
+            if (varLibId.mechIdx == mth.morphologyMechIdx || segmentationHelper.segmentationMode != 0) {
+                // A workaround for the blacked sections problem
+                mechManagerMainWidget.showAllComps()
+            }
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 gapJuncManagerMainWidget.updateNumInhomVarsLabel()
             } else {
                 synManagerMainWidget.updateNumInhomVarsLabel()

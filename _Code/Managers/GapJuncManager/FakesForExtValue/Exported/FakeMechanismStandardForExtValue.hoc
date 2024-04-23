@@ -1,6 +1,4 @@
 
-// !!! not exported at the moment
-
 begintemplate FakeMechanismStandardForExtValue
 
     public count, name, get, set, in, out

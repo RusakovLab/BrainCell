@@ -1,5 +1,6 @@
 
 import os
+import numpy as np
 from neuron import h, hoc
 
 
@@ -58,9 +59,19 @@ def isAstrocyteSpecificInhomVar(compIdx, mechIdx, varType, varIdx, arrayIndex):
         
     return cond
     
-# !! find a better place for this (not intermodular actually)
+# !! find a better place for this
 def isInPySet(theSet, theItem):
     return theItem in theSet
+    
+# !!!!! not intermodular
+# !!!!! rename to get1dArrayElem ?
+def getArrayElem(theArray, idx):
+    return theArray[int(idx)]   # !!!!! called often and converted each time
+    
+# !!!!! not intermodular
+# !!!!! test this
+def getIdxInSortedArray(sortedArray, value):
+    return np.searchsorted(sortedArray, value)
     
 def getDirPath(anyFilePathName):
     return os.path.dirname(anyFilePathName)

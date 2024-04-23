@@ -24,7 +24,7 @@ begintemplate DistMechVerbatimInhomTargetProto
     
     proc finish() { local compIdx localobj varLibId, nil
         compIdx = $1
-        varLibId = new VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = new VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         inhomAndStochLibrary.onInhomApply(varLibId, nil, distFuncHelper, dfc.specialDistFuncCatIdx, dfc.verbatimDistFuncIdx)
     }
     

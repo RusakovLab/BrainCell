@@ -4,7 +4,7 @@ begintemplate ReducedMechTypeHelper
     public getVarNameWithIndex, isWeightNetConVar, createMechStd
     
     external isAstrocyteOrNeuron
-    external stringsEqual
+    external stringsEqual, codeContractViolation
     
     strdef weightVarName
     
@@ -42,17 +42,19 @@ begintemplate ReducedMechTypeHelper
         enumDmPpFk = $1
         mechIdx = $2
         varType = $3
-        if (enumDmPpFk < 2) {
+        if (enumDmPpFk != 2) {
             mechTypeIdx = enumDmPpFk    // 0: "Distributed Membrane Mechanisms", 1: "Point Processes"
             mechType = new MechanismType(mechTypeIdx)
             mechType.select(mechIdx)
             mechType.selected(mechName)
             return new MechanismStandard(mechName, varType)
         } else {
-            if (isAstrocyteOrNeuron) {
-                templName = "FakeMechanismStandardForExtValue"  // The template is not loaded for neurons
+            if (mechIdx == 0) {         // !!!!! keep in sync with utils4FakeMech4GapJuncExtValue.mechIdx
+                templName = "FakeMechanismStandardForExtValue"
+            } else if (mechIdx == 1) {  // !!!!! keep in sync with utils4FakeMech4SynNetCon.mechIdx
+                templName = "FakeMechanismStandardForNetCon"
             } else {
-                templName = "FakeMechanismStandardForNetCon"    // The template is not loaded for astrocytes
+                codeContractViolation()
             }
             sprint(hocCommand, "_fms = new %s()", templName)
             execute(hocCommand, this)

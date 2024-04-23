@@ -68,8 +68,6 @@ func chooseUniqueNameForCompartmentForMechManager() { local isSplitOrRename, hin
                 sprint(hint, hint, "")
             }
         } else if (hintIdx == 1) {
-            hint = "Double spaces are not allowed. Please correct the name:"
-        } else if (hintIdx == 2) {
             hint = "This name is already assigned to some compartment. Please choose a unique name:"
         } else {
             codeContractViolation()
@@ -82,12 +80,6 @@ func chooseUniqueNameForCompartmentForMechManager() { local isSplitOrRename, hin
         
         if (stringEmpty(chosenName)) {
             hintIdx = 0
-            continue
-        }
-        
-        if (containsSubstring(chosenName, "  ")) {
-            // Keep in sync with py:GeneratorsForMainHocFile._prepareUniqueNameId
-            hintIdx = 1
             continue
         }
         
@@ -105,7 +97,7 @@ func chooseUniqueNameForCompartmentForMechManager() { local isSplitOrRename, hin
             break
         }
         
-        hintIdx = 2
+        hintIdx = 1
     }
     
     $s3 = chosenName

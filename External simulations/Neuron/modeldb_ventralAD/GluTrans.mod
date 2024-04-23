@@ -125,7 +125,7 @@ KINETIC kstates {
             COMPARTMENT volin { nai ki glui}
             COMPARTMENT volout { nao ko gluo}
             : COMPARTMENT surf { C1 C2 C3 C4 C5 C6}
-        : surf=1 : !!!!!!!
+        : surf=1 : !!
         ~ C1   <-> C2      (gluo*k12*u(v,-0.1), k21)
         ~ C2  <-> C3       (nao*k23*u(v,0.5),k32)
         ~ C3 <-> C4	       (k34*u(v,0.4),k43)

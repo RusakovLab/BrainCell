@@ -3,20 +3,24 @@ objref mmIcrHelper
 
 begintemplate MechManagerMainWidget
 
-    public show, compOpSelectHandler, mechOpSelectHandler, updateVisibleMechOpChilds, dismissHandler
+    public show, compOpSelectHandler, mechOpSelectHandler, updateVisibleMechOpChilds, showAllComps, dismissHandler
     
-    external dismissIfNotNil
+    external unmapIfNotNil, dismissIfNotNil
     external mmAllComps
     external mwh, beih, mmIcrHelper
+    external eachItemInList, eachSecInList
+    external enumColours
     
     // !! maybe it would be better to encapsulate mmcoWidget into MechManagerMainWidget
     external mmcoWidget, mmmowb
     
-    objref mainBox, this
+    objref mainBox, shapeBox
     objref mmeibWidget
     
     compOpIdx = -1
     mechOpIdx = -1
+    
+    objref this
     
     
     proc init() {
@@ -116,6 +120,8 @@ begintemplate MechManagerMainWidget
     
     proc mechOpSelectHandler() {
         mechOpChangedHandler(mechOpIdx)
+        
+        showAllComps()
     }
     
     proc updateVisibleMechOpChilds() {
@@ -179,7 +185,32 @@ begintemplate MechManagerMainWidget
         mmmowb.switchToOtherMechOpViewHandler(mechOpIdx)
     }
     
+    // !!! strange: all sections shown on the Shape become black
+    //              after creating or deleting a section or changing "nseg" somewhere (from NEURON console)
+    // !!! tiny BUG: called after "Light rescan" and "Import biophysics" unnecessarily
+    proc showAllComps() { local colour, brush localobj shape, comp
+        shapeBox = new VBox()
+        shapeBox.intercept(1)
+        {
+            shape = new Shape()
+            shape.exec_menu("Show Diam")
+            shape.exec_menu("View = plot")
+            colour = enumColours.red
+            brush = -1
+            for eachItemInList(comp, mmAllComps) {
+                shape.beginline(comp.name, colour, brush)
+                for eachSecInList(comp.list_ref) {
+                    shape.color(colour)
+                }
+                colour = enumColours.makeSureNotWhite(colour + 1)
+            }
+        }
+        shapeBox.intercept(0)
+        shapeBox.map("All compartments", 1335, 635, 300, 250)
+    }
+    
     proc dismissChilds() {
+        unmapIfNotNil(shapeBox)
         dismissIfNotNil(mmcoWidget)
         mmmowb.dismissHandler()
         mmeibWidget.dismissHandler()

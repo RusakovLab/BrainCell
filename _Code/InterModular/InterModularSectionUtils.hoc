@@ -149,3 +149,69 @@ proc deleteAllSections() {
         delete_section()
     }
 }
+
+// Check if the currently accessed section belongs to a dendrite
+// Input: usedNamesForDendrites (taken from the top level)
+// Returns: 0/1 flag
+func checkIfCurrentSecIsDendrite() { local idxOrMinus1
+    strdef secName
+    
+    getCurrentSecName(secName)
+    
+    // !! improve performance here using Set in Python
+    idxOrMinus1 = findItemInListByString(usedNamesForDendrites, secName)
+    
+    return (idxOrMinus1 != -1)
+}
+
+// For the current section and all its children subtree, take only those sections which are selectable, and add SectionRef-s to the List
+// $o1 - The List
+// $o2 - The plugin object that implements "isCurrentSectSelectable" predicate func
+proc addThisAndFilteredChildSecRefsToTheList() { localobj list_ref, in_plugin, secList
+    list_ref = $o1
+    in_plugin = $o2
+    
+    secList = new SectionList()
+    secList.subtree()
+    
+    forsec secList {
+        if (in_plugin.isCurrentSectSelectable()) {
+            list_ref.append(new SectionRef())
+        }
+    }
+}
+
+// For all duplicate sections, remove SectionRef-s from the List, so only one copy remains
+// $o1 - The List
+proc removeAllDupSecRefsFromTheList() { localobj list_ref, secList
+    list_ref = $o1
+    
+    secList = listOfSecRefToSecList(list_ref)
+    secList.unique()
+    
+    list_ref.remove_all()
+    secListToListOfSecRef(secList, list_ref)
+}
+
+iterator eachRandomlySeededSlotInSecList() { local numSlotsPerSec, secIdx, slotIdx, connectionPoint, minSeedingDistance, controlFactor, invNormFactor localobj list_ref, seedingDensityHelper, randomSeeder
+    
+    list_ref = $o2
+    numSlotsPerSec = $3
+    seedingDensityHelper = $o4
+    randomSeeder = $o5
+    
+    for secIdx = 0, list_ref.count() - 1 {
+        list_ref.o(secIdx).sec {
+            for slotIdx = 0, numSlotsPerSec - 1 {
+                connectionPoint = slotIdx / numSlotsPerSec
+                minSeedingDistance = seedingDensityHelper.getMinSeedingDistance(connectionPoint)
+                controlFactor = minSeedingDistance * numSlotsPerSec
+                invNormFactor = L / controlFactor                       // !! this can be > 1
+                if (randomSeeder.uniform(0, 1) < invNormFactor) {       // !! use .repick() for performance
+                    $&1 = connectionPoint
+                    iterator_statement
+                }
+            }
+        }
+    }
+}

@@ -114,12 +114,7 @@ begintemplate MechManagerCompOpMergeSubWidget
         
         inhomAndStochLibrary.onCompMerge(mergeCheckBoxStates, donorCompIdx)
         
-        // Applying mechanisms
-        // !! we can improve perf here applying changes to the borrowed sections only,
-        //    but this can be done only when we don't borrow any "sticky" mechs
-        dstComp.markAllMechsDirty()
-        dstComp.applyHomogenChangesToDirtyMechs()
-        mmmowb.isDirty = 0
+        dstComp.onJustAfterCompMerge()
         
         mmcoWidget.mergeHandler_layer2()
         

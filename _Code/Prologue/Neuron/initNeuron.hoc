@@ -30,6 +30,7 @@ proc neuronPostImportHandler() {
         mechsDllUtils.loadDefaultMechsDllDependingOnCellType()
     }
     
+    load_file("_Code/Prologue/CreateDefaultGapJuncs.hoc")
     load_file("_Code/Prologue/CommonPrologue.hoc")
     load_file("_Code/Prologue/Neuron/initNew.hoc")
     

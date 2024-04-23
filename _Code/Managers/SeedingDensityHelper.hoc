@@ -1,22 +1,16 @@
 
-{ makeSureDeclared("reseedAstrocyteNanoBranches", "proc reseedAstrocyteNanoBranches() { codeContractViolation() }") }
-{ makeSureDeclared("reseedNeuronNanoBranches", "proc reseedNeuronNanoBranches() { codeContractViolation() }") }
-
-{ makeSureDeclared("reseedAstrocyteGapJuncs", "proc reseedAstrocyteGapJuncs() { codeContractViolation() }") }
+proc reseedAstrocyteNanoBranches() { codeContractViolation() }
 
 
 begintemplate SeedingDensityHelper
     
-    public applyCore, getMinSeedingDistance, onShowInSeedingDensityWidget, onDoneInSeedingDensityWidget
-    public isUniform, minSeedingDistance, oneLinerPyDistFuncBody
+    public getMinSeedingDistance, onShowInSeedingDensityWidget, onDoneInSeedingDensityWidget
+    public isNanoGeomOrGapJuncs, isUniform, minSeedingDistance, oneLinerPyDistFuncBody
     
     external isAstrocyteOrNeuron
     external veryMinSeedingDistance
-    external reseedAstrocyteNanoBranches, reseedNeuronNanoBranches
-    external reseedAstrocyteGapJuncs
-    external codeContractViolation
     external math
-    external createVector
+    external reseedAstrocyteNanoBranches, createVector, codeContractViolation
     
     isNanoGeomOrGapJuncs = -1
     
@@ -26,41 +20,34 @@ begintemplate SeedingDensityHelper
     
     objref distFuncHelper
     
-    strdef oneLinerPyDistFuncName
-    
     objref this
     
     
-    proc init() { local inf
-        isNanoGeomOrGapJuncs = $1
-        minSeedingDistance = $2     // um
+    proc init() { local numArg, inf localobj impRedObj
         
-        // Defaults
-        isUniform = 1
-        oneLinerPyDistFuncBody = "1234.5 * exp(-x / 100)"
-        
-        // Constants
-        oneLinerPyDistFuncName = "minSeedingDistanceOneLinerPyDistFunc"
+        numArg = numarg()
+        if (numArg == 1) {
+            impRedObj = $o1
+            
+            isNanoGeomOrGapJuncs = 0
+            isUniform = impRedObj.isUniform
+            minSeedingDistance = impRedObj.minSeedingDistance
+            onDoneInSeedingDensityWidget(impRedObj.oneLinerPyDistFuncBody)
+        } else if (numArg == 2) {
+            isNanoGeomOrGapJuncs = $1
+            minSeedingDistance = $2     // um
+            
+            // Defaults
+            isUniform = 1
+            oneLinerPyDistFuncBody = "1234.5 * exp(-x / 100)"
+        } else {
+            codeContractViolation()
+        }
         
         units(&minSeedingDistance, units("L"))
         
         inf = math.inf
         variable_domain(&minSeedingDistance, veryMinSeedingDistance, inf)
-    }
-    
-    proc applyCore() {
-        if (isNanoGeomOrGapJuncs) {
-            if (isAstrocyteOrNeuron) {
-                reseedAstrocyteNanoBranches()   // --> getMinSeedingDistance
-            } else {
-                reseedNeuronNanoBranches()      // --> getMinSeedingDistance
-            }
-        } else {
-            if (!isAstrocyteOrNeuron) {
-                codeContractViolation()
-            }
-            reseedAstrocyteGapJuncs()           // --> getMinSeedingDistance
-        }
     }
     
     func getMinSeedingDistance() { local x, dist, _minSeedingDistance
@@ -77,53 +64,48 @@ begintemplate SeedingDensityHelper
     
     proc onShowInSeedingDensityWidget() {
         if (isNanoGeomOrGapJuncs) {
-            $s1 = "nanostructures"
-            $s2 = "dendrites"
             if (isAstrocyteOrNeuron) {
-                $s3 = "stalks"
+                $s1 = "stalks"
+                $s3 = "Apply"
             } else {
-                $s3 = "spines"
+                $s1 = "spines"
+                $s3 = "Done"
             }
-            $s4 = "Apply"
+            $s2 = "dendrites"
         } else {
             $s1 = "gap junctions"
             $s2 = "sections"
-            $s3 = "gap junctions"
-            $s4 = "Done"
+            $s3 = "Done"
         }
     }
     
-    func onDoneInSeedingDensityWidget() { local isClose localobj vecOfVals, listOfStrs
+    func onDoneInSeedingDensityWidget() { local isStalkSeeding, isClose localobj vecOfVals, listOfStrs, nil
         
         oneLinerPyDistFuncBody = $s1
         
-        execute("distFuncHelper = new CustomCodeDistFuncHelper()", this)
-        vecOfVals = createVector(1)     // modelIdx
-        listOfStrs = new List()
-        listOfStrs.append(new String(""))
-        listOfStrs.append(new String(""))
-        listOfStrs.append(new String(oneLinerPyDistFuncName))
-        listOfStrs.append(new String(oneLinerPyDistFuncBody))
-        listOfStrs.append(new String(""))
-        listOfStrs.append(new String(""))
-        distFuncHelper.importParams(vecOfVals, listOfStrs)
+        if (isUniform) {
+            distFuncHelper = nil
+        } else {
+            execute("distFuncHelper = new CustomCodeDistFuncHelper()", this)
+            vecOfVals = createVector(1)     // modelIdx
+            listOfStrs = new List()
+            listOfStrs.append(new String(""))
+            listOfStrs.append(new String(oneLinerPyDistFuncBody))
+            listOfStrs.append(new String(""))
+            listOfStrs.append(new String(""))
+            distFuncHelper.importParams(vecOfVals, listOfStrs)
+        }
         
-        applyCore()
+        isStalkSeeding = (isNanoGeomOrGapJuncs && isAstrocyteOrNeuron)
+        if (isStalkSeeding) {
+            reseedAstrocyteNanoBranches()   // --> getMinSeedingDistance
+        }
         
-        isClose = !isNanoGeomOrGapJuncs
+        isClose = !isStalkSeeding
         return isClose
     }
     
 endtemplate SeedingDensityHelper
 
-objref nanoGeomSeedingDensityHelper, gapJuncSeedingDensityHelpers[2]
+objref nanoGeomSeedingDensityHelper
 nanoGeomSeedingDensityHelper = new SeedingDensityHelper(1, 1)
-if (isAstrocyteOrNeuron) {
-    if (isBaseOrNanoStart) {
-        // The actual minSeedingDistance will be set later: after the nanogeometry reseeding and before the first call of getMinSeedingDistance
-        defMinSeedingDistanceForExtGapJuncs = -1    // Will be set in the proc reseedAstrocyteGapJuncs
-        defMinSeedingDistanceForIntGapJuncs = -1    //
-    }
-    gapJuncSeedingDensityHelpers[0] = new SeedingDensityHelper(0, defMinSeedingDistanceForIntGapJuncs)      // Internal gap junctions
-    gapJuncSeedingDensityHelpers[1] = new SeedingDensityHelper(0, defMinSeedingDistanceForExtGapJuncs)      // External gap junctions
-}

@@ -4,6 +4,9 @@ begintemplate SimSpatialVoltageDistributions
     public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public Amplitude, DurationPlot
+    
     external altRunControlWidget
     external tstop
     external removeItemFromList, unmapIfNotNil
@@ -94,9 +97,9 @@ begintemplate SimSpatialVoltageDistributions
         {
             xpanel("")
             xlabel("Simulation of Voltage spatial distribution")
-            xvalue("Stimulus amplitude (nA)","Amplitude", 1, "", 0, 1)
-            xvalue("Duration (ms)","DurationPlot", 1, "", 0, 1)
-            xvalue("Computation time (ms)","tstop", 1, "", 0, 1)
+            xpvalue("Stimulus amplitude (nA)", &Amplitude, 1)
+            xpvalue("Duration (ms)", &DurationPlot, 1)
+            xpvalue("Computation time (ms)", &tstop, 1)
             xbutton("Run", "altRunControlWidget.initAndRunHandler()")
             xpanel()
             

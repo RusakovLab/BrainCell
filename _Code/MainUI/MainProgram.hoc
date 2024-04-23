@@ -27,6 +27,8 @@ proc runMain() {
         // (we create it after the call of "proc initCell" because the proc changes nseg in soma)
         soma_ref.o(0).sec apc = new APCount(0.5)    // "proc initCell" assigns an even value to nseg, so the location "0.5" will be corrected by NEURON a bit to match the segment centre
         apc.thresh = 0      // mV
+    } else {
+        compUtils.makeSureAllCompsCreatedOrImportedAndRescanned()
     }
     showRunControlPanel()
     showMainUi()

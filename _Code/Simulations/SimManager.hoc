@@ -6,7 +6,7 @@ begintemplate SimulationManager
     external isAstrocyteOrNeuron
     external InsertElectricMechanisms, InsertGlutamateMechanisms, InsertPotassiumMechanisms
     external stringEmpty, codeContractViolation
-    external mmIcrHelper, beih, mwh, pyObj
+    external mainUiLocker, mmIcrHelper, beih, mwh, pyObj
     external altRunControlWidget
     
     objref deck
@@ -29,9 +29,9 @@ begintemplate SimulationManager
         
         objref simIdxToWidget[numSims]
         if (!isAstrocyteOrNeuron) {
-            execute("simIdxToWidget[0] = new SimVoltageCA1Neuron()", this)          // The templates are not loaded for astrocytes
-            execute("simIdxToWidget[1] = new SimGABADiffusionBasketCell()", this)   //
+            execute("simIdxToWidget[0] = new SimVoltageCA1Neuron()", this)          // The template is not loaded for astrocytes
         }
+        simIdxToWidget[1] = new SimExtracellularDiffusion()
         simIdxToWidget[2] = new SimFrapInCircleGeometry()
         simIdxToWidget[3] = new SimFrapLine()
         simIdxToWidget[4] = new SimSpatialVoltageDistributions()
@@ -53,6 +53,8 @@ begintemplate SimulationManager
     }
     
     proc createSimulationsPanel() {
+        strdef text1, text2
+        
         xpanel("")
         xlabel("===================== Simulations =====================")
         xlabel("")
@@ -104,11 +106,16 @@ begintemplate SimulationManager
             insertSpacer()
             xpanel()
             xpanel("")
-            if (!isAstrocyteOrNeuron) {
-                xlabel("GABA diffusion simulation of basket cell interneuron")
-                xstatebutton("Basket cell GABA diffusion", &simIdxToLEDState[1], "simSelectedHandler(1)")
-                insertSpacer()
+            if (isAstrocyteOrNeuron) {
+                text1 = "Potassium diffusion simulation for astrocyte"
+                text2 = "Astrocyte K+ diffusion"
+            } else {
+                text1 = "GABA diffusion simulation for basket cell interneuron"
+                text2 = "Basket cell GABA diffusion"
             }
+            xlabel(text1)
+            xstatebutton(text2, &simIdxToLEDState[1], "simSelectedHandler(1)")
+            insertSpacer()
             xlabel("Cell model with Glutamate transporters")
             xstatebutton("Membrane biophysics with glutamate transport", &simIdxToLEDState[9], "simSelectedHandler(9)")
             insertSpacer()
@@ -175,6 +182,20 @@ begintemplate SimulationManager
             } else {
                 simIdxToLEDState[lastSimIdxOrMinus1] = 0
                 doNotify()
+            }
+        }
+        
+        if (mainUiLocker != nil) {  // !! nil in tests
+            if (0) {
+                // !!! more preferable, but leads to errors in certain scenarios because currently we
+                //     don't delete/create MechComp-s for the nanogeometry dynamically in contrast to the nanogeometry itself
+                mainUiLocker.makeSureNanoReseedingWidgetsClosed()
+            } else {
+                isCancel = mainUiLocker.makeSureNanoReseedingLocked()
+                if (isCancel) {
+                    simIdxToLEDState[simIdx] = 0
+                    return
+                }
             }
         }
         

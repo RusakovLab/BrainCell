@@ -1,5 +1,5 @@
 
-// !! some code dupl. with CreateListOfInputVarsWidget
+// !! some code dupl. with CreateListOfInputVarsWidget, SpineSeedingMainWidget, SynSetsWidget and GapJuncSetsWidget
 begintemplate ExtracellularManagerMainWidget
 
     public show, onCreateHandler, onEditHandler, updateEcdStatusVarLabel, dismissHandler
@@ -7,7 +7,7 @@ begintemplate ExtracellularManagerMainWidget
     
     external mwh, ecsLibrary
     external applyExtracellularSourcesWithWaitBox, disableExtracellularSources, getExtracellularSourcesStatus
-    external isECSUnique, replaceItemInList, deleteSelectedItemFromBrowsedList, openDeck, closeDeck, oneZeroToEnabledDisabled, unmapIfNotNil, codeContractViolation
+    external isECSUnique, replaceItemInList, deleteSelectedItemFromBrowsedList, openDeck, closeDeck, getIfYouModifyGeomHint, oneZeroToEnabledDisabled, unmapIfNotNil, codeContractViolation
     
     objref mainBox, ecsList
     objref oneECSWidget, randomECSsWidget
@@ -95,7 +95,7 @@ begintemplate ExtracellularManagerMainWidget
         mainBox.map(title, 110, 145, -1, -1)
     }
     
-    func onCreateHandler() { local numECSs localobj newECS
+    func onCreateHandler() { localobj newECS
         newECS = $o1
         
         if (!isECSUnique(newECS, ecsList)) {
@@ -103,8 +103,6 @@ begintemplate ExtracellularManagerMainWidget
         }
         
         ecsList.append(newECS)
-        numECSs = ecsList.count()
-        ecsList.select(numECSs - 1)
         
         return 1
     }
@@ -223,7 +221,7 @@ begintemplate ExtracellularManagerMainWidget
             //    to avoid this, we'll have to stick to AltRunControl only and "click" "Apply" programmatically on start of the simulation
             //    alternatively, we can save "total_nseg" in MOD file on "Apply", then check it each time user starts the simulation and,
             //    if we see that it's different, print a message to console suggesting to click "Apply"
-            line4 = "If you modify the cell geometry or move it in 3D space, change \"nseg\" somewhere or add new sections,"
+            getIfYouModifyGeomHint(line4)
             
             sprint(line5, "then get back to the \"%s\" and click \"Apply\" once again.", title)
             

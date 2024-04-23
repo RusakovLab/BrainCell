@@ -1,25 +1,44 @@
 
-// !!! not exported at the moment
-
 begintemplate UtilsForFakeMechanismForExtValue
 
-    public setNewVar, getVarUnits
-    public mechName, numGlobalVars, theDynVarName
+    public setNewVarIfNeeded, setNewVarCore, getVarUnits
+    public mechIdx, mechName, numGlobalVars, theDynVarName
     
-    external stringsEqual, codeContractViolation
+    external stringsEqual, getGraphedOrPointedVarUnits, codeContractViolation
+    external pyObj
     
+    mechIdx = -1
     strdef mechName, theDynVarName, theDynVarUnits
     numGlobalVars = -1
     
     
     proc init() {
+        mechIdx = 0     // !!!!! keep in sync with ReducedMechTypeHelper.createMechStd
         mechName = "External Value"
         numGlobalVars = 0
     }
     
-    proc setNewVar() {
-        theDynVarName = $s1
-        theDynVarUnits = $s2
+    proc setNewVarIfNeeded() { local doesHavePtr localobj gapJuncSet
+        strdef ppName
+        gapJuncSet = $o1
+        if (!gapJuncSet.isExtOrInt) {
+            return
+        }
+        gapJuncSet.getPpNameOrEmpty(ppName)         // !!! problem here if the set has no gap juncs
+        pyObj.ms_warnIfNoRecordForGapJunc(ppName)   // !!! ???
+        doesHavePtr = pyObj.ms_doesGapJuncHavePtr(ppName)
+        if (doesHavePtr) {
+            setNewVarCore(ppName)
+        }
+    }
+    
+    proc setNewVarCore() {
+        strdef ppName, dmVarNameWithIndex, varUnits
+        ppName = $s1
+        dmVarNameWithIndex = pyObj.ms_getGapJuncExtVarNameWithIndex(ppName)
+        getGraphedOrPointedVarUnits(dmVarNameWithIndex, varUnits)
+        theDynVarName = dmVarNameWithIndex
+        theDynVarUnits = varUnits
     }
     
     proc getVarUnits() {

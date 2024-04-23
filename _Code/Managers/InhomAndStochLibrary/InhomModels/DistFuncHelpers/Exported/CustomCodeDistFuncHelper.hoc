@@ -1,6 +1,6 @@
 
-userDefinedHocDistFuncArgument = -1
-userDefinedHocDistFuncResult = -1
+_userDefinedHocDistFuncArgument = -1
+_userDefinedHocDistFuncResult = -1
 
 begintemplate CustomCodeDistFuncHelper
 
@@ -10,13 +10,17 @@ begintemplate CustomCodeDistFuncHelper
     
     external codeContractViolation, printMsgAndRaiseError, printNotImplementedMsgAndRaiseError
     external pyObj
-    external userDefinedHocDistFuncArgument, userDefinedHocDistFuncResult
+    external _userDefinedHocDistFuncArgument, _userDefinedHocDistFuncResult
     
     objref parentWidget, this
     
     modelIdx = -1
+    
     strdef oneLinerHocDistFuncName, oneLinerHocDistFuncBody
-    strdef oneLinerPyDistFuncName, oneLinerPyDistFuncBody
+    
+    objref _oneLinerPyDistFuncLambda
+    strdef oneLinerPyDistFuncBody
+    
     strdef userDefinedHocDistFuncName, userDefinedPyDistFuncName
     
     isSkipOneSelect = -1
@@ -31,18 +35,15 @@ begintemplate CustomCodeDistFuncHelper
             // so will be inited in proc importParams shortly downstream)
         } else if (numArg == 1) {
             setModelIdx($1)
-            
-            oneLinerHocDistFuncName = "mechManagerOneLinerHocDistFunc"
             oneLinerHocDistFuncBody = "x/10 + 50*sin(2*PI*x/200) * tanh(x/100)"
-            
-            oneLinerPyDistFuncName = "mechManagerOneLinerPyDistFunc"
             oneLinerPyDistFuncBody = "x/10 + 50*sin(2*pi*x/200) * tanh(x/100)"
-            
             userDefinedHocDistFuncName = "myDistFunc"
             userDefinedPyDistFuncName = "myDistFunc"
         } else {
             codeContractViolation()
         }
+        
+        oneLinerHocDistFuncName = "_oneLinerHocDistFunc"
         
         isSkipOneSelect = 0
     }
@@ -77,7 +78,7 @@ begintemplate CustomCodeDistFuncHelper
             if (!isAccept) {
                 return 1
             }
-            defineHocFunction(oneLinerHocDistFuncName, oneLinerHocDistFuncBody)
+            defineHocOneLinerFunction(oneLinerHocDistFuncBody)
         } else if (modelIdx == 1) {
             // !! keep in sync with SeedingDensityWidget.show
             sprint(text, "Enter Python expression (one-liner).%s We've done \"from math import *\" for you.", hint1)
@@ -85,7 +86,7 @@ begintemplate CustomCodeDistFuncHelper
             if (!isAccept) {
                 return 1
             }
-            definePythonFunction(oneLinerPyDistFuncName, oneLinerPyDistFuncBody)
+            definePythonOneLinerFunction(oneLinerPyDistFuncBody)
         } else if (modelIdx == 2) {
             sprint(text, "Enter name of your HOC function. $1 is x, return is y.%s", hint2)
             isAccept = string_dialog(text, userDefinedHocDistFuncName)
@@ -109,13 +110,13 @@ begintemplate CustomCodeDistFuncHelper
         x = $1
         
         if (modelIdx == 0) {
-            return mechManagerOneLinerHocDistFunc(x)
+            return _oneLinerHocDistFunc(x)
         } else if (modelIdx == 1) {
-            return callPythonFunction(oneLinerPyDistFuncName, x)
+            return _oneLinerPyDistFuncLambda.__call__(x)
         } else if (modelIdx == 2) {
             return callUserDefinedHocDistFunc(userDefinedHocDistFuncName, x)
         } else if (modelIdx == 3) {
-            return callPythonFunction(userDefinedPyDistFuncName, x)
+            return callPythonUserDefinedFunction(userDefinedPyDistFuncName, x)
         } else {
             codeContractViolation()
         }
@@ -143,9 +144,7 @@ begintemplate CustomCodeDistFuncHelper
         
         vecOfVals.resize(1)
         vecOfVals.x(0) = modelIdx
-        listOfStrs.append(new String(oneLinerHocDistFuncName))
         listOfStrs.append(new String(oneLinerHocDistFuncBody))
-        listOfStrs.append(new String(oneLinerPyDistFuncName))
         listOfStrs.append(new String(oneLinerPyDistFuncBody))
         listOfStrs.append(new String(userDefinedHocDistFuncName))
         listOfStrs.append(new String(userDefinedPyDistFuncName))
@@ -155,22 +154,20 @@ begintemplate CustomCodeDistFuncHelper
         vecOfVals = $o1
         listOfStrs = $o2
         
-        if (vecOfVals.size() != 1 || listOfStrs.count() != 6) {
+        if (vecOfVals.size() != 1 || listOfStrs.count() != 4) {
             codeContractViolation()
         }
         
         setModelIdx(vecOfVals.x(0))
-        oneLinerHocDistFuncName = listOfStrs.o(0).s
-        oneLinerHocDistFuncBody = listOfStrs.o(1).s
-        oneLinerPyDistFuncName = listOfStrs.o(2).s
-        oneLinerPyDistFuncBody = listOfStrs.o(3).s
-        userDefinedHocDistFuncName = listOfStrs.o(4).s
-        userDefinedPyDistFuncName = listOfStrs.o(5).s
+        oneLinerHocDistFuncBody = listOfStrs.o(0).s
+        oneLinerPyDistFuncBody = listOfStrs.o(1).s
+        userDefinedHocDistFuncName = listOfStrs.o(2).s
+        userDefinedPyDistFuncName = listOfStrs.o(3).s
         
         if (modelIdx == 0) {
-            defineHocFunction(oneLinerHocDistFuncName, oneLinerHocDistFuncBody)
+            defineHocOneLinerFunction(oneLinerHocDistFuncBody)
         } else if (modelIdx == 1) {
-            definePythonFunction(oneLinerPyDistFuncName, oneLinerPyDistFuncBody)
+            definePythonOneLinerFunction(oneLinerPyDistFuncBody)
         } else {
             codeContractViolation()
         }
@@ -183,13 +180,12 @@ begintemplate CustomCodeDistFuncHelper
     // All next staff is private
     
     
-    func mechManagerOneLinerHocDistFunc() { codeContractViolation() }
+    func _oneLinerHocDistFunc() { codeContractViolation() }
     
-    proc defineHocFunction() { local isSuccess
-        strdef oneLinerHocDistFuncName, oneLinerHocDistFuncBody, hocCommand
+    proc defineHocOneLinerFunction() { local isSuccess
+        strdef oneLinerHocDistFuncBody, hocCommand
         
-        oneLinerHocDistFuncName = $s1
-        oneLinerHocDistFuncBody = $s2
+        oneLinerHocDistFuncBody = $s1
         
         sprint(hocCommand, "func %s() { local x\nx = $1\nreturn %s }", oneLinerHocDistFuncName, oneLinerHocDistFuncBody)
         isSuccess = execute1(hocCommand, this)
@@ -203,43 +199,43 @@ begintemplate CustomCodeDistFuncHelper
         strdef userDefinedHocDistFuncName, hocCommand
         
         userDefinedHocDistFuncName = $s1
-        userDefinedHocDistFuncArgument = $2
+        _userDefinedHocDistFuncArgument = $2
         
         // !! try to invent a better way to call a top-level func encapsulating both x and y into this template;
         //    think about push_object in HOC or hocObj.* in Python or execute(*, this) in HOC
-        sprint(hocCommand, "userDefinedHocDistFuncResult = %s(userDefinedHocDistFuncArgument)", userDefinedHocDistFuncName)
+        sprint(hocCommand, "_userDefinedHocDistFuncResult = %s(_userDefinedHocDistFuncArgument)", userDefinedHocDistFuncName)
         execute(hocCommand)
         
-        return userDefinedHocDistFuncResult
+        return _userDefinedHocDistFuncResult
     }
     
-    proc definePythonFunction() { local status
-        strdef oneLinerPyDistFuncName, oneLinerPyDistFuncBody, pyCommand
+    proc definePythonOneLinerFunction() { local status
+        strdef oneLinerPyDistFuncBody, pyCode
         
-        oneLinerPyDistFuncName = $s1
-        oneLinerPyDistFuncBody = $s2
+        oneLinerPyDistFuncBody = $s1
         
-        sprint(pyCommand, "from math import *\ndef %s(x):\n    return %s", oneLinerPyDistFuncName, oneLinerPyDistFuncBody)
-        status = nrnpython(pyCommand)
+        status = nrnpython("from math import *")
         if (!status) {
             // !! printPythonErrMsgAndStop
-            printMsgAndRaiseError("Exception raised in Python code (caught in definePythonFunction)")
+            printMsgAndRaiseError("Exception raised in Python code (caught in definePythonOneLinerFunction)")
         }
+        sprint(pyCode, "lambda x : %s", oneLinerPyDistFuncBody)
+        _oneLinerPyDistFuncLambda = pyObj.ev(pyCode)
     }
     
-    func callPythonFunction() { local x, status
-        strdef oneLinerPyDistFuncName, pyCommand
+    func callPythonUserDefinedFunction() { local x, status
+        strdef userDefinedPyDistFuncName, pyCommand
         
-        oneLinerPyDistFuncName = $s1
+        userDefinedPyDistFuncName = $s1
         x = $2
         
         pyObj.x = x
         
-        sprint(pyCommand, "y = %s(x)", oneLinerPyDistFuncName)
+        sprint(pyCommand, "y = %s(x)", userDefinedPyDistFuncName)
         status = nrnpython(pyCommand)
         if (!status) {
             // !! printPythonErrMsgAndStop
-            printMsgAndRaiseError("Exception raised in Python code (caught in callPythonFunction)")
+            printMsgAndRaiseError("Exception raised in Python code (caught in callPythonUserDefinedFunction)")
         }
         
         return pyObj.y

@@ -8,6 +8,9 @@ begintemplate SimGlutamate
     public preShowCheck, show, advance, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public PX, PY, PZ, R_FRAP, TimeBegin, MaxGlu, PX2, Gluin, Tau1, Tau2
+    
     external GluIteration
     external seClampHelper
     external altRunControlWidget
@@ -92,25 +95,25 @@ begintemplate SimGlutamate
         {
             xpanel("")
             xlabel("================== Uncaging glutamate ==================")
-            xvalue("X coordinate (um)","PX", 1,"", 0, 1 )
-            xvalue("Y coordinate (um)","PY", 1,"", 0, 1 )
-            xvalue("Z coordinate (um)","PZ ", 1,"", 0, 1 )
-            xvalue("Uncaging radius (um) ","R_FRAP", 1,"", 0, 1 )
-            xvalue("Uncaging onset (ms)","TimeBegin", 1,"", 0, 1 )
-            xvalue("Glutamate concentration Max (mM)","MaxGlu", 1,"", 0, 1 )
-            xvalue("Distance between two release (um)","PX2", 1,"", 0, 1 )
-            //xvalue("Intracellular Glutamate in (mM)","Gluin", 1,"", 0, 1 )
-            xvalue("Tau rise (ms)","Tau1", 1,"", 0, 1 )
-            xvalue("Tau decay (ms)","Tau2", 1,"", 0, 1 )
+            xpvalue("X coordinate (um)", &PX, 1)
+            xpvalue("Y coordinate (um)", &PY, 1)
+            xpvalue("Z coordinate (um)", &PZ, 1)
+            xpvalue("Uncaging radius (um)", &R_FRAP, 1)
+            xpvalue("Uncaging onset (ms)", &TimeBegin, 1)
+            xpvalue("Glutamate concentration Max (mM)", &MaxGlu, 1)
+            xpvalue("Distance between two release (um)", &PX2, 1)
+            //xpvalue("Intracellular Glutamate in (mM)", &Gluin, 1)
+            xpvalue("Tau rise (ms)", &Tau1, 1)
+            xpvalue("Tau decay (ms)", &Tau2, 1)
             xlabel("======================================================")
             xpanel(625,164)
             
             xpanel("")
             xlabel("================== Voltage clamp of soma==================")
-            xpvalue("Somatic voltage clamp", &seClampHelper.seClamp.amp1, 1, "", 0, 1)
-            xpvalue("Clamp duration", &seClampHelper.seClamp.dur1, 1, "", 0, 1)
+            xpvalue("Somatic voltage clamp", &seClampHelper.seClamp.amp1, 1)
+            xpvalue("Clamp duration", &seClampHelper.seClamp.dur1, 1)
             xlabel("----------------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1)
+            xpvalue("Simulation time (ms)", &tstop, 1)
             xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel(328,129)
         }

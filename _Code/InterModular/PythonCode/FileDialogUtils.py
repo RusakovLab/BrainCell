@@ -28,9 +28,10 @@ class FileDialogUtils:
     class EnumOutFileTypes(Enum):
         baseGeometryHoc = 0
         nanoGeometryHoc = 1
-        biophysJson = 2
-        binaryResultsBin = 3
-        textResultsTxt = 4
+        nsgDataZip = 2
+        biophysJson = 3
+        binaryResultsBin = 4
+        textResultsTxt = 5
         """ !! in the future, we can add support for these files saved to "Text results" folder:
         volumFractionTxt
         cadynamicsTxt
@@ -76,6 +77,11 @@ class FileDialogUtils:
             'initialdir': 'Nanogeometry',
             'filetypes': [('HOC File', '*.hoc'), ('All Files', '*.*')],
             'defaultextension': '.hoc'},
+        EnumOutFileTypes.nsgDataZip: {
+            'title': 'Export BrainCell simulation',
+            'initialdir': 'Nanogeometry',
+            'filetypes': [('ZIP archive for NSG supercomputer', '*.zip'), ('All Files', '*.*')],
+            'defaultextension': '.zip'},
         EnumOutFileTypes.biophysJson: {
             'title': 'Export brain cell biophysics',
             'initialdir': 'Biophysics',

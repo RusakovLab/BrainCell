@@ -1,29 +1,28 @@
 
 // !! if user loads mechanisms dynamically (see neuron.load_mechanisms), then we need to re-create the singleton object
 
-if (isAstrocyteOrNeuron) {
-    load_file("GapJuncManager/GapJuncManagerBaseLoads.hoc")
-    objref utils4FakeMech4SynNetCon
-} else {
+{ load_file("GapJuncManager/GapJuncManagerBaseLoads.hoc") }
+if (!isAstrocyteOrNeuron) {
     load_file("SynManager/SynManagerBaseLoads.hoc")
-    objref utils4FakeMech4GapJuncExtValue
 }
 
 begintemplate MechTypeHelper
 
-    public getMechType, getNumMechs, getMechName, getMechIdx, getNumVarTypes, getNumMechVars, doesMechHaveGlobalVars, doesMechHaveNotGlobalVars, getVarNameAndArraySize, getVarTypeName, getVarNameWithIndex, getVarUnits, getVarNameWithIndexAndUnits, isDistMechSticky, isIon, checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar, isDiamDistMechVar, isWeightNetConVar, convertVarTypeToVarTypeIdx, doesPointProcessRequireSection, isPointProcessAcceptableNetConSource, isPointProcessAcceptableNetConTarget, createMechStd
+    public getMechType, getNumMechs, getMechName, getMechIdx, getNumVarTypes, getNumMechVars, doesMechHaveGlobalVars, doesMechHaveNotGlobalVars, getVarNameAndArraySize, getVarTypeName, getVarNameWithIndex, getVarUnits, getVarNameWithIndexAndUnits, isDistMechSticky, isIon, checkIfInhomogeneityOrStochasticityCannotBeAppliedToThisDistMechVar, isDiamDistMechVar, isWeightNetConVar, convertVarTypeToVarTypeIdx, doesPointProcessRequireSection, isPointProcessAcceptableNetConSource, isPointProcessAcceptableNetConTarget, doesPointProcessUseIons, createMechStd, createNewPpAttachedToSection
     
     public morphologyMechIdx, morphologyMechName, diamVarType, diamVarName
     public extracellularMechName, ionSuffix
     
-    external mwh, mechSettings
-    external stringsEqual, stringEmpty, codeContractViolation
-    external utils4FakeMech4GapJuncExtValue, utils4FakeMech4SynNetCon
     external isAstrocyteOrNeuron
+    external stringsEqual, stringEmpty, codeContractViolation
+    external mwh, mechSettings, utils4FakeMech4GapJuncExtValue, utils4FakeMech4SynNetCon
+    external eachItemInList
     
     objref mechTypes[1]
     objref _doesMechHaveGlobalVars[1]
-    objref this
+    double _doesPointProcessUseIons[1]
+    
+    objref utils4FakeMechs[1]
     
     // Special mechs and vars
     morphologyMechIdx = -1
@@ -32,51 +31,52 @@ begintemplate MechTypeHelper
     diamVarIdx = -1
     strdef morphologyMechName, extracellularMechName, ionSuffix, diamVarName, weightVarName
     
-    objref utils4FakeMech
+    objref this
     
     
-    proc init() { local mechTypeIdx, numMechs, mechIdx, numMechGlobalVars localobj flagsVec
+    proc init() { local mechTypeIdx, numMechs, mechIdx, numMechGlobalVars localobj mechType, flagsVec
         strdef mechName
         
         objref mechTypes[3]                 // 0: "Distributed Membrane Mechanisms", 1: "Point Processes", 2: "Fake Point Processes"
         objref _doesMechHaveGlobalVars[3]   // Array of Vector-s of 0/1 flags
         
-        for mechTypeIdx = 0, 1 {    // 0: "Distributed Membrane Mechanisms", 1: "Point Processes"
-            mechTypes[mechTypeIdx] = new MechanismType(mechTypeIdx)
+        objref utils4FakeMechs[2]           // 0: gap juncs, 1: syns
+        
+        utils4FakeMechs[utils4FakeMech4GapJuncExtValue.mechIdx] = utils4FakeMech4GapJuncExtValue
+        if (!isAstrocyteOrNeuron) {
+            utils4FakeMechs[utils4FakeMech4SynNetCon.mechIdx] = utils4FakeMech4SynNetCon
+        }
+        
+        for mechTypeIdx = 0, 2 {    // 0: "Distributed Membrane Mechanisms", 1: "Point Processes", 2: "Fake Point Processes"
+            
+            if (mechTypeIdx != 2) {
+                mechType = new MechanismType(mechTypeIdx)
+            } else {
+                mechType = new FakeMechanismType()
+            }
+            mechTypes[mechTypeIdx] = mechType
             
             // Initialize _doesMechHaveGlobalVars[mechTypeIdx] vector
             numMechs = getNumMechs(mechTypeIdx)
             flagsVec = new Vector(numMechs)     // 0/1 flags
             for mechIdx = 0, numMechs - 1 {
-                getMechName(mechTypeIdx, mechIdx, mechName)
-                
-                numMechGlobalVars = nrnglobalmechmenu(mechName, 0)
-                
-                // Just another way to do the same:
-                // mechStd = new MechanismStandard(mechName, -1)    // -1: "GLOBAL"
-                // numMechGlobalVars = mechStd.count()
+                if (mechTypeIdx != 2) {
+                    getMechName(mechTypeIdx, mechIdx, mechName)
+                    numMechGlobalVars = nrnglobalmechmenu(mechName, 0)
+                    // Just another way to do the same:
+                    // mechStd = new MechanismStandard(mechName, -1)    // -1: "GLOBAL"
+                    // numMechGlobalVars = mechStd.count()
+                } else {
+                    numMechGlobalVars = utils4FakeMechs[mechIdx].numGlobalVars
+                }
                 
                 flagsVec.x(mechIdx) = (numMechGlobalVars != 0)
             }
             _doesMechHaveGlobalVars[mechTypeIdx] = flagsVec
         }
         
-        mechTypeIdx = 2
-        if (isAstrocyteOrNeuron) {
-            // For external gap junctions
-            utils4FakeMech = utils4FakeMech4GapJuncExtValue
-        } else {
-            // For synapses
-            utils4FakeMech = utils4FakeMech4SynNetCon
-        }
-        mechName = utils4FakeMech.mechName
-        numMechGlobalVars = utils4FakeMech.numGlobalVars
-        
-        mechTypes[mechTypeIdx] = new FakeMechanismType(mechName)
-        flagsVec = new Vector(1)
-        mechIdx = 0
-        flagsVec.x(mechIdx) = (numMechGlobalVars != 0)
-        _doesMechHaveGlobalVars[mechTypeIdx] = flagsVec
+        // Initialize _doesPointProcessUseIons array
+        initDoesPointProcessUseIonsFlagsArray()
         
         // All code below is for Distributed Membrane Mechanisms only
         
@@ -107,9 +107,9 @@ begintemplate MechTypeHelper
         checkDistVarCodeContract(morphologyMechIdx, diamVarType, diamVarIdx, diamVarName)
     }
     
-    obfunc getMechType() { local isLocalOrDist
-        isLocalOrDist = $1
-        return mechTypes[isLocalOrDist]
+    obfunc getMechType() { local enumDmPpFk
+        enumDmPpFk = $1
+        return mechTypes[enumDmPpFk]
     }
     
     func getNumMechs() { local enumDmPpFk
@@ -169,10 +169,11 @@ begintemplate MechTypeHelper
         return mechStd.count()
     }
     
-    func doesMechHaveGlobalVars() { local enumDmPpFk, mechIdx
+    func doesMechHaveGlobalVars() { local enumDmPpFk, mechIdx localobj flagsVec
         enumDmPpFk = $1
         mechIdx = $2
-        return _doesMechHaveGlobalVars[enumDmPpFk].x(mechIdx)
+        flagsVec = _doesMechHaveGlobalVars[enumDmPpFk]
+        return flagsVec.x(mechIdx)
     }
     
     func doesMechHaveNotGlobalVars() { local enumDmPpFk, mechIdx, varType
@@ -241,7 +242,7 @@ begintemplate MechTypeHelper
             // The line below looks more correct but actually leads to error like "Cannot find the symbol for  ca_cadifus[0]"
             // _unitsStr = units(varNameWithIndex)
         } else if (enumDmPpFk == 1) {
-            // !! is there an easier way to get the units for an point process var?
+            // !! is there an easier way to get the units for a point process var?
             getMechName(enumDmPpFk, mechIdx, mechName)
             sprint(hocCommand, "_pointProcess = new %s(0.5)", mechName) // Without "0.5", we catch "point process not located in a section" error for some PPs, e.g. Exp2Syn
             execute(hocCommand, this)
@@ -249,7 +250,7 @@ begintemplate MechTypeHelper
             execute(hocCommand, this)
             _pointProcess = nil
         } else if (enumDmPpFk == 2) {
-            utils4FakeMech.getVarUnits(varName, _unitsStr)
+            utils4FakeMechs[mechIdx].getVarUnits(varName, _unitsStr)
         } else {
             codeContractViolation()
         }
@@ -350,6 +351,11 @@ begintemplate MechTypeHelper
         return mechTypes[1].is_netcon_target(mechIdx)
     }
     
+    func doesPointProcessUseIons() { local mechIdx
+        mechIdx = $1
+        return _doesPointProcessUseIons[mechIdx]
+    }
+    
     objref _fms
     
     obfunc createMechStd() { local enumDmPpFk, mechIdx, varType localobj fms, nil
@@ -361,21 +367,87 @@ begintemplate MechTypeHelper
             getMechName(enumDmPpFk, mechIdx, mechName)
             return new MechanismStandard(mechName, varType)
         } else {
-            if (isAstrocyteOrNeuron) {
-                templName = "FakeMechanismStandardForExtValue"  // The template is not loaded for neurons
-            } else {
+            if (mechIdx == utils4FakeMech4GapJuncExtValue.mechIdx) {
+                return new FakeMechanismStandardForExtValue()
+            } else if (mechIdx == utils4FakeMech4SynNetCon.mechIdx) {
                 templName = "FakeMechanismStandardForNetCon"    // The template is not loaded for astrocytes
+                sprint(hocCommand, "_fms = new %s()", templName)
+                execute(hocCommand, this)
+                fms = _fms
+                _fms = nil
+                return fms
+            } else {
+                codeContractViolation()
             }
-            sprint(hocCommand, "_fms = new %s()", templName)
-            execute(hocCommand, this)
-            fms = _fms
-            _fms = nil
-            return fms
         }
+    }
+    
+    _x = -1
+    objref _tempPp
+    
+    // Keep in sync with ReducedTapSet.createNewPpAttachedToSection
+    obfunc createNewPpAttachedToSection() { localobj sec_ref, pp, nil
+        strdef mechName, hocCommand
+        
+        mechName = $s1
+        sec_ref = $o2
+        _x = $3
+        
+        sprint(hocCommand, "_tempPp = new %s(_x)", mechName)
+        sec_ref.sec {
+            execute(hocCommand, this)
+        }
+        
+        pp = _tempPp
+        _tempPp = nil
+        
+        return pp
     }
     
     // All next staff is private
     
+    
+    create _tempSec     // Will be deleted in ctor (init -> initDoesPointProcessUseIonsFlagsArray)
+    
+    // This proc is just a workaround to achieve what cannot be done in NEURON directly.
+    // Looking forward to delete it in favour of smth simple like MechanismType.doesUseIons() once NEURON has such a func.
+    proc initDoesPointProcessUseIonsFlagsArray() { local bioMechTypeIdx, ppMechTypeIdx, numBioMechs, numPpMechs, bioMechIdx, ppMechIdx localobj allIonMechNames, tempPp, ionMechNameStrObj
+        strdef bioMechName, ppMechName
+        
+        bioMechTypeIdx = 0
+        ppMechTypeIdx = 1
+        numBioMechs = getNumMechs(bioMechTypeIdx)
+        numPpMechs = getNumMechs(ppMechTypeIdx)
+        
+        double _doesPointProcessUseIons[numPpMechs]     // All zeros by default
+        
+        allIonMechNames = new List()
+        for bioMechIdx = 0, numBioMechs - 1 {
+            getMechName(bioMechTypeIdx, bioMechIdx, bioMechName)
+            if (isIon(bioMechName)) {
+                allIonMechNames.append(new String(bioMechName))
+            }
+        }
+        
+        for ppMechIdx = 0, numPpMechs - 1 {
+            if (!doesPointProcessRequireSection(ppMechIdx)) {
+                continue        // !!! ???
+            }
+            getMechName(ppMechTypeIdx, ppMechIdx, ppMechName)
+            create _tempSec     // This removes all the ions
+            _tempSec {
+                tempPp = createNewPpAttachedToSection(ppMechName, new SectionRef(), 0.5)
+                for eachItemInList(ionMechNameStrObj, allIonMechNames) {
+                    if (ismembrane(ionMechNameStrObj.s)) {
+                        _doesPointProcessUseIons[ppMechIdx] = 1
+                        break
+                    }
+                }
+            }
+        }
+        
+        _tempSec delete_section()
+    }
     
     proc checkDistMechCodeContract() { local mechIdx
         strdef expMechName, actMechName

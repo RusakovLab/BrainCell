@@ -1,0 +1,57 @@
+
+// Keeping on the top level because it uses "forall" and "forsec"
+obfunc getRecSectsListAndNumSegms() { local numSegms, enumWhereToWatch localobj list_ref
+    
+    list_ref = new List()
+    numSegms = 0
+    
+    // !!!!! fragile
+    enumWhereToWatch = WhereToWatchWidget[0].enumWhereToWatch
+    
+    if (enumWhereToWatch != 1) {
+        forall {
+            if (pyObj.isNanoGeometrySection(secname())) {
+                continue
+            }
+            list_ref.append(new SectionRef())
+            numSegms += nseg
+        }
+    } else {
+        forsec "GridOfSections[" {      // !!!!! fragile
+            list_ref.append(new SectionRef())
+            numSegms += nseg
+        }
+    }
+    
+    $&1 = numSegms
+    
+    return list_ref
+}
+
+
+_x = -1
+_y = -1
+
+proc assignRangeVarFromRecord() { local segmIdx localobj list_ref, oneFrame
+    strdef varNameWithIndex, hocCommand
+    
+    list_ref = $o1
+    varNameWithIndex = $s2
+    oneFrame = $o3
+    
+    // !!!!! no need to "sprint" on each frame
+    sprint(hocCommand, "%s(_x) = _y", varNameWithIndex)     // !!!!! test that it works when we use a var with index
+    
+    segmIdx = 0
+    
+    // !!!!! apply it as a Verbatim inhom model ?
+    for eachSegmInSecList(&_x, list_ref) {
+        _y = pyObj.getArrayElem(oneFrame, segmIdx)
+        // !!!!! if I call Python here, then I can avoid "execute" below or even push the entire proc to Python
+        
+        // !!!!! _y = oneFrame.__getitem__(pyObj.int(segmIdx))  // !!!!! slow conversion on each iter
+        
+        execute(hocCommand)
+        segmIdx += 1
+    }
+}

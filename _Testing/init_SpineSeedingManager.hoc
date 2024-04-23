@@ -1,0 +1,48 @@
+
+// !!! in this test, when user clicks "Done" in SpineSeedingMainWidget, we catch "object prefix is NULL" error, but that's fine
+
+isAstrocyteOrNeuron = 0
+isBaseOrNanoStart = 1
+// !!! isExternalSimStart = 0
+{ load_file("../_Code/InterModular/AllInterModularUtils.hoc") }
+
+// Load some test base geometry file
+{ load_file("../Geometry/Neuron/test.hoc") }
+
+// !!!
+forall {
+    nseg = 10
+}
+
+// !!! move this to intermodular utils and reuse everywhere in the code
+obfunc createListOfStrs() { local numArg, i localobj list
+    numArg = numarg()
+    list = new List()
+    for i = 1, numArg {
+        list.append(new String($si))
+    }
+    return list
+}
+
+objref ic
+{ load_file("../_Code/Import/SectionUtils.hoc") }
+{ load_file("../_Code/Import/SectionRefUtils.hoc") }
+objref usedNamesForSoma, usedNamesForDendrites, usedNamesForAxon
+usedNamesForSoma = createListOfStrs("soma")
+usedNamesForDendrites = createListOfStrs("dendrite", "apical_dendrite")
+usedNamesForAxon = createListOfStrs("axon")
+createCompartmentReferences(usedNamesForSoma, usedNamesForDendrites, usedNamesForAxon)
+
+proc initVoltage() {}
+MaxNumberSpinesPerDendrite = 10
+
+objref mechsDllUtils
+mechsDllUtils = new MechsDllUtils("../")
+{ mechsDllUtils.loadDefaultMechsDllDependingOnCellType() }
+
+{ load_file("../_Code/Prologue/CommonPrologue.hoc") }
+
+{ load_file("../_Code/NanoSeeding/NanoSeedingLoads.hoc") }
+{ spineSeedingMainWidget.show() }
+
+{ chdir("..") }     // Without this, getcwd() will return different path compared to the start from "init.hoc"

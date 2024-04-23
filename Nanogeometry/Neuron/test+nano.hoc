@@ -1,24 +1,40 @@
 //////////////////// Table of contents ///////////////////////////////////
 /*
-    Line 26:            Params
-    Line 36:            Utils
-    Line 229:           Prerequisites
-    Line 270:           Sections
-    Line 289:           Imported section names
-    Line 311:           Section references
-    Line 367:           Topology
-    Line 1609:          Geometry, nseg, Ra
-    Line 13634:         Distance centre
-    Line 13643:         Importability measures
-    Line 14372:         Inhom and stoch library
-    Line 14889:         Biophys compartments
-    Line 15016:         Homogen biophysics
-    Line 15132:         Proto synapses
-    Line 15254:         Synaptic compartments
-    Line 15875:         Homogen synaptic vars
-    Line 15921:         Synapses finale
-    Line 15928:         APCount-s
+    Line 42:            Params
+    Line 52:            Utils
+    Line 245:           Prerequisites
+    Line 286:           Sections
+    Line 310:           Imported section names
+    Line 332:           Section references
+    Line 388:           Topology
+    Line 1630:          Geometry, nseg, Ra
+    Line 13655:         Distance centre
+    Line 13664:         "Import & Edit" measures
+    Line 13773:         Inhom and stoch library
+    Line 14325:         Biophys: Compartments
+    Line 14454:         Biophys: Homogen vars
+    Line 14575:         Templates for taps
+    Line 14680:         Templates for gap juncs
+    Line 14986:         GJ set #1: Locations
+    Line 15089:         GJ set #1: Compartments
+    Line 15098:         GJ set #1: Homogen vars
+    Line 15126:         GJ set #1: "Import & Edit" measures
+    Line 15134:         GJ set #1: Main part
+    Line 15146:         Templates for synapses
+    Line 15834:         Syn set #1: Locations
+    Line 15843:         Syn set #1: Compartments
+    Line 15853:         Syn set #1: Homogen vars
+    Line 15904:         Syn set #1: "Import & Edit" measures
+    Line 16509:         Syn set #1: Main part
+    Line 16521:         Cleanup
+    Line 16546:         APCount-s
 */
+//////////////////////////////////////////////////////////////////////////
+
+if (unix_mac_pc() == 1) {
+    load_file("stdrun.hoc")
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 isAstrocyteOrNeuron = 0
@@ -279,7 +295,12 @@ begintemplate NeuronNanoBranch
     create spine_neck, spine_head
 endtemplate NeuronNanoBranch
 
-objref neuronNanoBranch[NumberNanoBranches]
+if (NumberNanoBranches != 0) {
+    objref neuronNanoBranch[NumberNanoBranches]
+} else {
+    objref neuronNanoBranch[1]
+}
+
 for idx = 0, NumberNanoBranches - 1 {
     neuronNanoBranch[idx] = new NeuronNanoBranch()
 }
@@ -13640,7 +13661,7 @@ soma_ref.o(0).sec distance()
 
 //////////////////// End of distance centre //////////////////////////////
 
-//////////////////// Start of importability measures /////////////////////
+//////////////////// Start of "Import & Edit" measures ///////////////////
 
 isLoadedFromMainProgram = 1
 { makeSureDeclared("isBaseOrNanoStart", "isLoadedFromMainProgram = 0") }
@@ -13650,661 +13671,39 @@ objref mechType
 if (isLoadedFromMainProgram) {
     mechsDllUtils.ifMissingInThisFolderThenLoadDefaultMechsDllDependingOnCellType()
 } else {
+    platformId = unix_mac_pc()
+    strdef msg
+    if (platformId == 1) {
+        // Assuming NSG supercomputer environment
+        msg = "Please make sure the file \"x86_64/.libs/libnrnmech.so\" was built successfully."
+    } else if (platformId == 3) {
+        // Assuming desktop environment
+        msg = "Please make sure the correct file \"nrnmech.dll\" is present in the same folder with this HOC file."
+    } else {
+        codeContractViolation()
+    }
     mechType = new MechanismType(0)    // 0: "Distributed Membrane Mechanisms"
     if (mechType.count() != 35) {
-        printMsgAndRaiseError("Please make sure the correct file \"nrnmech.dll\" is present in the same folder with this HOC file.")
+        printMsgAndRaiseError(msg)
     }
     mechType = new MechanismType(1)    // 1: "Point Processes"
-    if (mechType.count() != 24) {
-        printMsgAndRaiseError("Please make sure the correct file \"nrnmech.dll\" is present in the same folder with this HOC file.")
+    if (mechType.count() != 25) {
+        printMsgAndRaiseError(msg)
     }
 }
 
 { makeSureDeclared("math", "objref %s", "%s = new ReducedBasicMath()") }
 { makeSureDeclared("rngUtils") }
 
-objref mmAllComps, gjmAllComps, gjmAllGapJuncs[2], smAllComps, smAllSyns, seh
-
-smEnumSynLoc = 0
-
-begintemplate SpineNeckDiamCache
-
-    public cacheAllDiams, getCachedDiam
-    public diamsVec
-    
-    external isAstrocyteOrNeuron, nanoProximal_ref
-    external codeContractViolation
-    
-    objref diamsVec
-    
-    
-    proc init() {
-        diamsVec = new Vector()
-    }
-    
-    proc cacheAllDiams() { local numSpines, spineIdx
-        if (isAstrocyteOrNeuron) {
-            codeContractViolation()
-        }
-        numSpines = nanoProximal_ref.count()
-        diamsVec.resize(numSpines)
-        for spineIdx = 0, numSpines - 1 {
-            nanoProximal_ref.o(spineIdx).sec {
-                if (diam == 0) {
-                    codeContractViolation()
-                }
-                diamsVec.x(spineIdx) = diam
-            }
-        }
-    }
-    
-    func getCachedDiam() { local spineIdx
-        spineIdx = $1
-        return diamsVec.x(spineIdx)
-    }
-    
-endtemplate SpineNeckDiamCache
-
-objref spineNeckDiamCache
-spineNeckDiamCache = new SpineNeckDiamCache()
-
-objref diamsVec
-diamsVec = spineNeckDiamCache.diamsVec
-{ diamsVec.resize(587) }
-diamsVec.x(0) = 0.5998328328132629
-diamsVec.x(1) = 0.20000000298023224
-diamsVec.x(2) = 0.3370431065559387
-diamsVec.x(3) = 0.20000000298023224
-diamsVec.x(4) = 0.2000000029802322
-diamsVec.x(5) = 0.20000000298023224
-diamsVec.x(6) = 0.20000000298023224
-diamsVec.x(7) = 0.22914142906665802
-diamsVec.x(8) = 0.20000000298023224
-diamsVec.x(9) = 0.2707114517688751
-diamsVec.x(10) = 0.5375431180000305
-diamsVec.x(11) = 0.9134916663169861
-diamsVec.x(12) = 1.3730933666229248
-diamsVec.x(13) = 0.4593167006969452
-diamsVec.x(14) = 2.774820327758789
-diamsVec.x(15) = 0.20000000298023224
-diamsVec.x(16) = 1.4687118530273438
-diamsVec.x(17) = 2.7743237018585205
-diamsVec.x(18) = 0.20000000298023224
-diamsVec.x(19) = 0.6716578006744385
-diamsVec.x(20) = 0.997184157371521
-diamsVec.x(21) = 1.0232311487197876
-diamsVec.x(22) = 1.3468332290649414
-diamsVec.x(23) = 0.20000000298023224
-diamsVec.x(24) = 2.775923013687134
-diamsVec.x(25) = 0.2000000029802322
-diamsVec.x(26) = 1.869603753089905
-diamsVec.x(27) = 0.20000000298023224
-diamsVec.x(28) = 0.20000000298023224
-diamsVec.x(29) = 0.7112467885017395
-diamsVec.x(30) = 0.6698100566864014
-diamsVec.x(31) = 0.20000000298023224
-diamsVec.x(32) = 0.45158812403678894
-diamsVec.x(33) = 0.6918869018554688
-diamsVec.x(34) = 0.22408050298690796
-diamsVec.x(35) = 0.20000000298023224
-diamsVec.x(36) = 1.3261827230453491
-diamsVec.x(37) = 0.20000000298023224
-diamsVec.x(38) = 0.20000000298023227
-diamsVec.x(39) = 0.815352201461792
-diamsVec.x(40) = 0.20000000298023224
-diamsVec.x(41) = 0.2030693143606186
-diamsVec.x(42) = 0.23887944221496582
-diamsVec.x(43) = 0.20000000298023224
-diamsVec.x(44) = 0.20000000298023224
-diamsVec.x(45) = 1.0363398790359497
-diamsVec.x(46) = 1.1590368747711182
-diamsVec.x(47) = 1.939188003540039
-diamsVec.x(48) = 0.20000000298023224
-diamsVec.x(49) = 0.8856546282768248
-diamsVec.x(50) = 0.49777084589004517
-diamsVec.x(51) = 2.1808886528015137
-diamsVec.x(52) = 1.5942242145538332
-diamsVec.x(53) = 2.1952693462371826
-diamsVec.x(54) = 0.7021174430847168
-diamsVec.x(55) = 0.5599960684776306
-diamsVec.x(56) = 0.20000000298023224
-diamsVec.x(57) = 0.20000000298023224
-diamsVec.x(58) = 1.356881856918335
-diamsVec.x(59) = 1.0816824436187744
-diamsVec.x(60) = 1.1076455116271973
-diamsVec.x(61) = 0.47067031264305115
-diamsVec.x(62) = 1.535430669784546
-diamsVec.x(63) = 1.4826544523239134
-diamsVec.x(64) = 0.41866788268089294
-diamsVec.x(65) = 1.8547570705413818
-diamsVec.x(66) = 0.9279282689094543
-diamsVec.x(67) = 1.375834584236145
-diamsVec.x(68) = 1.3504106998443604
-diamsVec.x(69) = 0.20000000298023224
-diamsVec.x(70) = 0.20000000298023224
-diamsVec.x(71) = 0.8864040374755859
-diamsVec.x(72) = 0.4770403206348419
-diamsVec.x(73) = 0.20000000298023224
-diamsVec.x(74) = 2.3879306316375732
-diamsVec.x(75) = 1.3562297821044922
-diamsVec.x(76) = 1.6660603284835815
-diamsVec.x(77) = 1.2664936780929565
-diamsVec.x(78) = 1.0715131759643555
-diamsVec.x(79) = 0.20000000298023224
-diamsVec.x(80) = 0.20000000298023224
-diamsVec.x(81) = 1.6317763328552246
-diamsVec.x(82) = 1.2596237659454346
-diamsVec.x(83) = 0.9210343360900879
-diamsVec.x(84) = 1.2141172885894775
-diamsVec.x(85) = 2.05808162689209
-diamsVec.x(86) = 0.3451915681362152
-diamsVec.x(87) = 0.20000000298023224
-diamsVec.x(88) = 0.20000000298023224
-diamsVec.x(89) = 0.20000000298023224
-diamsVec.x(90) = 0.20000000298023224
-diamsVec.x(91) = 1.4841846227645874
-diamsVec.x(92) = 0.20000000298023224
-diamsVec.x(93) = 0.20000000298023224
-diamsVec.x(94) = 0.20000000298023224
-diamsVec.x(95) = 1.1239241361618042
-diamsVec.x(96) = 2.5058841705322266
-diamsVec.x(97) = 0.3785880208015442
-diamsVec.x(98) = 0.2149340808391571
-diamsVec.x(99) = 0.20000000298023224
-diamsVec.x(100) = 1.2225768566131592
-diamsVec.x(101) = 0.20000000298023224
-diamsVec.x(102) = 2.1068804264068604
-diamsVec.x(103) = 0.3495144546031952
-diamsVec.x(104) = 0.3364717364311218
-diamsVec.x(105) = 1.4971235990524292
-diamsVec.x(106) = 0.20000000298023224
-diamsVec.x(107) = 0.20000000298023224
-diamsVec.x(108) = 0.8458961248397828
-diamsVec.x(109) = 1.1570234298706055
-diamsVec.x(110) = 1.5479880571365356
-diamsVec.x(111) = 0.20000000298023224
-diamsVec.x(112) = 0.20000000298023224
-diamsVec.x(113) = 1.202255368232727
-diamsVec.x(114) = 0.20000000298023224
-diamsVec.x(115) = 1.899930477142334
-diamsVec.x(116) = 0.20000000298023227
-diamsVec.x(117) = 2.471710681915283
-diamsVec.x(118) = 2.175797462463379
-diamsVec.x(119) = 1.0931073427200317
-diamsVec.x(120) = 1.4367586374282835
-diamsVec.x(121) = 1.2072750329971313
-diamsVec.x(122) = 0.20000000298023224
-diamsVec.x(123) = 0.20000000298023224
-diamsVec.x(124) = 0.23980912566184998
-diamsVec.x(125) = 0.20000000298023224
-diamsVec.x(126) = 0.20000000298023224
-diamsVec.x(127) = 0.7617751359939575
-diamsVec.x(128) = 0.6013531684875488
-diamsVec.x(129) = 0.5998049974441528
-diamsVec.x(130) = 1.2044240236282349
-diamsVec.x(131) = 0.20000000298023224
-diamsVec.x(132) = 2.079195261001587
-diamsVec.x(133) = 0.20000000298023224
-diamsVec.x(134) = 0.2871569097042084
-diamsVec.x(135) = 0.20000000298023227
-diamsVec.x(136) = 0.9237925410270691
-diamsVec.x(137) = 1.2751036882400513
-diamsVec.x(138) = 0.20000000298023224
-diamsVec.x(139) = 0.20000000298023224
-diamsVec.x(140) = 0.20000000298023224
-diamsVec.x(141) = 0.20000000298023224
-diamsVec.x(142) = 0.20000000298023224
-diamsVec.x(143) = 1.762685298919678
-diamsVec.x(144) = 0.9847708940505981
-diamsVec.x(145) = 0.20000000298023224
-diamsVec.x(146) = 1.3549611568450928
-diamsVec.x(147) = 0.20000000298023224
-diamsVec.x(148) = 0.22284720838069916
-diamsVec.x(149) = 0.20000000298023224
-diamsVec.x(150) = 0.20000000298023224
-diamsVec.x(151) = 1.4618518352508545
-diamsVec.x(152) = 0.20000000298023224
-diamsVec.x(153) = 2.4965970516204834
-diamsVec.x(154) = 0.20000000298023224
-diamsVec.x(155) = 0.3467461168766022
-diamsVec.x(156) = 0.5310003757476807
-diamsVec.x(157) = 0.6401166319847107
-diamsVec.x(158) = 0.20000000298023224
-diamsVec.x(159) = 0.20000000298023224
-diamsVec.x(160) = 1.5563274621963499
-diamsVec.x(161) = 0.20000000298023227
-diamsVec.x(162) = 0.20000000298023224
-diamsVec.x(163) = 0.20000000298023224
-diamsVec.x(164) = 0.20000000298023224
-diamsVec.x(165) = 1.3886219263076782
-diamsVec.x(166) = 0.8559838533401489
-diamsVec.x(167) = 0.7143664360046387
-diamsVec.x(168) = 0.749268114566803
-diamsVec.x(169) = 1.812878966331482
-diamsVec.x(170) = 0.20000000298023227
-diamsVec.x(171) = 0.20000000298023224
-diamsVec.x(172) = 0.8063414096832275
-diamsVec.x(173) = 0.20000000298023224
-diamsVec.x(174) = 2.3323700428009033
-diamsVec.x(175) = 1.5018110275268555
-diamsVec.x(176) = 0.20000000298023224
-diamsVec.x(177) = 1.6081722974777222
-diamsVec.x(178) = 0.20000000298023224
-diamsVec.x(179) = 0.20000000298023224
-diamsVec.x(180) = 1.7841144800186157
-diamsVec.x(181) = 0.8279811143875122
-diamsVec.x(182) = 0.6484339833259583
-diamsVec.x(183) = 0.20000000298023224
-diamsVec.x(184) = 0.6941420435905457
-diamsVec.x(185) = 0.20000000298023224
-diamsVec.x(186) = 0.20000000298023224
-diamsVec.x(187) = 1.7402496337890625
-diamsVec.x(188) = 0.20000000298023224
-diamsVec.x(189) = 0.6101055145263672
-diamsVec.x(190) = 0.20000000298023224
-diamsVec.x(191) = 0.20000000298023224
-diamsVec.x(192) = 0.20000000298023224
-diamsVec.x(193) = 1.5454659461975098
-diamsVec.x(194) = 1.0716696977615356
-diamsVec.x(195) = 0.8614132404327393
-diamsVec.x(196) = 1.3400833606719968
-diamsVec.x(197) = 0.2352086752653122
-diamsVec.x(198) = 0.20000000298023224
-diamsVec.x(199) = 0.538065493106842
-diamsVec.x(200) = 0.2000000029802322
-diamsVec.x(201) = 0.5406773090362549
-diamsVec.x(202) = 0.20000000298023224
-diamsVec.x(203) = 0.20000000298023224
-diamsVec.x(204) = 0.34604376554489136
-diamsVec.x(205) = 0.20000000298023224
-diamsVec.x(206) = 0.20000000298023224
-diamsVec.x(207) = 0.20000000298023224
-diamsVec.x(208) = 0.20000000298023227
-diamsVec.x(209) = 0.20000000298023224
-diamsVec.x(210) = 1.1555979251861572
-diamsVec.x(211) = 0.34062856435775757
-diamsVec.x(212) = 0.20000000298023224
-diamsVec.x(213) = 0.9085860848426819
-diamsVec.x(214) = 2.3491604328155518
-diamsVec.x(215) = 2.6930994987487793
-diamsVec.x(216) = 0.20000000298023224
-diamsVec.x(217) = 0.8287064433097839
-diamsVec.x(218) = 0.20000000298023224
-diamsVec.x(219) = 0.20000000298023224
-diamsVec.x(220) = 0.20000000298023224
-diamsVec.x(221) = 0.20000000298023224
-diamsVec.x(222) = 0.7071264386177063
-diamsVec.x(223) = 0.20000000298023224
-diamsVec.x(224) = 0.20000000298023224
-diamsVec.x(225) = 1.0158075094223022
-diamsVec.x(226) = 1.2240142822265625
-diamsVec.x(227) = 0.2000000029802322
-diamsVec.x(228) = 0.42377912998199463
-diamsVec.x(229) = 0.5313841104507446
-diamsVec.x(230) = 0.48937073349952703
-diamsVec.x(231) = 0.3143557012081146
-diamsVec.x(232) = 0.20000000298023224
-diamsVec.x(233) = 0.20000000298023224
-diamsVec.x(234) = 0.20000000298023224
-diamsVec.x(235) = 0.8302310109138489
-diamsVec.x(236) = 0.20000000298023224
-diamsVec.x(237) = 0.25693756341934204
-diamsVec.x(238) = 1.7503641843795776
-diamsVec.x(239) = 0.20000000298023224
-diamsVec.x(240) = 0.7143394351005554
-diamsVec.x(241) = 1.474421739578247
-diamsVec.x(242) = 0.20000000298023224
-diamsVec.x(243) = 0.20000000298023224
-diamsVec.x(244) = 0.20000000298023224
-diamsVec.x(245) = 2.724769353866577
-diamsVec.x(246) = 0.6430873870849609
-diamsVec.x(247) = 0.20000000298023224
-diamsVec.x(248) = 0.6286566257476807
-diamsVec.x(249) = 1.1243467330932617
-diamsVec.x(250) = 0.20000000298023224
-diamsVec.x(251) = 0.20000000298023224
-diamsVec.x(252) = 1.5441404581069946
-diamsVec.x(253) = 0.20000000298023224
-diamsVec.x(254) = 0.20000000298023224
-diamsVec.x(255) = 0.20000000298023224
-diamsVec.x(256) = 0.20000000298023224
-diamsVec.x(257) = 0.20000000298023224
-diamsVec.x(258) = 0.20000000298023224
-diamsVec.x(259) = 0.20000000298023224
-diamsVec.x(260) = 0.7235731482505798
-diamsVec.x(261) = 0.20000000298023224
-diamsVec.x(262) = 0.6772839426994324
-diamsVec.x(263) = 0.20000000298023224
-diamsVec.x(264) = 0.20000000298023224
-diamsVec.x(265) = 1.5035483837127686
-diamsVec.x(266) = 1.3640109300613403
-diamsVec.x(267) = 3.054872512817383
-diamsVec.x(268) = 0.20000000298023224
-diamsVec.x(269) = 1.0670008659362793
-diamsVec.x(270) = 1.2550619840621948
-diamsVec.x(271) = 0.20000000298023224
-diamsVec.x(272) = 0.600068986415863
-diamsVec.x(273) = 0.20000000298023227
-diamsVec.x(274) = 0.868483304977417
-diamsVec.x(275) = 0.20000000298023224
-diamsVec.x(276) = 0.20000000298023224
-diamsVec.x(277) = 0.20000000298023224
-diamsVec.x(278) = 0.3286517560482025
-diamsVec.x(279) = 2.021047592163086
-diamsVec.x(280) = 1.0794709920883179
-diamsVec.x(281) = 0.20000000298023224
-diamsVec.x(282) = 0.4610225856304169
-diamsVec.x(283) = 1.3464871644973755
-diamsVec.x(284) = 1.2166155576705933
-diamsVec.x(285) = 0.20000000298023224
-diamsVec.x(286) = 0.9439290761947632
-diamsVec.x(287) = 0.20000000298023224
-diamsVec.x(288) = 3.007624626159668
-diamsVec.x(289) = 1.9794031381607056
-diamsVec.x(290) = 1.7139769792556763
-diamsVec.x(291) = 0.4305773973464966
-diamsVec.x(292) = 0.6324878931045532
-diamsVec.x(293) = 0.2381511777639389
-diamsVec.x(294) = 0.20000000298023224
-diamsVec.x(295) = 0.6841649413108826
-diamsVec.x(296) = 0.9217610359191895
-diamsVec.x(297) = 0.9257846474647522
-diamsVec.x(298) = 0.7881413698196411
-diamsVec.x(299) = 0.9641954898834229
-diamsVec.x(300) = 1.536446452140808
-diamsVec.x(301) = 0.20000000298023224
-diamsVec.x(302) = 0.8286504745483398
-diamsVec.x(303) = 1.4571764469146729
-diamsVec.x(304) = 0.24381448328495026
-diamsVec.x(305) = 1.9802160263061523
-diamsVec.x(306) = 0.620527446269989
-diamsVec.x(307) = 1.1139228343963623
-diamsVec.x(308) = 0.20000000298023224
-diamsVec.x(309) = 2.5007448196411133
-diamsVec.x(310) = 0.20000000298023224
-diamsVec.x(311) = 0.20000000298023224
-diamsVec.x(312) = 0.20000000298023224
-diamsVec.x(313) = 0.20000000298023224
-diamsVec.x(314) = 0.20000000298023224
-diamsVec.x(315) = 0.20159520208835602
-diamsVec.x(316) = 0.20000000298023224
-diamsVec.x(317) = 0.20000000298023224
-diamsVec.x(318) = 0.37474197149276733
-diamsVec.x(319) = 0.2000000029802322
-diamsVec.x(320) = 0.980735182762146
-diamsVec.x(321) = 0.4471276402473449
-diamsVec.x(322) = 0.8322285413742064
-diamsVec.x(323) = 0.7325976490974426
-diamsVec.x(324) = 1.1270610094070435
-diamsVec.x(325) = 0.20000000298023224
-diamsVec.x(326) = 0.40339723229408264
-diamsVec.x(327) = 1.9040271043777466
-diamsVec.x(328) = 0.97160404920578
-diamsVec.x(329) = 0.20000000298023224
-diamsVec.x(330) = 0.20000000298023224
-diamsVec.x(331) = 0.6145263910293579
-diamsVec.x(332) = 0.9556686878204346
-diamsVec.x(333) = 1.119118332862854
-diamsVec.x(334) = 1.167224645614624
-diamsVec.x(335) = 0.8957539200782775
-diamsVec.x(336) = 0.26874327659606934
-diamsVec.x(337) = 0.20000000298023224
-diamsVec.x(338) = 0.20000000298023224
-diamsVec.x(339) = 0.2434375286102295
-diamsVec.x(340) = 0.5526689291000366
-diamsVec.x(341) = 1.0484442710876465
-diamsVec.x(342) = 0.20000000298023224
-diamsVec.x(343) = 0.20000000298023224
-diamsVec.x(344) = 0.20000000298023227
-diamsVec.x(345) = 0.5982775688171387
-diamsVec.x(346) = 1.1174827814102173
-diamsVec.x(347) = 0.20000000298023224
-diamsVec.x(348) = 0.40159693360328674
-diamsVec.x(349) = 2.0167126655578613
-diamsVec.x(350) = 0.20000000298023224
-diamsVec.x(351) = 0.20000000298023224
-diamsVec.x(352) = 0.6148996949195862
-diamsVec.x(353) = 1.3478294610977173
-diamsVec.x(354) = 1.167563557624817
-diamsVec.x(355) = 0.20000000298023224
-diamsVec.x(356) = 0.20000000298023224
-diamsVec.x(357) = 3.5616025924682617
-diamsVec.x(358) = 0.20000000298023224
-diamsVec.x(359) = 1.6208189725875854
-diamsVec.x(360) = 0.3754386305809021
-diamsVec.x(361) = 0.20000000298023224
-diamsVec.x(362) = 0.20946066081523895
-diamsVec.x(363) = 0.7467241287231445
-diamsVec.x(364) = 0.20000000298023224
-diamsVec.x(365) = 0.20000000298023224
-diamsVec.x(366) = 2.383267402648926
-diamsVec.x(367) = 0.6729821562767029
-diamsVec.x(368) = 0.2000000029802322
-diamsVec.x(369) = 1.341681957244873
-diamsVec.x(370) = 0.7208575010299683
-diamsVec.x(371) = 0.4072022736072541
-diamsVec.x(372) = 2.1486008167266846
-diamsVec.x(373) = 0.20000000298023224
-diamsVec.x(374) = 0.21375344693660736
-diamsVec.x(375) = 1.6790945529937746
-diamsVec.x(376) = 0.20000000298023224
-diamsVec.x(377) = 0.20000000298023224
-diamsVec.x(378) = 1.7527724504470825
-diamsVec.x(379) = 0.9711263179779053
-diamsVec.x(380) = 0.20000000298023224
-diamsVec.x(381) = 2.699594736099243
-diamsVec.x(382) = 1.6247481107711792
-diamsVec.x(383) = 0.3649182915687561
-diamsVec.x(384) = 0.24539005756378174
-diamsVec.x(385) = 1.5824975967407227
-diamsVec.x(386) = 1.5337591171264648
-diamsVec.x(387) = 0.20000000298023224
-diamsVec.x(388) = 0.20000000298023224
-diamsVec.x(389) = 0.7591888308525084
-diamsVec.x(390) = 1.6554659605026245
-diamsVec.x(391) = 0.20000000298023224
-diamsVec.x(392) = 0.20000000298023224
-diamsVec.x(393) = 0.20000000298023224
-diamsVec.x(394) = 0.3922339677810669
-diamsVec.x(395) = 0.6090022921562195
-diamsVec.x(396) = 2.620290756225586
-diamsVec.x(397) = 0.20000000298023224
-diamsVec.x(398) = 0.41901272535324097
-diamsVec.x(399) = 1.9516149759292603
-diamsVec.x(400) = 2.0201213359832764
-diamsVec.x(401) = 0.20000000298023224
-diamsVec.x(402) = 0.2000000029802322
-diamsVec.x(403) = 0.20000000298023224
-diamsVec.x(404) = 1.6782585382461548
-diamsVec.x(405) = 0.20000000298023224
-diamsVec.x(406) = 0.20000000298023224
-diamsVec.x(407) = 0.20000000298023224
-diamsVec.x(408) = 0.348015159368515
-diamsVec.x(409) = 1.0564688444137573
-diamsVec.x(410) = 1.4208652973175049
-diamsVec.x(411) = 0.45009419322013855
-diamsVec.x(412) = 0.7163483500480652
-diamsVec.x(413) = 0.20000000298023224
-diamsVec.x(414) = 0.20000000298023224
-diamsVec.x(415) = 1.867584228515625
-diamsVec.x(416) = 0.24910183250904083
-diamsVec.x(417) = 0.20000000298023224
-diamsVec.x(418) = 0.20000000298023224
-diamsVec.x(419) = 1.8190141916275024
-diamsVec.x(420) = 0.20000000298023224
-diamsVec.x(421) = 1.3798950910568237
-diamsVec.x(422) = 1.4083126783370972
-diamsVec.x(423) = 1.598442554473877
-diamsVec.x(424) = 0.4955446422100067
-diamsVec.x(425) = 0.20000000298023224
-diamsVec.x(426) = 1.1844708919525146
-diamsVec.x(427) = 0.20000000298023224
-diamsVec.x(428) = 0.20000000298023224
-diamsVec.x(429) = 0.20000000298023224
-diamsVec.x(430) = 1.241585612297058
-diamsVec.x(431) = 0.21096739172935486
-diamsVec.x(432) = 0.7864615321159363
-diamsVec.x(433) = 0.7593777775764465
-diamsVec.x(434) = 0.37711769342422485
-diamsVec.x(435) = 0.475063681602478
-diamsVec.x(436) = 2.104909658432007
-diamsVec.x(437) = 0.20000000298023224
-diamsVec.x(438) = 0.20000000298023224
-diamsVec.x(439) = 0.23470377922058105
-diamsVec.x(440) = 0.20000000298023224
-diamsVec.x(441) = 0.20000000298023224
-diamsVec.x(442) = 0.6759292483329773
-diamsVec.x(443) = 0.20000000298023224
-diamsVec.x(444) = 0.20000000298023224
-diamsVec.x(445) = 0.6640500426292419
-diamsVec.x(446) = 2.998784065246582
-diamsVec.x(447) = 1.7163325548171997
-diamsVec.x(448) = 0.4934205710887909
-diamsVec.x(449) = 0.20000000298023224
-diamsVec.x(450) = 0.9898099899291992
-diamsVec.x(451) = 1.4385980367660522
-diamsVec.x(452) = 2.1909432411193848
-diamsVec.x(453) = 2.55898118019104
-diamsVec.x(454) = 0.3676024079322815
-diamsVec.x(455) = 0.8592076897621155
-diamsVec.x(456) = 1.161449670791626
-diamsVec.x(457) = 2.3753104209899902
-diamsVec.x(458) = 1.8165644407272339
-diamsVec.x(459) = 0.5361351370811462
-diamsVec.x(460) = 0.20000000298023224
-diamsVec.x(461) = 0.8962704539299011
-diamsVec.x(462) = 0.6196380257606506
-diamsVec.x(463) = 0.20000000298023224
-diamsVec.x(464) = 2.937704086303711
-diamsVec.x(465) = 0.661534309387207
-diamsVec.x(466) = 0.20000000298023224
-diamsVec.x(467) = 0.20000000298023224
-diamsVec.x(468) = 0.3003607392311096
-diamsVec.x(469) = 0.7550299763679504
-diamsVec.x(470) = 0.20000000298023224
-diamsVec.x(471) = 2.0790908336639404
-diamsVec.x(472) = 0.2991815209388733
-diamsVec.x(473) = 0.9876279234886169
-diamsVec.x(474) = 1.0121681690216064
-diamsVec.x(475) = 1.8509249687194824
-diamsVec.x(476) = 1.2478868961334229
-diamsVec.x(477) = 0.20000000298023224
-diamsVec.x(478) = 0.20000000298023224
-diamsVec.x(479) = 0.4885823726654053
-diamsVec.x(480) = 1.691028356552124
-diamsVec.x(481) = 2.2474658489227295
-diamsVec.x(482) = 1.382154107093811
-diamsVec.x(483) = 1.115799903869629
-diamsVec.x(484) = 0.822273313999176
-diamsVec.x(485) = 0.34447336196899414
-diamsVec.x(486) = 0.20000000298023224
-diamsVec.x(487) = 0.20000000298023227
-diamsVec.x(488) = 2.3350770473480225
-diamsVec.x(489) = 1.5437737703323364
-diamsVec.x(490) = 0.20000000298023224
-diamsVec.x(491) = 0.851387083530426
-diamsVec.x(492) = 1.215081810951233
-diamsVec.x(493) = 0.3264739215373993
-diamsVec.x(494) = 0.9088637232780457
-diamsVec.x(495) = 1.184332013130188
-diamsVec.x(496) = 0.4662996530532837
-diamsVec.x(497) = 0.20000000298023224
-diamsVec.x(498) = 1.8806354999542236
-diamsVec.x(499) = 1.7271990776062012
-diamsVec.x(500) = 0.20000000298023224
-diamsVec.x(501) = 0.3470423221588135
-diamsVec.x(502) = 0.3892088830471039
-diamsVec.x(503) = 1.63033926486969
-diamsVec.x(504) = 1.206526517868042
-diamsVec.x(505) = 2.457068920135498
-diamsVec.x(506) = 1.307034969329834
-diamsVec.x(507) = 0.20000000298023224
-diamsVec.x(508) = 0.20000000298023224
-diamsVec.x(509) = 1.2617946863174438
-diamsVec.x(510) = 0.5416202545166016
-diamsVec.x(511) = 0.20000000298023224
-diamsVec.x(512) = 0.21744708716869354
-diamsVec.x(513) = 0.20000000298023224
-diamsVec.x(514) = 1.363276481628418
-diamsVec.x(515) = 0.9207726120948792
-diamsVec.x(516) = 1.793261170387268
-diamsVec.x(517) = 0.20000000298023224
-diamsVec.x(518) = 0.20000000298023224
-diamsVec.x(519) = 0.20000000298023224
-diamsVec.x(520) = 0.20000000298023227
-diamsVec.x(521) = 0.20000000298023224
-diamsVec.x(522) = 1.7421841621398926
-diamsVec.x(523) = 0.7184687256813049
-diamsVec.x(524) = 0.5195719599723816
-diamsVec.x(525) = 1.4942086935043335
-diamsVec.x(526) = 1.4758694171905518
-diamsVec.x(527) = 0.20000000298023224
-diamsVec.x(528) = 0.20000000298023224
-diamsVec.x(529) = 0.20000000298023224
-diamsVec.x(530) = 1.0863696336746216
-diamsVec.x(531) = 1.525838851928711
-diamsVec.x(532) = 1.6657292842864988
-diamsVec.x(533) = 0.20000000298023224
-diamsVec.x(534) = 1.944466233253479
-diamsVec.x(535) = 0.20000000298023224
-diamsVec.x(536) = 2.7029247283935547
-diamsVec.x(537) = 0.6803263425827026
-diamsVec.x(538) = 0.20000000298023224
-diamsVec.x(539) = 1.6720656156539917
-diamsVec.x(540) = 0.20000000298023224
-diamsVec.x(541) = 0.3625079393386841
-diamsVec.x(542) = 0.20000000298023224
-diamsVec.x(543) = 0.20000000298023227
-diamsVec.x(544) = 0.41339439153671265
-diamsVec.x(545) = 0.20000000298023224
-diamsVec.x(546) = 1.3205591440200806
-diamsVec.x(547) = 0.46323698759078974
-diamsVec.x(548) = 0.20000000298023224
-diamsVec.x(549) = 0.9657333493232727
-diamsVec.x(550) = 0.9314523935317993
-diamsVec.x(551) = 1.1921826601028442
-diamsVec.x(552) = 0.20000000298023224
-diamsVec.x(553) = 0.40130701661109924
-diamsVec.x(554) = 0.20000000298023224
-diamsVec.x(555) = 1.1990959644317627
-diamsVec.x(556) = 0.5005137920379639
-diamsVec.x(557) = 0.20000000298023224
-diamsVec.x(558) = 0.20000000298023224
-diamsVec.x(559) = 1.757050633430481
-diamsVec.x(560) = 0.20472201704978943
-diamsVec.x(561) = 0.4131565988063812
-diamsVec.x(562) = 0.6155776381492615
-diamsVec.x(563) = 0.20000000298023224
-diamsVec.x(564) = 0.20000000298023224
-diamsVec.x(565) = 0.20000000298023224
-diamsVec.x(566) = 1.6010342836380005
-diamsVec.x(567) = 0.20000000298023224
-diamsVec.x(568) = 0.20000000298023224
-diamsVec.x(569) = 0.20000000298023224
-diamsVec.x(570) = 0.20000000298023224
-diamsVec.x(571) = 0.32966890931129456
-diamsVec.x(572) = 0.22599300742149353
-diamsVec.x(573) = 1.3295892477035522
-diamsVec.x(574) = 0.6121433973312378
-diamsVec.x(575) = 0.6363519430160521
-diamsVec.x(576) = 0.20000000298023224
-diamsVec.x(577) = 3.0348734855651855
-diamsVec.x(578) = 1.016835331916809
-diamsVec.x(579) = 0.20000000298023224
-diamsVec.x(580) = 0.614093542098999
-diamsVec.x(581) = 0.3276500999927521
-diamsVec.x(582) = 0.20000000298023224
-diamsVec.x(583) = 0.9192761182785035
-diamsVec.x(584) = 0.20000000298023224
-diamsVec.x(585) = 0.20000000298023224
-diamsVec.x(586) = 2.5401647090911865
+objref mmAllComps, gjmAllGapJuncSets, smAllSynSets
+objref _comp
 
 begintemplate ReducedMechTypeHelper
 
     public getVarNameWithIndex, isWeightNetConVar, createMechStd
     
     external isAstrocyteOrNeuron
-    external stringsEqual
+    external stringsEqual, codeContractViolation
     
     strdef weightVarName
     
@@ -14342,17 +13741,19 @@ begintemplate ReducedMechTypeHelper
         enumDmPpFk = $1
         mechIdx = $2
         varType = $3
-        if (enumDmPpFk < 2) {
+        if (enumDmPpFk != 2) {
             mechTypeIdx = enumDmPpFk    // 0: "Distributed Membrane Mechanisms", 1: "Point Processes"
             mechType = new MechanismType(mechTypeIdx)
             mechType.select(mechIdx)
             mechType.selected(mechName)
             return new MechanismStandard(mechName, varType)
         } else {
-            if (isAstrocyteOrNeuron) {
-                templName = "FakeMechanismStandardForExtValue"  // The template is not loaded for neurons
+            if (mechIdx == 0) {         // !!!!! keep in sync with utils4FakeMech4GapJuncExtValue.mechIdx
+                templName = "FakeMechanismStandardForExtValue"
+            } else if (mechIdx == 1) {  // !!!!! keep in sync with utils4FakeMech4SynNetCon.mechIdx
+                templName = "FakeMechanismStandardForNetCon"
             } else {
-                templName = "FakeMechanismStandardForNetCon"    // The template is not loaded for astrocytes
+                codeContractViolation()
             }
             sprint(hocCommand, "_fms = new %s()", templName)
             execute(hocCommand, this)
@@ -14367,43 +13768,57 @@ endtemplate ReducedMechTypeHelper
 objref mth
 mth = new ReducedMechTypeHelper()
 
-//////////////////// End of importability measures ///////////////////////
+//////////////////// End of "Import & Edit" measures /////////////////////
 
 //////////////////// Start of inhom and stoch library ////////////////////
 
 begintemplate VarLibId
     
-    // !!! tapGroupIdx
     // !!! isDmOrTapPart, enumPpRoleOrMinus1, mechName, varTypeIdx, varName, arraySize
     
     public enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex
+    public isGapJuncOrSyn, tapSetIdx    // For taps only ("-1" for biophys vars)
     public isEqual
+    
+    external codeContractViolation
     
     proc init() {
         enumDmPpFk = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
-        varIdx = $5
-        arrayIndex = $6
+        isGapJuncOrSyn = $2     // Must be "-1" for biophys vars
+        tapSetIdx = $3          //
+        compIdx = $4
+        mechIdx = $5
+        varType = $6
+        varIdx = $7
+        arrayIndex = $8
+        
+        if (enumDmPpFk == 0) {
+            if (isGapJuncOrSyn != -1 || tapSetIdx != -1) {
+                codeContractViolation()
+            }
+        } else {
+            if (isGapJuncOrSyn == -1 || tapSetIdx == -1) {
+                codeContractViolation()
+            }
+        }
     }
     
     func isEqual() { localobj other
         other = $o1
-        return (enumDmPpFk == other.enumDmPpFk && compIdx == other.compIdx && mechIdx == other.mechIdx && varType == other.varType && varIdx == other.varIdx && arrayIndex == other.arrayIndex)
+        return (enumDmPpFk == other.enumDmPpFk && isGapJuncOrSyn == other.isGapJuncOrSyn && tapSetIdx == other.tapSetIdx && compIdx == other.compIdx && mechIdx == other.mechIdx && varType == other.varType && varIdx == other.varIdx && arrayIndex == other.arrayIndex)
     }
     
 endtemplate VarLibId
 
 begintemplate ReducedInhomAndStochTarget
 
-    public makeInhom, makeStoch, isEqual, applyBiophysInhomogeneity, applySynInhomogeneity, setPlayIfPossible, stopPlayingVars, onInit, onStep
-    public varLibId, isDmOrTapPart
+    public makeInhom, makeStoch, isEqual, applyBiophysInhomogeneity, applyTapInhomogeneity, setPlayIfPossible, stopPlayingVars, onInit, onStep
+    public varLibId, isDmOrTapPart, isGapJuncOrSyn, tapSetIdx
     public segmentationHelper, distFuncHelper, boundingHelper, stochFuncHelper
     public isInhom, distFuncCatIdx, distFuncIdx, isStoch, stochFuncCatIdx, stochFuncIdx
+    public seh
     
-    external isAstrocyteOrNeuron
-    external mmAllComps, gjmAllComps, gjmAllGapJuncs, smAllComps, smAllSyns
+    external mmAllComps, gjmAllGapJuncSets, smAllSynSets
     external mth, rngUtils
     external codeContractViolation
     external eachItemInList, eachSecInList, eachSegmInSecList
@@ -14411,7 +13826,9 @@ begintemplate ReducedInhomAndStochTarget
     // "init" args
     objref varLibId
     isDmOrTapPart = -1
-    enumPpRoleOrMinus1 = -1
+    isGapJuncOrSyn = -1         // For taps only ("-1" for biophys vars)
+    tapSetIdx = -1              //
+    enumPpRoleOrMinus1 = -1     //
     strdef mechName
     strdef varName
     arraySize = -1
@@ -14427,7 +13844,7 @@ begintemplate ReducedInhomAndStochTarget
     stochFuncIdx = -1
     
     objref list_ref
-    objref gjmAllGapJuncsOfThisType
+    objref trgTapSet, allGapJuncs, allSyns, seh
     
     objref baseMechStd, tempMechStd
     
@@ -14439,19 +13856,37 @@ begintemplate ReducedInhomAndStochTarget
         varLibId = $o1
         
         isDmOrTapPart = (varLibId.enumDmPpFk == 0)
+        isGapJuncOrSyn = varLibId.isGapJuncOrSyn
+        tapSetIdx = varLibId.tapSetIdx
         
         comp = getComp()
         
         if (isDmOrTapPart) {
+            if (isGapJuncOrSyn != -1 || tapSetIdx != -1) {
+                codeContractViolation()
+            }
             list_ref = comp.list_ref
-        } else if (isAstrocyteOrNeuron) {
-            gjmAllGapJuncsOfThisType = gjmAllGapJuncs[comp.isExtOrInt]
+        } else {
+            if (isGapJuncOrSyn == -1) {
+                codeContractViolation()
+            }
+            if (isGapJuncOrSyn) {
+                trgTapSet = gjmAllGapJuncSets.o(tapSetIdx)
+                allGapJuncs = trgTapSet.allGapJuncs
+            } else {
+                trgTapSet = smAllSynSets.o(tapSetIdx)
+                allSyns = trgTapSet.allSyns
+                seh = trgTapSet.seh
+            }
         }
         
-        if (varLibId.enumDmPpFk == 1) {
+        // !!!!! rename enumPpRoleOrMinus1 to enumTapPartOrMinus1
+        if (varLibId.enumDmPpFk == 0) {
+            enumPpRoleOrMinus1 = -1
+        } else if (varLibId.enumDmPpFk < 3) {
             enumPpRoleOrMinus1 = comp.enumPpRole
         } else {
-            enumPpRoleOrMinus1 = -1
+            codeContractViolation()
         }
         
         varTypeIdx = varLibId.varType - 1
@@ -14510,13 +13945,13 @@ begintemplate ReducedInhomAndStochTarget
     }
     
     // Keep in sync with InhomAndStochTarget.restoreInhomogeneity
-    proc applySynInhomogeneity() { localobj comp
+    proc applyTapInhomogeneity() { localobj comp
         if (isDmOrTapPart || !isInhom) {
             codeContractViolation()
         }
         
         comp = getComp()
-        comp.applyInhomogeneity(mechName, varLibId.varType, varName, arraySize, varLibId.arrayIndex, distFuncHelper)
+        comp.applyInhomogeneity(mechName, varLibId.varType, varName, arraySize, varLibId.arrayIndex, distFuncHelper, trgTapSet)
     }
     
     _x = -1
@@ -14565,16 +14000,18 @@ begintemplate ReducedInhomAndStochTarget
     
     // Keep in sync with InhomAndStochTarget.onInit
     proc onInit() {
-        if (isStoch) {
-            // One unused value to set up the generator and the colourizer
-            boundingHelper.generateFirstBoundedValue(stochFuncHelper)
-            
-            if (!isDmOrTapPart) {
-                // Stochastic synaptic vars can hold the values from the previous simulation for a long time before the first synaptic event on this simulation,
-                // and this is why we restore the base values here for reproducibility of the experiments
-                // Notice that stochastic biophys vars change their values on each iteration, so there is no need to restore their base values here
-                makeStepOrRestoreBaseValues(0)
-            }
+        if (!isStoch) {
+            return
+        }
+        
+        // One unused value to set up the generator and the colourizer
+        boundingHelper.generateFirstBoundedValue(stochFuncHelper)
+        
+        if (!isDmOrTapPart && !isGapJuncOrSyn) {
+            // For synapses, stochastic vars can hold the values from the previous simulation for a long time before the first synaptic event on this simulation,
+            // and this is why we restore the base values here for reproducibility of the experiments
+            // Notice that for biophysics and gap junctions, stochastic vars change their values on each iteration, so there is no need to restore their base values here
+            makeStepOrRestoreBaseValues(0)
         }
     }
     
@@ -14618,7 +14055,7 @@ begintemplate ReducedInhomAndStochTarget
         if (isDmOrTapPart) {
             dmStep(isStoch_, homogenValue)
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 gapJuncPartStep(isStoch_, homogenValue)
             } else {
                 synPartStepOrRestore(isStepOrRestore, isStoch_, homogenValue)
@@ -14668,19 +14105,17 @@ begintemplate ReducedInhomAndStochTarget
         isStoch_ = $1
         homogenValue = $2
         
+        if (varLibId.enumDmPpFk == 0) {
+            codeContractViolation()
+        }
+        
         prevSec_ref = nil
-        for eachItemInList(gapJunc, gjmAllGapJuncsOfThisType) {
+        for eachItemInList(gapJunc, allGapJuncs) {
             if (gapJunc.sec_ref != prevSec_ref && isInhom) {
                 distFuncHelper.onJustBeforeNewSection()
             }
             
-            if (varLibId.enumDmPpFk == 1) {
-                gapJuncPart = gapJunc.getPointProcess(enumPpRoleOrMinus1)   // !!!
-            } else if (varLibId.enumDmPpFk == 2) {
-                gapJuncPart = gapJunc.netCon    // !!!
-            } else {
-                codeContractViolation()
-            }
+            gapJuncPart = gapJunc.getPointProcess(enumPpRoleOrMinus1)
             
             // The base value
             if (isInhom) {
@@ -14712,7 +14147,7 @@ begintemplate ReducedInhomAndStochTarget
         
         isWeightVar = mth.isWeightNetConVar(varName)
         prevSec_ref = nil
-        for eachItemInList(syn, smAllSyns) {
+        for eachItemInList(syn, allSyns) {
             if (syn.sec_ref != prevSec_ref && isInhom) {
                 distFuncHelper.onJustBeforeNewSection()
             }
@@ -14722,13 +14157,7 @@ begintemplate ReducedInhomAndStochTarget
                 continue
             }
             
-            if (varLibId.enumDmPpFk == 1) {
-                synPart = syn.getPointProcess(enumPpRoleOrMinus1)
-            } else if (varLibId.enumDmPpFk == 2) {
-                synPart = syn.netCon
-            } else {
-                codeContractViolation()
-            }
+            synPart = syn.getPointProcess(enumPpRoleOrMinus1)
             
             // The base value
             if (isInhom) {
@@ -14769,16 +14198,19 @@ begintemplate ReducedInhomAndStochTarget
         isPlayable = 0
     }
     
-    obfunc getComp() { local compIdx
+    obfunc getComp() { local compIdx localobj allTapSets
+        
         compIdx = varLibId.compIdx
+        
         if (isDmOrTapPart) {
             return mmAllComps.o(compIdx)
         } else {
-            if (isAstrocyteOrNeuron) {
-                return gjmAllComps.o(compIdx)
+            if (isGapJuncOrSyn) {
+                allTapSets = gjmAllGapJuncSets
             } else {
-                return smAllComps.o(compIdx)
+                allTapSets = smAllSynSets
             }
+            return allTapSets.o(tapSetIdx).allComps.o(compIdx)
         }
     }
     
@@ -14786,7 +14218,7 @@ endtemplate ReducedInhomAndStochTarget
 
 begintemplate ReducedInhomAndStochLibrary
 
-    public onInhomCreate, onStochApply, applyAllBiophysInhomModels, applyAllSynInhomModels, isAnyStochVarsForSyns, isAnyStochVars
+    public onInhomCreate, onStochApply, applyAllBiophysInhomModels, applyAllInhomModelsInTheTapSet, isAnyStochVarsForSynsInTheSet, isAnyStochVars
     public activeSpecVars
     
     external eachItemInList
@@ -14820,20 +14252,24 @@ begintemplate ReducedInhomAndStochLibrary
         }
     }
     
-    proc applyAllSynInhomModels() { localobj actSpecVar
+    // !!!!! think about replacing this proc with "applyAllInhomModelsInAllTapSets" (no args, called once just before "Cleanup" paragraph)
+    proc applyAllInhomModelsInTheTapSet() { local isGapJuncOrSyn, tapSetIdx localobj actSpecVar
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrTapPart || !actSpecVar.isInhom) {
+            if (actSpecVar.isDmOrTapPart || !actSpecVar.isInhom || actSpecVar.isGapJuncOrSyn != isGapJuncOrSyn || actSpecVar.tapSetIdx != tapSetIdx) {
                 continue
             }
-            actSpecVar.applySynInhomogeneity()
+            actSpecVar.applyTapInhomogeneity()
         }
     }
     
-    func isAnyStochVarsForSyns() { local isFound localobj actSpecVar
+    func isAnyStochVarsForSynsInTheSet() { local isFound localobj seh, actSpecVar
+        seh = $o1
         isFound = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrTapPart) {
-                continue
+            if (actSpecVar.seh != seh) {
+                continue    // Bio, gap junc, syn (different set)
             }
             if (actSpecVar.isStoch) {
                 // Don't replace with "return 1" because iterators cannot return a value (Segmentation violation)
@@ -14882,11 +14318,11 @@ endtemplate ReducedInhomAndStochLibrary
 objref inhomAndStochLibrary
 inhomAndStochLibrary = new ReducedInhomAndStochLibrary()
 
-objref vecOfVals, listOfStrs
+objref _vecOfVals, _listOfStrs
 
 //////////////////// End of inhom and stoch library //////////////////////
 
-//////////////////// Start of biophys compartments ///////////////////////
+//////////////////// Start of biophys: Compartments //////////////////////
 
 begintemplate ReducedMechComp
 
@@ -14952,13 +14388,15 @@ begintemplate ReducedMechComp
     
 endtemplate ReducedMechComp
 
-obfunc getListOfSecRefsForSomaComp() { local idx1, idx2 localobj list_ref
+// "Soma"
+obfunc _getListOfSecRefsForComp1() { local idx1, idx2 localobj list_ref
     list_ref = new List()
     soma[0] list_ref.append(new SectionRef())
     return list_ref
 }
 
-obfunc getListOfSecRefsForDendritesComp() { local idx1, idx2 localobj list_ref
+// "Dendrites"
+obfunc _getListOfSecRefsForComp2() { local idx1, idx2 localobj list_ref
     list_ref = new List()
     for idx2 = 0, 36 {
         dendrite[idx2] list_ref.append(new SectionRef())
@@ -14969,13 +14407,15 @@ obfunc getListOfSecRefsForDendritesComp() { local idx1, idx2 localobj list_ref
     return list_ref
 }
 
-obfunc getListOfSecRefsForAxonComp() { local idx1, idx2 localobj list_ref
+// "Axon"
+obfunc _getListOfSecRefsForComp3() { local idx1, idx2 localobj list_ref
     list_ref = new List()
     axon[0] list_ref.append(new SectionRef())
     return list_ref
 }
 
-obfunc getListOfSecRefsForSpineNeckComp() { local idx1, idx2 localobj list_ref
+// "Spine Neck"
+obfunc _getListOfSecRefsForComp4() { local idx1, idx2 localobj list_ref
     list_ref = new List()
     for idx2 = 0, 586 {
         NeuronNanoBranch[idx2].spine_neck list_ref.append(new SectionRef())
@@ -14983,7 +14423,8 @@ obfunc getListOfSecRefsForSpineNeckComp() { local idx1, idx2 localobj list_ref
     return list_ref
 }
 
-obfunc getListOfSecRefsForSpineHeadComp() { local idx1, idx2 localobj list_ref
+// "Spine Head"
+obfunc _getListOfSecRefsForComp5() { local idx1, idx2 localobj list_ref
     list_ref = new List()
     for idx2 = 0, 586 {
         NeuronNanoBranch[idx2].spine_head list_ref.append(new SectionRef())
@@ -14991,31 +14432,29 @@ obfunc getListOfSecRefsForSpineHeadComp() { local idx1, idx2 localobj list_ref
     return list_ref
 }
 
-objref comp
-
 mmAllComps = new List()
 
-comp = new ReducedMechComp("Soma", getListOfSecRefsForSomaComp())
-{ mmAllComps.append(comp) }
+_comp = new ReducedMechComp("Soma", _getListOfSecRefsForComp1())
+{ mmAllComps.append(_comp) }
 
-comp = new ReducedMechComp("Dendrites", getListOfSecRefsForDendritesComp())
-{ mmAllComps.append(comp) }
+_comp = new ReducedMechComp("Dendrites", _getListOfSecRefsForComp2())
+{ mmAllComps.append(_comp) }
 
-comp = new ReducedMechComp("Axon", getListOfSecRefsForAxonComp())
-{ mmAllComps.append(comp) }
+_comp = new ReducedMechComp("Axon", _getListOfSecRefsForComp3())
+{ mmAllComps.append(_comp) }
 
-comp = new ReducedMechComp("Spine Neck", getListOfSecRefsForSpineNeckComp())
-{ mmAllComps.append(comp) }
+_comp = new ReducedMechComp("Spine Neck", _getListOfSecRefsForComp4())
+{ mmAllComps.append(_comp) }
 
-comp = new ReducedMechComp("Spine Head", getListOfSecRefsForSpineHeadComp())
-{ mmAllComps.append(comp) }
+_comp = new ReducedMechComp("Spine Head", _getListOfSecRefsForComp5())
+{ mmAllComps.append(_comp) }
 
+//////////////////// End of biophys: Compartments ////////////////////////
 
-//////////////////// End of biophys compartments /////////////////////////
+//////////////////// Start of biophys: Homogen vars //////////////////////
 
-//////////////////// Start of homogen biophysics /////////////////////////
-
-proc addHomogenBiophysInfoToSomaComp() { localobj comp, mechStd
+// "Soma"
+proc _addHomogenVarsInfoToBiophysComp1() { localobj comp, mechStd
     comp = $o1
     
     comp.isMechInserted[0] = 1    // morphology
@@ -15036,7 +14475,8 @@ proc addHomogenBiophysInfoToSomaComp() { localobj comp, mechStd
     comp.mechStds[2][0] = mechStd
 }
 
-proc addHomogenBiophysInfoToDendritesComp() { localobj comp, mechStd
+// "Dendrites"
+proc _addHomogenVarsInfoToBiophysComp2() { localobj comp, mechStd
     comp = $o1
     
     comp.isMechInserted[0] = 1    // morphology
@@ -15057,7 +14497,8 @@ proc addHomogenBiophysInfoToDendritesComp() { localobj comp, mechStd
     comp.mechStds[2][0] = mechStd
 }
 
-proc addHomogenBiophysInfoToAxonComp() { localobj comp, mechStd
+// "Axon"
+proc _addHomogenVarsInfoToBiophysComp3() { localobj comp, mechStd
     comp = $o1
     
     comp.isMechInserted[0] = 1    // morphology
@@ -15074,7 +14515,8 @@ proc addHomogenBiophysInfoToAxonComp() { localobj comp, mechStd
     comp.mechStds[2][0] = mechStd
 }
 
-proc addHomogenBiophysInfoToSpineNeckComp() { localobj comp, mechStd
+// "Spine Neck"
+proc _addHomogenVarsInfoToBiophysComp4() { localobj comp, mechStd
     comp = $o1
     
     comp.isMechInserted[0] = 1    // morphology
@@ -15091,7 +14533,8 @@ proc addHomogenBiophysInfoToSpineNeckComp() { localobj comp, mechStd
     comp.mechStds[2][0] = mechStd
 }
 
-proc addHomogenBiophysInfoToSpineHeadComp() { localobj comp, mechStd
+// "Spine Head"
+proc _addHomogenVarsInfoToBiophysComp5() { localobj comp, mechStd
     comp = $o1
     
     comp.isMechInserted[0] = 1    // morphology
@@ -15108,36 +14551,644 @@ proc addHomogenBiophysInfoToSpineHeadComp() { localobj comp, mechStd
     comp.mechStds[2][0] = mechStd
 }
 
-comp = mmAllComps.o(0)
-addHomogenBiophysInfoToSomaComp(comp)
+_comp = mmAllComps.o(0)
+_addHomogenVarsInfoToBiophysComp1(_comp)    // "Soma"
 
-comp = mmAllComps.o(1)
-addHomogenBiophysInfoToDendritesComp(comp)
+_comp = mmAllComps.o(1)
+_addHomogenVarsInfoToBiophysComp2(_comp)    // "Dendrites"
 
-comp = mmAllComps.o(2)
-addHomogenBiophysInfoToAxonComp(comp)
+_comp = mmAllComps.o(2)
+_addHomogenVarsInfoToBiophysComp3(_comp)    // "Axon"
 
-comp = mmAllComps.o(3)
-addHomogenBiophysInfoToSpineNeckComp(comp)
+_comp = mmAllComps.o(3)
+_addHomogenVarsInfoToBiophysComp4(_comp)    // "Spine Neck"
 
-comp = mmAllComps.o(4)
-addHomogenBiophysInfoToSpineHeadComp(comp)
+_comp = mmAllComps.o(4)
+_addHomogenVarsInfoToBiophysComp5(_comp)    // "Spine Head"
 
-for eachItemInList(comp, mmAllComps) {
-    comp.initHomogenBiophysics()
+for eachItemInList(_comp, mmAllComps) {
+    _comp.initHomogenBiophysics()
 }
 
-//////////////////// End of homogen biophysics ///////////////////////////
+//////////////////// End of biophys: Homogen vars ////////////////////////
 
-//////////////////// Start of proto synapses /////////////////////////////
+//////////////////// Start of templates for taps /////////////////////////
+
+begintemplate ReducedTapSet
+
+    public applyInhomogeneityIter, createNewPpAttachedToSection
+    
+    objref this
+    
+    
+    // Keep in sync with TapSet.applyInhomogeneityIter
+    iterator applyInhomogeneityIter() { local tapIdx localobj xmAllTaps, distFuncHelper, prevSec_ref, tap, nil
+        xmAllTaps = $o2
+        distFuncHelper = $o3
+        
+        distFuncHelper.onJustBeforeFirstSection()
+        {
+            prevSec_ref = nil
+            for tapIdx = 0, xmAllTaps.count() - 1 {
+                tap = xmAllTaps.o(tapIdx)
+                if (tap.sec_ref != prevSec_ref) {
+                    distFuncHelper.onJustBeforeNewSection()
+                }
+                $o1 = tap
+                iterator_statement
+                prevSec_ref = tap.sec_ref
+            }
+        }
+        distFuncHelper.onJustAfterLastSection()
+    }
+    
+    _x = -1
+    objref _tempPp
+    
+    // Keep in sync with MechTypeHelper.createNewPpAttachedToSection
+    obfunc createNewPpAttachedToSection() { localobj sec_ref, pp, nil
+        strdef mechName, hocCommand
+        
+        mechName = $s1
+        sec_ref = $o2
+        _x = $3
+        
+        sprint(hocCommand, "_tempPp = new %s(_x)", mechName)
+        sec_ref.sec {
+            execute(hocCommand, this)
+        }
+        
+        pp = _tempPp
+        _tempPp = nil
+        
+        return pp
+    }
+    
+endtemplate ReducedTapSet
+
+objref tapSet
+tapSet = new ReducedTapSet()
+
+begintemplate ReducedPPComp
+
+    public name, enumDmPpFk, enumPpRole, mechIdx, mechStds
+    
+    strdef name
+    enumDmPpFk = -1
+    enumPpRole = -1
+    mechIdx = -1
+    objref mechStds[1][1]   // All nil-s except some col(s) of mechIdx row
+    
+    
+    proc init() { local isGapJuncOrSyn, numMechs localobj mechType
+        isGapJuncOrSyn = $1     // Just a placeholder
+        name = $s2
+        enumPpRole = $3
+        mechIdx = $4
+        
+        enumDmPpFk = 1
+        
+        mechType = new MechanismType(1) // 1: "Point Processes"
+        numMechs = mechType.count
+        objref mechStds[numMechs][3]    // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
+    }
+    
+endtemplate ReducedPPComp
+
+begintemplate ReducedFakeComp
+
+    public enumDmPpFk, enumPpRole, mechStds
+    
+    enumDmPpFk = -1
+    enumPpRole = -1
+    objref mechStds[1][1]
+    
+    proc init() { local fixedMechIdx, numMechs
+        enumPpRole = $1
+        fixedMechIdx = $2
+        enumDmPpFk = 2
+        numMechs = fixedMechIdx + 1
+        objref mechStds[numMechs][1]
+    }
+    
+endtemplate ReducedFakeComp
+
+objref _allComps
+
+//////////////////// End of templates for taps ///////////////////////////
+
+//////////////////// Start of templates for gap juncs ////////////////////
+
+begintemplate EnumGapJuncCompIdxs
+    
+    public extGjPp, extGjExtValue, intGjPp
+    
+    // Keep in sync with hoc:GapJuncSet.init, py:GensForTaps.createReducedGapJuncComps and py:GensForHomogenVars.initHomogenGapJuncVars
+    proc init() {
+        extGjPp = 0
+        extGjExtValue = 1
+        intGjPp = 2
+    }
+    
+endtemplate EnumGapJuncCompIdxs
+
+objref enumGapJuncCompIdxs
+enumGapJuncCompIdxs = new EnumGapJuncCompIdxs()
+
+
+// !!!!! rename to EnumGapJuncParts
+begintemplate EnumGapJuncPpRoles
+    
+    public sngPp, ptrMarkerPp, extValue
+    
+    proc init() {
+        sngPp = 0           // For both ext and int GJs
+        ptrMarkerPp = 1     // For int GJs only
+        extValue = 2        // For ext GJs only
+    }
+    
+endtemplate EnumGapJuncPpRoles
+
+objref enumGapJuncPpRoles
+enumGapJuncPpRoles = new EnumGapJuncPpRoles()
+
+begintemplate GapJunction
+    
+    public sec_ref, connectionPoint, dist, otherSec_ref, otherConnectionPoint
+    public sngPp, ptrMarkerPp, extValue
+    public isExtOrInt, getPointProcess, changeLocation, changeStructure, calcAndCacheDist, deployPtrMarkerPp, destroyPtrMarkerPp
+    
+    external codeContractViolation
+    external enumGapJuncPpRoles
+    
+    // Gap junc PP location info
+    objref sec_ref
+    connectionPoint = -1
+    dist = -1
+    
+    // The pointer location info (for internal GJs only)
+    objref otherSec_ref
+    otherConnectionPoint = -1
+    
+    objref sngPp
+    objref ptrMarkerPp      // For internal GJs only
+    extValue = -1           // For external GJs only
+    
+    
+    proc init() { local numArg
+        numArg = numarg()
+        if (numArg == 2) {
+            sec_ref = $o1
+            connectionPoint = $2
+        } else if (numArg == 3) {
+            sngPp = $o1
+            sec_ref = $o2
+            connectionPoint = $3
+        } else if (numArg == 4) {
+            sec_ref = $o1
+            connectionPoint = $2
+            otherSec_ref = $o3
+            otherConnectionPoint = $4
+        } else if (numArg == 5) {
+            sngPp = $o1
+            sec_ref = $o2
+            connectionPoint = $3
+            otherSec_ref = $o4
+            otherConnectionPoint = $5
+        } else {
+            codeContractViolation()
+        }
+        calcAndCacheDist()
+        
+        // !!!! remove this assignment
+        // !!!! BUG: not in sync with FakeMechanismStandardForExtValue ctor
+        extValue = 12.34        // !!!! just for test
+    }
+    
+    func isExtOrInt() { localobj nil
+        return (otherSec_ref == nil)
+    }
+    
+    // !!!!! rename to getGapJuncPart
+    obfunc getPointProcess() { local enumPpRole
+        enumPpRole = $1
+        if (enumPpRole == enumGapJuncPpRoles.sngPp) {
+            return sngPp
+        } else if (enumPpRole == enumGapJuncPpRoles.ptrMarkerPp) {
+            return ptrMarkerPp
+        } else if (enumPpRole == enumGapJuncPpRoles.extValue) {
+            return new Pointer(&extValue)
+        } else {
+            codeContractViolation()
+        }
+    }
+    
+    proc changeLocation() { local numArg localobj nil
+        numArg = numarg()
+        if (numArg != 2 && numArg != 4) {
+            codeContractViolation()
+        }
+        
+        sec_ref = $o1
+        connectionPoint = $2
+        if (numArg == 4) {
+            otherSec_ref = $o3
+            otherConnectionPoint = $4
+        } else {
+            otherSec_ref = nil
+            otherConnectionPoint = -1
+        }
+        
+        calcAndCacheDist()
+    }
+    
+    proc changeStructure() {
+        sngPp = $o1
+    }
+    
+    proc calcAndCacheDist() {
+        sec_ref.sec {
+            dist = distance(connectionPoint)
+        }
+    }
+    
+    proc deployPtrMarkerPp() { localobj nil
+        if (ptrMarkerPp != nil) {
+            codeContractViolation()
+        }
+        otherSec_ref.sec {
+            ptrMarkerPp = new PointProcessMark(otherConnectionPoint)
+        }
+    }
+    
+    proc destroyPtrMarkerPp() { localobj nil
+        if (ptrMarkerPp == nil) {
+            codeContractViolation()
+        }
+        ptrMarkerPp = nil
+    }
+    
+endtemplate GapJunction
+
+objref utils4FakeMech4GapJuncExtValue
+
+begintemplate ReducedSeedingDensityHelper
+    
+    public isUniform, minSeedingDistance, oneLinerPyDistFuncBody
+    
+    isUniform = -1
+    minSeedingDistance = -1
+    strdef oneLinerPyDistFuncBody
+    
+    proc init() {
+        isUniform = $1
+        minSeedingDistance = $2     // um
+        oneLinerPyDistFuncBody = $s3
+    }
+    
+endtemplate ReducedSeedingDensityHelper
+
+begintemplate ReducedGapJuncSet
+
+    public createGapJuncStruc, initAllHomogenVars
+    public allGapJuncs, allComps, isExtOrInt, isAllOrSomeSecsSeeded, selected_ref, maxNumGapJuncsPerSec, maxRadiusForIntGapJuncs, isCrissCrossForIntGapJuncs, seedingDensityHelper
+    
+    external tapSet
+    external codeContractViolation
+    external enumGapJuncCompIdxs, enumGapJuncPpRoles
+    external eachItemInList
+    
+    objref allGapJuncs, allComps
+    isExtOrInt = -1
+    isAllOrSomeSecsSeeded = -1
+    objref selected_ref
+    maxNumGapJuncsPerSec = -1
+    maxRadiusForIntGapJuncs = -1
+    isCrissCrossForIntGapJuncs = -1
+    objref seedingDensityHelper
+    
+    objref this
+    
+    
+    proc init() {
+        allGapJuncs = $o1
+        allComps = $o2
+        isExtOrInt = $3
+        isAllOrSomeSecsSeeded = $4
+        selected_ref = $o5
+        maxNumGapJuncsPerSec = $6
+        maxRadiusForIntGapJuncs = $7
+        isCrissCrossForIntGapJuncs = $8
+        seedingDensityHelper = $o9
+    }
+    
+    objref _gapJunc
+    objref _sngPp
+    _otherConnectionPoint = -1  // For internal GJs only
+    
+    // Keep in sync with GapJuncSet.applyChangesToStrucIfNeeded
+    proc createGapJuncStruc() { local doesHavePtr localobj nil
+        strdef mechName, ppPtrName, dmVarNameWithIndex, hocCommand
+        
+        mechName = $s1
+        doesHavePtr = $2            // pyObj.ms_doesGapJuncHavePtr(mechName)
+        ppPtrName = $s3             // pyObj.ms_getGapJuncPtrName(mechName)
+        dmVarNameWithIndex = $s4    // pyObj.ms_getGapJuncExtVarNameWithIndex(mechName)
+        
+        if (allGapJuncs.count() == 0) {
+            return
+        }
+        
+        if (doesHavePtr) {
+            if (isExtOrInt) {
+                sprint(hocCommand, "setpointer _sngPp.%s, _gapJunc.extValue", ppPtrName)
+            } else {
+                sprint(hocCommand, "setpointer _sngPp.%s, %s(_otherConnectionPoint)", ppPtrName, dmVarNameWithIndex)
+            }
+        }
+        
+        for eachItemInList(_gapJunc, allGapJuncs) {
+            _sngPp = tapSet.createNewPpAttachedToSection(mechName, _gapJunc.sec_ref, _gapJunc.connectionPoint)
+            if (doesHavePtr) {
+                if (isExtOrInt) {
+                    execute(hocCommand, this)
+                } else {
+                    _otherConnectionPoint = _gapJunc.otherConnectionPoint
+                    _gapJunc.otherSec_ref {
+                        execute(hocCommand, this)
+                    }
+                }
+            }
+            _gapJunc.changeStructure(_sngPp)
+        }
+        
+        _gapJunc = nil
+        _sngPp = nil
+    }
+    
+    // Keep in sync with GapJuncSet.applyChangesToDirtyHomogenVars
+    proc initAllHomogenVars() { local mechIdx, fixedMechIdx
+        mechIdx = $1
+        fixedMechIdx = $2   // utils4FakeMech4GapJuncExtValue.mechIdx
+        
+        if (isExtOrInt) {
+            initHomogenVars(enumGapJuncCompIdxs.extGjPp, mechIdx, enumGapJuncPpRoles.sngPp)
+            initHomogenVars(enumGapJuncCompIdxs.extGjExtValue, fixedMechIdx, enumGapJuncPpRoles.extValue)
+        } else {
+            initHomogenVars(enumGapJuncCompIdxs.intGjPp, mechIdx, enumGapJuncPpRoles.sngPp)
+        }
+    }
+    
+    // All next staff is private
+    
+    
+    // Keep in sync with GapJuncSet.ifMechDirtyThenApplyHomogenChanges
+    proc initHomogenVars() { local compIdx, mechIdx, enumPpRole, isPPorEV, maxVarType, varType, varTypeIdx localobj comp, gapJunc, ppOrExtVal, compMechStd, nil
+        
+        compIdx = $1
+        mechIdx = $2
+        enumPpRole = $3
+        
+        if (enumPpRole == enumGapJuncPpRoles.ptrMarkerPp) {
+            codeContractViolation()
+        }
+        
+        isPPorEV = (compIdx != enumGapJuncCompIdxs.extGjExtValue)
+        if (isPPorEV) {
+            maxVarType = 3
+        } else {
+            maxVarType = 1
+        }
+        
+        comp = allComps.o(compIdx)
+        
+        for eachItemInList(gapJunc, allGapJuncs) {
+            ppOrExtVal = gapJunc.getPointProcess(enumPpRole)
+            for varType = 1, maxVarType {   // 1: "PARAMETER", 2: "ASSIGNED", 3: "STATE"
+                varTypeIdx = varType - 1
+                compMechStd = comp.mechStds[mechIdx][varTypeIdx]
+                if (compMechStd != nil) {
+                    // Here we assign NaN values to inhom vars, but they will be overwritten shortly downstream
+                    compMechStd.out(ppOrExtVal)
+                }
+            }
+        }
+    }
+    
+endtemplate ReducedGapJuncSet
+
+gjmAllGapJuncSets = new List()
+
+objref _allGapJuncs, _sec_ref, _otherSec_ref, _selected_ref, _seedingDensityHelper, _gapJuncSet
+
+//////////////////// End of templates for gap juncs //////////////////////
+
+//////////////////// Start of GJ set #1: Locations ///////////////////////
+
+_allGapJuncs = new List()
+dendrite[1] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+dendrite[2] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+dendrite[2] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+dendrite[7] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+dendrite[8] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+dendrite[9] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+dendrite[12] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+dendrite[12] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+dendrite[13] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+dendrite[16] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+dendrite[18] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+dendrite[18] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+dendrite[20] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+dendrite[25] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+dendrite[27] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+dendrite[28] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+dendrite[30] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+dendrite[30] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+dendrite[32] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+dendrite[34] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+dendrite[34] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+dendrite[35] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+dendrite[35] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+dendrite[36] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+dendrite[36] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+apical_dendrite[2] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+apical_dendrite[2] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+apical_dendrite[3] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[4] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+apical_dendrite[4] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+apical_dendrite[5] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+apical_dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+apical_dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+apical_dendrite[6] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+apical_dendrite[7] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+apical_dendrite[8] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[8] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+apical_dendrite[10] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+apical_dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+apical_dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+apical_dendrite[11] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+apical_dendrite[13] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+apical_dendrite[14] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+apical_dendrite[15] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+apical_dendrite[16] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[17] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[17] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+apical_dendrite[18] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+apical_dendrite[19] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+apical_dendrite[20] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+apical_dendrite[20] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+apical_dendrite[20] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[21] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+apical_dendrite[21] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+apical_dendrite[21] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[21] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+apical_dendrite[21] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+apical_dendrite[22] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+apical_dendrite[24] _allGapJuncs.append(new GapJunction(new SectionRef(), 0.55))
+NeuronNanoBranch[23].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+NeuronNanoBranch[39].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+NeuronNanoBranch[50].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.65))
+NeuronNanoBranch[53].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+NeuronNanoBranch[114].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+NeuronNanoBranch[118].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+NeuronNanoBranch[135].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+NeuronNanoBranch[139].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+NeuronNanoBranch[154].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+NeuronNanoBranch[164].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+NeuronNanoBranch[215].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+NeuronNanoBranch[238].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+NeuronNanoBranch[242].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+NeuronNanoBranch[260].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+NeuronNanoBranch[267].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+NeuronNanoBranch[274].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.25))
+NeuronNanoBranch[294].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+NeuronNanoBranch[404].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.85))
+NeuronNanoBranch[430].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+NeuronNanoBranch[499].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.95))
+NeuronNanoBranch[513].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+NeuronNanoBranch[521].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.75))
+NeuronNanoBranch[522].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.35))
+NeuronNanoBranch[529].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.45))
+NeuronNanoBranch[547].spine_neck _allGapJuncs.append(new GapJunction(new SectionRef(), 0.05))
+NeuronNanoBranch[573].spine_head _allGapJuncs.append(new GapJunction(new SectionRef(), 0.15))
+
+//////////////////// End of GJ set #1: Locations /////////////////////////
+
+//////////////////// Start of GJ set #1: Compartments ////////////////////
+
+_allComps = new List()
+{ _allComps.append(new ReducedPPComp(1, "External GJ", enumGapJuncPpRoles.sngPp, 23)) }    // Gap_neuron
+{ _allComps.append(new ReducedFakeComp(enumGapJuncPpRoles.extValue, 0)) }
+{ _allComps.append(new ReducedPPComp(1, "Internal GJ", enumGapJuncPpRoles.sngPp, -1)) }
+
+//////////////////// End of GJ set #1: Compartments //////////////////////
+
+//////////////////// Start of GJ set #1: Homogen vars ////////////////////
+
+// "External GJ"
+proc _addHomogenVarsInfoToGapJuncComp1() { localobj comp, mechStd
+    comp = $o1
+}
+
+// "External GJ"
+proc _addHomogenVarsInfoToGapJuncComp2() { localobj comp, mechStd
+    comp = $o1
+}
+
+// "Internal GJ"
+proc _addHomogenVarsInfoToGapJuncComp3() { localobj comp, mechStd
+    comp = $o1
+}
+
+_comp = _allComps.o(0)
+_addHomogenVarsInfoToGapJuncComp1(_comp)    // "External GJ"
+
+_comp = _allComps.o(1)
+_addHomogenVarsInfoToGapJuncComp2(_comp)    // "External GJ"
+
+_comp = _allComps.o(2)
+_addHomogenVarsInfoToGapJuncComp3(_comp)    // "Internal GJ"
+
+//////////////////// End of GJ set #1: Homogen vars //////////////////////
+
+//////////////////// Start of GJ set #1: "Import & Edit" measures ////////
+
+_selected_ref = nil
+
+_seedingDensityHelper = new ReducedSeedingDensityHelper(1, 66.48169702988109, "1234.5 * exp(-x / 100)")
+
+//////////////////// End of GJ set #1: "Import & Edit" measures //////////
+
+//////////////////// Start of GJ set #1: Main part ///////////////////////
+
+_gapJuncSet = new ReducedGapJuncSet(_allGapJuncs, _allComps, 1, 1, _selected_ref, 10, 20.0, 0, _seedingDensityHelper)
+
+{ _gapJuncSet.createGapJuncStruc("Gap_neuron", 0, "", "") }
+{ _gapJuncSet.initAllHomogenVars(23, 0) }
+
+// Ext GJs: Electric / "Gap_neuron" (97 GJs)
+{ gjmAllGapJuncSets.append(_gapJuncSet) }
+
+//////////////////// End of GJ set #1: Main part /////////////////////////
+
+//////////////////// Start of templates for synapses /////////////////////
+
+begintemplate EnumSynCompIdxs
+    
+    public srcPp, netCon, trgPp, sngPp
+    
+    // Keep in sync with hoc:SynSet.init, py:GensForTaps.createReducedSynComps and py:GensForHomogenVars.initHomogenSynVars
+    proc init() {
+        srcPp = 0
+        netCon = 1
+        trgPp = 2
+        sngPp = 3
+    }
+    
+endtemplate EnumSynCompIdxs
+
+objref enumSynCompIdxs
+enumSynCompIdxs = new EnumSynCompIdxs()
+
+
+// !!!!! rename to EnumSynParts
+begintemplate EnumSynPpRoles
+    
+    public srcPp, netCon, trgPp, sngPp, trgPpOrSngPp
+    
+    proc init() {
+        srcPp = 0
+        netCon = 1
+        trgPp = 2
+        sngPp = 3
+        trgPpOrSngPp = 4
+    }
+    
+endtemplate EnumSynPpRoles
+
+objref enumSynPpRoles
+enumSynPpRoles = new EnumSynPpRoles()
 
 begintemplate Synapse
 
     public sec_ref, connectionPoint, dist
     public srcPp, netCon, trgPp, sngPp, sefwPp, sefwNetCon
-    public getPointProcess, changeLocation, changeStructure, calcAndCacheDist
+    public is3Or1Part, getPointProcess, changeLocation, changeStructure, calcAndCacheDist
     
     external codeContractViolation
+    external enumSynPpRoles
     
     // Synapse location info
     objref sec_ref
@@ -15169,17 +15220,24 @@ begintemplate Synapse
         calcAndCacheDist()
     }
     
+    func is3Or1Part() { localobj nil
+        return (netCon != nil)
+    }
+    
+    // !!!!! rename to getSynPart
     obfunc getPointProcess() { local enumPpRoleExt localobj nil
-        enumPpRoleExt = $1     // 0: "Source PP", 1: "Target PP", 2: "Single PP", 3: "Target PP or Single PP"
+        enumPpRoleExt = $1
         
-        if (enumPpRoleExt == 0) {
+        if (enumPpRoleExt == enumSynPpRoles.srcPp) {
             return srcPp
-        } else if (enumPpRoleExt == 1) {
+        } else if (enumPpRoleExt == enumSynPpRoles.netCon) {
+            return netCon
+        } else if (enumPpRoleExt == enumSynPpRoles.trgPp) {
             return trgPp
-        } else if (enumPpRoleExt == 2) {
+        } else if (enumPpRoleExt == enumSynPpRoles.sngPp) {
             return sngPp
-        } else if (enumPpRoleExt == 3) {
-            if (netCon != nil) {
+        } else if (enumPpRoleExt == enumSynPpRoles.trgPpOrSngPp) {
+            if (is3Or1Part()) {
                 return trgPp
             } else {
                 return sngPp
@@ -15243,132 +15301,6 @@ begintemplate Synapse
     
 endtemplate Synapse
 
-objref smAllSyns
-smAllSyns = new List()
-for idx = 0, 586 {
-    NeuronNanoBranch[idx].spine_head smAllSyns.append(new Synapse(new SectionRef(), 0.5))
-}
-
-//////////////////// End of proto synapses ///////////////////////////////
-
-//////////////////// Start of synaptic compartments //////////////////////
-
-begintemplate EnumSynCompIdxs
-    
-    public srcPp, netCon, trgPp, sngPp
-    
-    srcPp = -1
-    netCon = -1
-    trgPp = -1
-    sngPp = -1
-    
-    // Keep in sync with hoc:createOrImportSynComps, py:createReducedSynComps and py:initHomogenSynVars
-    proc init() {
-        srcPp = 0
-        netCon = 1
-        trgPp = 2
-        sngPp = 3
-    }
-    
-endtemplate EnumSynCompIdxs
-
-objref enumSynCompIdxs
-enumSynCompIdxs = new EnumSynCompIdxs()
-
-begintemplate ReducedTapGroup
-
-    public applyInhomogeneityIter, createNewPpAttachedToSection
-    
-    objref this
-    
-    
-    // Keep in sync with TapGroup.applyInhomogeneityIter
-    iterator applyInhomogeneityIter() { local tapIdx localobj xmAllTaps, distFuncHelper, prevSec_ref, tap, nil
-        xmAllTaps = $o2
-        distFuncHelper = $o3
-        
-        distFuncHelper.onJustBeforeFirstSection()
-        {
-            prevSec_ref = nil
-            for tapIdx = 0, xmAllTaps.count() - 1 {
-                tap = xmAllTaps.o(tapIdx)
-                if (tap.sec_ref != prevSec_ref) {
-                    distFuncHelper.onJustBeforeNewSection()
-                }
-                $o1 = tap
-                iterator_statement
-                prevSec_ref = tap.sec_ref
-            }
-        }
-        distFuncHelper.onJustAfterLastSection()
-    }
-    
-    _x = -1
-    objref _tempPp
-    
-    // Keep in sync with TapGroup.createNewPpAttachedToSectionButTryToInherit
-    obfunc createNewPpAttachedToSection() { localobj sec_ref, pp, nil
-        strdef mechName, hocCommand
-        
-        mechName = $s1
-        sec_ref = $o2
-        _x = $3
-        
-        sprint(hocCommand, "_tempPp = new %s(_x)", mechName)
-        sec_ref.sec {
-            execute(hocCommand, this)
-        }
-        
-        pp = _tempPp
-        _tempPp = nil
-        
-        return pp
-    }
-    
-endtemplate ReducedTapGroup
-
-objref tapGroup
-tapGroup = new ReducedTapGroup()
-
-begintemplate ReducedSynPPComp
-
-    public name, enumDmPpFk, enumPpRole, mechIdx, mechStds
-    
-    strdef name
-    enumDmPpFk = -1
-    enumPpRole = -1
-    mechIdx = -1
-    objref mechStds[1][1]   // All nil-s except some col(s) of mechIdx row
-    
-    
-    proc init() { local numMechs localobj mechType
-        name = $s1
-        enumPpRole = $2
-        mechIdx = $3
-        
-        enumDmPpFk = 1
-        
-        mechType = new MechanismType(1) // 1: "Point Processes"
-        numMechs = mechType.count
-        objref mechStds[numMechs][3]    // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
-    }
-    
-endtemplate ReducedSynPPComp
-
-begintemplate ReducedSynNCComp
-
-    public enumDmPpFk, mechStds
-    
-    enumDmPpFk = -1
-    objref mechStds[1][1]
-    
-    proc init() {
-        enumDmPpFk = 2
-        objref mechStds[1][1]
-    }
-    
-endtemplate ReducedSynNCComp
-
 begintemplate ReducedManagersCommonUtils
 
     public isMetaVar
@@ -15387,16 +15319,18 @@ endtemplate ReducedManagersCommonUtils
 objref mcu
 mcu = new ReducedManagersCommonUtils()
 
-begintemplate SynEventsHelper
+begintemplate UtilsForFakeMechanismForNetCon
 
-    public ifMetaVarThenUpdateStatus, createNewSynEventsFilterWatcherButTryToInherit, isSefwEnabled
-    public metaVarName, realMechName, realVarType, realVarName, realArrayIndex
-    public isMinRPlt1
+    public getNumVars, getVarNameAndArraySize, getVarUnits, getNetConVar, setNetConVar
+    public mechIdx, mechName, numGlobalVars
+    public metaMechIdx, metaVarTypeIdx, metaVarName, metaArrayIndex, realMechName, realVarType, realVarName, realArrayIndex
     
-    external smAllComps
-    // !! external mth      // !! circular file dependencies problem
-    external mcu, enumSynCompIdxs
-    external inhomAndStochLibrary
+    // !! external mth      // !! created only after we need to use it here
+    external pyObj
+    
+    mechIdx = -1
+    strdef mechName
+    numGlobalVars = -1
     
     metaMechIdx = -1        // Correspond to FakeMechanism*ForNetCon
     metaVarTypeIdx = -1     //
@@ -15408,13 +15342,18 @@ begintemplate SynEventsHelper
     strdef realVarName      //
     realArrayIndex = -1     //
     
-    isMinRPlt1 = -1
-    
-    objref this
+    objref _pyUnitsDict, _tempNetCon, this
+    _tempValue = -1
     
     
     proc init() { local metaVarType
-        realMechName = "SynEventsFilterWatcher"     // Keep in sync with proc createNewSynEventsFilterWatcherButTryToInherit
+        strdef pyCommand
+        
+        mechIdx = 1     // !!!!! keep in sync with ReducedMechTypeHelper.createMechStd
+        mechName = "NetCon"
+        numGlobalVars = 0
+        
+        realMechName = "SynEventsFilterWatcher"     // Keep in sync with proc SynEventsHelper.createNewSynEventsFilterWatcherButTryToInherit
         realVarType = 1
         realVarName = "release_probability"
         realArrayIndex = 0
@@ -15424,113 +15363,8 @@ begintemplate SynEventsHelper
         metaVarTypeIdx = 0  // !! mth.convertVarTypeToVarTypeIdx(metaVarType)
         sprint(metaVarName, "@%s", realVarName)
         metaArrayIndex = 0
-    }
-    
-    proc ifMetaVarThenUpdateStatus() { local minValue
-        strdef varName
-        varName = $s1
-        minValue = $2
-        if (mcu.isMetaVar(varName)) {
-            isMinRPlt1 = (minValue < 1)
-        }
-    }
-    
-    objref _mechStd
-    
-    proc createNewSynEventsFilterWatcherButTryToInherit() { local wasSefwPresentBefore, is3Or1PartInSynStruc_old, release_probability localobj syn, trgPp, sefwPp, sefwNetCon, nil
-    
-        syn = $o1
-        wasSefwPresentBefore = $2
-        is3Or1PartInSynStruc_old = $3
-        trgPp = $o4
         
-        // Prepare the output point process
-        if (wasSefwPresentBefore) {
-            sefwPp = syn.sefwPp
-        } else {
-            _mechStd = smAllComps.o(enumSynCompIdxs.netCon).mechStds[metaMechIdx][metaVarTypeIdx]
-            
-            if (_mechStd != nil) {
-                // This equals NaN if the var was made inhomogen earlier,
-                // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
-                release_probability = _mechStd.get(metaVarName, metaArrayIndex)
-            } else {
-                // We are in the exported nano HOC file, and all NetCon params are default (so its mechStd is nil)
-                release_probability = 1
-            }
-            
-            sefwPp = new SynEventsFilterWatcher()     // Keep the name in sync with proc init
-            sefwPp.release_probability = release_probability
-            // The "seed" will be set shortly downstream (once per rank)
-        }
-        
-        // Prepare the output NetCon
-        sefwNetCon = new NetCon(sefwPp, trgPp)
-        if (wasSefwPresentBefore) {
-            createNewFakeMechStdForNetConAndInFrom(syn.sefwNetCon)
-        } else {
-            if (is3Or1PartInSynStruc_old) {
-                createNewFakeMechStdForNetConAndInFrom(syn.netCon)
-            } else {
-                // We'll use the _mechStd defined above
-            }
-        }
-        if (_mechStd != nil) {
-            // This inserts NaN-s for inhomogen vars,
-            // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
-            _mechStd.out(sefwNetCon)
-        }
-        // The second NetCon has no delay
-        sefwNetCon.delay = 0
-        
-        $o5 = sefwPp
-        $o6 = sefwNetCon
-        
-        _mechStd = nil
-    }
-    
-    func isSefwEnabled() {
-        if (isMinRPlt1) {
-            return 1
-        }
-        return inhomAndStochLibrary.isAnyStochVarsForSyns()     // Do not move to the IF OR for higher performance
-    }
-    
-    // All next staff is private
-    
-    
-    proc createNewFakeMechStdForNetConAndInFrom() { localobj srcNetCon
-        srcNetCon = $o1
-        execute("_mechStd = new FakeMechanismStandardForNetCon()", this)        // The template is loaded after this file
-        _mechStd.in(srcNetCon)
-    }
-    
-endtemplate SynEventsHelper
-
-objref seh
-seh = new SynEventsHelper()
-
-begintemplate UtilsForFakeMechanismForNetCon
-
-    public getNumVars, getVarNameAndArraySize, getVarUnits, getNetConVar, setNetConVar
-    public mechName, numGlobalVars
-    
-    external pyObj, seh
-    
-    strdef mechName
-    numGlobalVars = -1
-    
-    objref _pyUnitsDict, _tempNetCon, this
-    _tempValue = -1
-    
-    
-    proc init() {
-        strdef pyCommand
-        
-        mechName = "NetCon"
-        numGlobalVars = 0
-        
-        sprint(pyCommand, "{'threshold': 'mV', 'delay': 'ms', 'weight': '', '%s': ''}", seh.metaVarName)
+        sprint(pyCommand, "{'threshold': 'mV', 'delay': 'ms', 'weight': '', '%s': ''}", metaVarName)
         _pyUnitsDict = pyObj.ev(pyCommand)
     }
     
@@ -15590,7 +15424,7 @@ begintemplate FakeMechanismStandardForNetCon
     public count, name, get, set, in, out
     
     external pyObj
-    external mth, mcu, seh
+    external mth, mcu
     external utils4FakeMech4SynNetCon
     external codeContractViolation
     
@@ -15599,7 +15433,7 @@ begintemplate FakeMechanismStandardForNetCon
     
     proc init() {
         strdef pyCommand
-        sprint(pyCommand, "{'threshold': 10.0, 'delay': 1.0, 'weight': 0.0, '%s': 1.0}", seh.metaVarName)
+        sprint(pyCommand, "{'threshold': 10.0, 'delay': 1.0, 'weight': 0.0, '%s': 1.0}", utils4FakeMech4SynNetCon.metaVarName)
         // These default values are consistent with a newly created NetCon
         pyValuesDict = pyObj.ev(pyCommand)
         // !! think about encapsulating "release_probability" into a new (non-standard) varType, e.g. varType == 4 named "Meta"
@@ -15698,18 +15532,173 @@ begintemplate FakeMechanismStandardForNetCon
     
 endtemplate FakeMechanismStandardForNetCon
 
-begintemplate ReducedSynGroup
+begintemplate SynEventsHelper
 
-    public createSynStruc, initAllHomogenVars, applyInhomogeneityIter
+    public ifMetaVarThenUpdateStatus, createNewSynEventsFilterWatcherButTryToInherit, isSefwEnabled
+    public isMinRPlt1
     
-    external tapGroup, smAllSyns, smAllComps
-    external seh, rngUtils
+    external mcu, enumSynCompIdxs
+    external inhomAndStochLibrary
+    external utils4FakeMech4SynNetCon
+    
+    objref allComps
+    
+    isMinRPlt1 = -1
+    
+    objref this
+    
+    
+    proc init() {
+        allComps = $o1
+    }
+    
+    proc ifMetaVarThenUpdateStatus() { local minValue
+        strdef varName
+        varName = $s1
+        minValue = $2
+        if (mcu.isMetaVar(varName)) {
+            isMinRPlt1 = (minValue < 1)
+        }
+    }
+    
+    objref _mechStd
+    
+    proc createNewSynEventsFilterWatcherButTryToInherit() { local wasSefwPresentBefore, is3Or1PartInSynStruc_old, release_probability localobj syn, trgPp, sefwPp, sefwNetCon, nil
+    
+        syn = $o1
+        wasSefwPresentBefore = $2
+        is3Or1PartInSynStruc_old = $3
+        trgPp = $o4
+        
+        // Prepare the output point process
+        if (wasSefwPresentBefore) {
+            sefwPp = syn.sefwPp
+        } else {
+            _mechStd = allComps.o(enumSynCompIdxs.netCon).mechStds[utils4FakeMech4SynNetCon.metaMechIdx][utils4FakeMech4SynNetCon.metaVarTypeIdx]
+            
+            if (_mechStd != nil) {
+                // This equals NaN if the var was made inhomogen earlier,
+                // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
+                release_probability = _mechStd.get(utils4FakeMech4SynNetCon.metaVarName, utils4FakeMech4SynNetCon.metaArrayIndex)
+            } else {
+                // We are in the exported nano HOC file, and all NetCon params are default (so its mechStd is nil)
+                release_probability = 1
+            }
+            
+            sefwPp = new SynEventsFilterWatcher()     // Keep the name in sync with UtilsForFakeMechanismForNetCon ctor
+            sefwPp.release_probability = release_probability
+            // The "seed" will be set shortly downstream (once per rank)
+        }
+        
+        // Prepare the output NetCon
+        sefwNetCon = new NetCon(sefwPp, trgPp)
+        if (wasSefwPresentBefore) {
+            createNewFakeMechStdForNetConAndInFrom(syn.sefwNetCon)
+        } else {
+            if (is3Or1PartInSynStruc_old) {
+                createNewFakeMechStdForNetConAndInFrom(syn.netCon)
+            } else {
+                // We'll use the _mechStd defined above
+            }
+        }
+        if (_mechStd != nil) {
+            // This inserts NaN-s for inhomogen vars,
+            // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
+            _mechStd.out(sefwNetCon)
+        }
+        // The second NetCon has no delay
+        sefwNetCon.delay = 0
+        
+        $o5 = sefwPp
+        $o6 = sefwNetCon
+        
+        _mechStd = nil
+    }
+    
+    func isSefwEnabled() {
+        if (isMinRPlt1) {
+            return 1
+        }
+        return inhomAndStochLibrary.isAnyStochVarsForSynsInTheSet(this)     // Do not move to the IF OR for higher performance
+    }
+    
+    // All next staff is private
+    
+    
+    proc createNewFakeMechStdForNetConAndInFrom() { localobj srcNetCon
+        srcNetCon = $o1
+        execute("_mechStd = new FakeMechanismStandardForNetCon()", this)        // The template is loaded after this file
+        _mechStd.in(srcNetCon)
+    }
+    
+endtemplate SynEventsHelper
+
+begintemplate ReducedSpineNeckDiamCache
+
+    public getCachedDiam
+    public diamsVec
+    
+    external isAstrocyteOrNeuron
+    external codeContractViolation
+    
+    objref diamsVec
+    
+    
+    proc init() {
+        diamsVec = $o1
+        
+        if (isAstrocyteOrNeuron) {
+            codeContractViolation()
+        }
+    }
+    
+    func getCachedDiam() { local spineIdx
+        spineIdx = $1
+        return diamsVec.x(spineIdx)
+    }
+    
+endtemplate ReducedSpineNeckDiamCache
+
+begintemplate ReducedSynSet
+
+    public createSynStruc, initAllHomogenVars
+    public allSyns, allComps, enumSynLoc, randomSynLocP, spineNecks_ref, spineHeads_ref, spineNeckDiamCache, idxForSynSet
+    public seh
+    
+    external tapSet, utils4FakeMech4SynNetCon
+    external rngUtils
+    external enumSynCompIdxs, enumSynPpRoles
     external eachItemInList
-    external enumSynCompIdxs
+    
+    objref allSyns, allComps
+    enumSynLoc = -1
+    randomSynLocP = -1
+    objref spineNecks_ref, spineHeads_ref
+    objref spineNeckDiamCache
+    idxForSynSet = -1
+    
+    objref seh
+    isSefwEnabled = -1
     
     
-    // Keep in sync with SynGroup.applyChangesToStrucIfNeeded
-    proc createSynStruc() { local is3Or1PartInSynStruc, srcMechIdx, isSefwEnabled, seed localobj syn, srcPp, trgPp, netCon, sefwPp, sefwNetCon, sngPp
+    proc init() { local isMinRPlt1
+        allSyns = $o1
+        allComps = $o2
+        enumSynLoc = $3
+        randomSynLocP = $4
+        spineNecks_ref = $o5
+        spineHeads_ref = $o6
+        spineNeckDiamCache = $o7
+        idxForSynSet = $8
+        isMinRPlt1 = $9
+        isSefwEnabled = $10     // We don't call seh.isSefwEnabled() in ReducedSynSet because all stoch models will be applied only downstream
+        
+        seh = new SynEventsHelper(allComps)
+        seh.isMinRPlt1 = isMinRPlt1
+    }
+    
+    // Keep in sync with SynSet.applyChangesToStrucIfNeeded
+    proc createSynStruc() { local is3Or1PartInSynStruc, srcMechIdx, seed localobj syn, srcPp, trgPp, netCon, sefwPp, sefwNetCon, sngPp
         strdef srcMechName, trgMechName, sngMechName
         
         is3Or1PartInSynStruc = $1
@@ -15719,11 +15708,9 @@ begintemplate ReducedSynGroup
         sngMechName = $s5
         
         if (is3Or1PartInSynStruc) {
-            isSefwEnabled = seh.isSefwEnabled()
-            
-            for eachItemInList(syn, smAllSyns) {
+            for eachItemInList(syn, allSyns) {
                 srcPp = createNewSrcPp(syn, srcMechIdx, srcMechName)
-                trgPp = tapGroup.createNewPpAttachedToSection(trgMechName, syn.sec_ref, syn.connectionPoint)
+                trgPp = tapSet.createNewPpAttachedToSection(trgMechName, syn.sec_ref, syn.connectionPoint)
                 if (!isSefwEnabled) {
                     netCon = new NetCon(srcPp, trgPp)
                     syn.changeStructure(srcPp, netCon, trgPp)
@@ -15739,52 +15726,32 @@ begintemplate ReducedSynGroup
                 sefwPp.setSeed(seed)
             }
         } else {
-            for eachItemInList(syn, smAllSyns) {
-                sngPp = tapGroup.createNewPpAttachedToSection(sngMechName, syn.sec_ref, syn.connectionPoint)
+            for eachItemInList(syn, allSyns) {
+                sngPp = tapSet.createNewPpAttachedToSection(sngMechName, syn.sec_ref, syn.connectionPoint)
                 syn.changeStructure(sngPp)
             }
         }
     }
     
-    // Keep in sync with SynGroup.applyChangesToDirtyHomogenVars
+    // Keep in sync with SynSet.applyChangesToDirtyHomogenVars
     proc initAllHomogenVars() { local is3Or1PartInSynStruc, srcMechIdx, trgMechIdx, sngMechIdx
         is3Or1PartInSynStruc = $1
         srcMechIdx = $2
         trgMechIdx = $3
         sngMechIdx = $4
         if (is3Or1PartInSynStruc) {
-            initHomogenVars(enumSynCompIdxs.srcPp, srcMechIdx, 0)
-            initHomogenVars(enumSynCompIdxs.netCon, 0, -1)
-            initHomogenVars(enumSynCompIdxs.trgPp, trgMechIdx, 1)
+            initHomogenVars(enumSynCompIdxs.srcPp, srcMechIdx, enumSynPpRoles.srcPp)
+            initHomogenVars(enumSynCompIdxs.netCon, utils4FakeMech4SynNetCon.mechIdx, enumSynPpRoles.netCon)
+            initHomogenVars(enumSynCompIdxs.trgPp, trgMechIdx, enumSynPpRoles.trgPp)
         } else {
-            initHomogenVars(enumSynCompIdxs.sngPp, sngMechIdx, 2)
+            initHomogenVars(enumSynCompIdxs.sngPp, sngMechIdx, enumSynPpRoles.sngPp)
         }
-    }
-    
-    // Keep in sync with SynGroup.applyInhomogeneityIter
-    iterator applyInhomogeneityIter() { local synIdx localobj distFuncHelper, nil, prevSec_ref, syn
-        distFuncHelper = $o2
-        
-        distFuncHelper.onJustBeforeFirstSection()
-        {
-            prevSec_ref = nil
-            for synIdx = 0, smAllSyns.count() - 1 {
-                syn = smAllSyns.o(synIdx)
-                if (syn.sec_ref != prevSec_ref) {
-                    distFuncHelper.onJustBeforeNewSection()
-                }
-                $o1 = syn
-                iterator_statement
-                prevSec_ref = syn.sec_ref
-            }
-        }
-        distFuncHelper.onJustAfterLastSection()
     }
     
     // All next staff is private
     
     
-    // Keep in sync with SynGroup.createNewSrcPpButTryToInherit
+    // Keep in sync with SynSet.createNewSrcPpButTryToInherit
     obfunc createNewSrcPp() { local mechIdx, doesSrcPpRequireSection localobj syn, mechType, pp
         strdef mechName
         
@@ -15801,30 +15768,29 @@ begintemplate ReducedSynGroup
             mechType.make(pp)   // Not located in any section
             return pp
         } else {
-            return tapGroup.createNewPpAttachedToSection(mechName, syn.sec_ref, syn.connectionPoint)
+            return tapSet.createNewPpAttachedToSection(mechName, syn.sec_ref, syn.connectionPoint)
         }
     }
     
-    // Keep in sync with SynGroup.ifMechDirtyThenApplyHomogenChanges
-    proc initHomogenVars() { local compIdx, mechIdx, enumPpRole, isPPorNC, maxVarType, varType, varTypeIdx localobj comp, syn, nil, sefwPpOrNil, sefwNetConOrNil, ppOrNetCon, compMechStd
+    // Keep in sync with SynSet.ifMechDirtyThenApplyHomogenChanges
+    proc initHomogenVars() { local compIdx, mechIdx, enumPpRole, isPPorNC, maxVarType, varType, varTypeIdx localobj comp, syn, sefwPpOrNil, sefwNetConOrNil, ppOrNetCon, compMechStd, nil
         
         compIdx = $1
         mechIdx = $2
         enumPpRole = $3
         
-        comp = smAllComps.o(compIdx)
+        comp = allComps.o(compIdx)
         
         isPPorNC = (compIdx != enumSynCompIdxs.netCon)
         
-        for eachItemInList(syn, smAllSyns) {
+        for eachItemInList(syn, allSyns) {
             sefwPpOrNil = nil
             sefwNetConOrNil = nil
+            ppOrNetCon = syn.getPointProcess(enumPpRole)
             if (isPPorNC) {
-                ppOrNetCon = syn.getPointProcess(enumPpRole)
                 maxVarType = 3
             } else {
-                ppOrNetCon = syn.netCon
-                if (seh.isSefwEnabled()) {
+                if (isSefwEnabled) {
                     sefwPpOrNil = syn.sefwPp
                     sefwNetConOrNil = syn.sefwNetCon
                 }
@@ -15833,16 +15799,15 @@ begintemplate ReducedSynGroup
             for varType = 1, maxVarType {   // 1: "PARAMETER", 2: "ASSIGNED", 3: "STATE"
                 varTypeIdx = varType - 1
                 compMechStd = comp.mechStds[mechIdx][varTypeIdx]
-                if (compMechStd == nil) {
-                    continue
+                if (compMechStd != nil) {
+                    // Here we assign NaN values to inhom vars, but they will be overwritten shortly downstream
+                    compMechStd.out(ppOrNetCon)
                 }
-                // Here we assign NaN values to inhom vars, but they will be overwritten shortly downstream
-                compMechStd.out(ppOrNetCon)
             }
             if (sefwPpOrNil != nil) {
                 if (compMechStd != nil) {
                     // The same comment regarding NaN values
-                    sefwPpOrNil.release_probability = compMechStd.get(seh.metaVarName)
+                    sefwPpOrNil.release_probability = compMechStd.get(utils4FakeMech4SynNetCon.metaVarName)
                 } else {
                     // We get here when all NetCon params are default (so its mechStd is nil), but stochasticity is enabled
                     sefwPpOrNil.release_probability = 1
@@ -15858,23 +15823,39 @@ begintemplate ReducedSynGroup
         }
     }
     
-endtemplate ReducedSynGroup
+endtemplate ReducedSynSet
 
-objref synGroup
-synGroup = new ReducedSynGroup()
+smAllSynSets = new List()
 
-smAllComps = new List()
+objref _allSyns, _spineNecks_ref, _spineHeads_ref, _diamsVec, _spineNeckDiamCache, _synSet
 
-{ smAllComps.append(new ReducedSynPPComp("Source PP", 0, 8)) }    // NetStim
-{ smAllComps.append(new ReducedSynNCComp()) }
-{ smAllComps.append(new ReducedSynPPComp("Target PP", 1, 3)) }    // Exp2Syn
-{ smAllComps.append(new ReducedSynPPComp("Single PP", 2, -1)) }
+//////////////////// End of templates for synapses ///////////////////////
 
-//////////////////// End of synaptic compartments ////////////////////////
+//////////////////// Start of syn set #1: Locations //////////////////////
 
-//////////////////// Start of homogen synaptic vars //////////////////////
+_allSyns = new List()
+for idx = 0, 586 {
+    NeuronNanoBranch[idx].spine_head _allSyns.append(new Synapse(new SectionRef(), 0.5))
+}
 
-proc addHomogenVarsInfoToSourcePPSynComp() { localobj comp, mechStd
+//////////////////// End of syn set #1: Locations ////////////////////////
+
+//////////////////// Start of syn set #1: Compartments ///////////////////
+
+_allComps = new List()
+{ _allComps.append(new ReducedPPComp(0, "Source PP", enumSynPpRoles.srcPp, 8)) }    // NetStim
+{ _allComps.append(new ReducedFakeComp(enumSynPpRoles.netCon, 1)) }
+{ _allComps.append(new ReducedPPComp(0, "Target PP", enumSynPpRoles.trgPp, 3)) }    // Exp2Syn
+{ _allComps.append(new ReducedPPComp(0, "Single PP", enumSynPpRoles.sngPp, -1)) }
+
+//////////////////// End of syn set #1: Compartments /////////////////////
+
+//////////////////// Start of syn set #1: Homogen vars ///////////////////
+
+isMinRPlt1 = 0
+
+// "Source PP"
+proc _addHomogenVarsInfoToSynComp1() { localobj comp, mechStd
     comp = $o1
     
     mechStd = new MechanismStandard("NetStim", 1)    // PARAMETER
@@ -15885,45 +15866,682 @@ proc addHomogenVarsInfoToSourcePPSynComp() { localobj comp, mechStd
     comp.mechStds[8][0] = mechStd
 }
 
-proc addHomogenVarsInfoToNetConSynComp() { localobj comp, mechStd
+// "NetCon"
+proc _addHomogenVarsInfoToSynComp2() { localobj comp, mechStd
     comp = $o1
     
     mechStd = new FakeMechanismStandardForNetCon()
     mechStd.set("threshold", 0.0)    // (mV)
     mechStd.set("delay", 0.0)    // (ms)
     mechStd.set("weight", 0.0002)
-    comp.mechStds[0][0] = mechStd
+    comp.mechStds[1][0] = mechStd
 }
 
-proc addHomogenVarsInfoToTargetPPSynComp() { localobj comp, mechStd
+// "Target PP"
+proc _addHomogenVarsInfoToSynComp3() { localobj comp, mechStd
     comp = $o1
 }
 
-proc addHomogenVarsInfoToSinglePPSynComp() { localobj comp, mechStd
+// "Single PP"
+proc _addHomogenVarsInfoToSynComp4() { localobj comp, mechStd
     comp = $o1
 }
 
-comp = smAllComps.o(0)
-addHomogenVarsInfoToSourcePPSynComp(comp)
+_comp = _allComps.o(0)
+_addHomogenVarsInfoToSynComp1(_comp)    // "Source PP"
 
-comp = smAllComps.o(1)
-addHomogenVarsInfoToNetConSynComp(comp)
+_comp = _allComps.o(1)
+_addHomogenVarsInfoToSynComp2(_comp)    // "NetCon"
 
-comp = smAllComps.o(2)
-addHomogenVarsInfoToTargetPPSynComp(comp)
+_comp = _allComps.o(2)
+_addHomogenVarsInfoToSynComp3(_comp)    // "Target PP"
 
-comp = smAllComps.o(3)
-addHomogenVarsInfoToSinglePPSynComp(comp)
+_comp = _allComps.o(3)
+_addHomogenVarsInfoToSynComp4(_comp)    // "Single PP"
 
+//////////////////// End of syn set #1: Homogen vars /////////////////////
 
-//////////////////// End of homogen synaptic vars ////////////////////////
+//////////////////// Start of syn set #1: "Import & Edit" measures ///////
 
-//////////////////// Start of synapses finale ////////////////////////////
+_spineNecks_ref = new List()
+for idx = 0, 586 {
+    NeuronNanoBranch[idx].spine_neck _spineNecks_ref.append(new SectionRef())
+}
 
-{ synGroup.createSynStruc(1, 8, "NetStim", "Exp2Syn", "") }
-{ synGroup.initAllHomogenVars(1, 8, 3, -1) }
+_spineHeads_ref = new List()
+for idx = 0, 586 {
+    NeuronNanoBranch[idx].spine_head _spineHeads_ref.append(new SectionRef())
+}
 
-//////////////////// End of synapses finale //////////////////////////////
+_diamsVec = new Vector(587)
+_diamsVec.x(0) = 0.5998328328132629
+_diamsVec.x(1) = 0.20000000298023224
+_diamsVec.x(2) = 0.3370431065559387
+_diamsVec.x(3) = 0.20000000298023224
+_diamsVec.x(4) = 0.2000000029802322
+_diamsVec.x(5) = 0.20000000298023224
+_diamsVec.x(6) = 0.20000000298023224
+_diamsVec.x(7) = 0.22914142906665802
+_diamsVec.x(8) = 0.20000000298023224
+_diamsVec.x(9) = 0.2707114517688751
+_diamsVec.x(10) = 0.5375431180000305
+_diamsVec.x(11) = 0.9134916663169861
+_diamsVec.x(12) = 1.3730933666229248
+_diamsVec.x(13) = 0.4593167006969452
+_diamsVec.x(14) = 2.774820327758789
+_diamsVec.x(15) = 0.20000000298023224
+_diamsVec.x(16) = 1.4687118530273438
+_diamsVec.x(17) = 2.7743237018585205
+_diamsVec.x(18) = 0.20000000298023224
+_diamsVec.x(19) = 0.6716578006744385
+_diamsVec.x(20) = 0.997184157371521
+_diamsVec.x(21) = 1.0232311487197876
+_diamsVec.x(22) = 1.3468332290649414
+_diamsVec.x(23) = 0.20000000298023224
+_diamsVec.x(24) = 2.775923013687134
+_diamsVec.x(25) = 0.2000000029802322
+_diamsVec.x(26) = 1.869603753089905
+_diamsVec.x(27) = 0.20000000298023224
+_diamsVec.x(28) = 0.20000000298023224
+_diamsVec.x(29) = 0.7112467885017395
+_diamsVec.x(30) = 0.6698100566864014
+_diamsVec.x(31) = 0.20000000298023224
+_diamsVec.x(32) = 0.45158812403678894
+_diamsVec.x(33) = 0.6918869018554688
+_diamsVec.x(34) = 0.22408050298690796
+_diamsVec.x(35) = 0.20000000298023224
+_diamsVec.x(36) = 1.3261827230453491
+_diamsVec.x(37) = 0.20000000298023224
+_diamsVec.x(38) = 0.20000000298023227
+_diamsVec.x(39) = 0.815352201461792
+_diamsVec.x(40) = 0.20000000298023224
+_diamsVec.x(41) = 0.2030693143606186
+_diamsVec.x(42) = 0.23887944221496582
+_diamsVec.x(43) = 0.20000000298023224
+_diamsVec.x(44) = 0.20000000298023224
+_diamsVec.x(45) = 1.0363398790359497
+_diamsVec.x(46) = 1.1590368747711182
+_diamsVec.x(47) = 1.939188003540039
+_diamsVec.x(48) = 0.20000000298023224
+_diamsVec.x(49) = 0.8856546282768248
+_diamsVec.x(50) = 0.49777084589004517
+_diamsVec.x(51) = 2.1808886528015137
+_diamsVec.x(52) = 1.5942242145538332
+_diamsVec.x(53) = 2.1952693462371826
+_diamsVec.x(54) = 0.7021174430847168
+_diamsVec.x(55) = 0.5599960684776306
+_diamsVec.x(56) = 0.20000000298023224
+_diamsVec.x(57) = 0.20000000298023224
+_diamsVec.x(58) = 1.356881856918335
+_diamsVec.x(59) = 1.0816824436187744
+_diamsVec.x(60) = 1.1076455116271973
+_diamsVec.x(61) = 0.47067031264305115
+_diamsVec.x(62) = 1.535430669784546
+_diamsVec.x(63) = 1.4826544523239134
+_diamsVec.x(64) = 0.41866788268089294
+_diamsVec.x(65) = 1.8547570705413818
+_diamsVec.x(66) = 0.9279282689094543
+_diamsVec.x(67) = 1.375834584236145
+_diamsVec.x(68) = 1.3504106998443604
+_diamsVec.x(69) = 0.20000000298023224
+_diamsVec.x(70) = 0.20000000298023224
+_diamsVec.x(71) = 0.8864040374755859
+_diamsVec.x(72) = 0.4770403206348419
+_diamsVec.x(73) = 0.20000000298023224
+_diamsVec.x(74) = 2.3879306316375732
+_diamsVec.x(75) = 1.3562297821044922
+_diamsVec.x(76) = 1.6660603284835815
+_diamsVec.x(77) = 1.2664936780929565
+_diamsVec.x(78) = 1.0715131759643555
+_diamsVec.x(79) = 0.20000000298023224
+_diamsVec.x(80) = 0.20000000298023224
+_diamsVec.x(81) = 1.6317763328552246
+_diamsVec.x(82) = 1.2596237659454346
+_diamsVec.x(83) = 0.9210343360900879
+_diamsVec.x(84) = 1.2141172885894775
+_diamsVec.x(85) = 2.05808162689209
+_diamsVec.x(86) = 0.3451915681362152
+_diamsVec.x(87) = 0.20000000298023224
+_diamsVec.x(88) = 0.20000000298023224
+_diamsVec.x(89) = 0.20000000298023224
+_diamsVec.x(90) = 0.20000000298023224
+_diamsVec.x(91) = 1.4841846227645874
+_diamsVec.x(92) = 0.20000000298023224
+_diamsVec.x(93) = 0.20000000298023224
+_diamsVec.x(94) = 0.20000000298023224
+_diamsVec.x(95) = 1.1239241361618042
+_diamsVec.x(96) = 2.5058841705322266
+_diamsVec.x(97) = 0.3785880208015442
+_diamsVec.x(98) = 0.2149340808391571
+_diamsVec.x(99) = 0.20000000298023224
+_diamsVec.x(100) = 1.2225768566131592
+_diamsVec.x(101) = 0.20000000298023224
+_diamsVec.x(102) = 2.1068804264068604
+_diamsVec.x(103) = 0.3495144546031952
+_diamsVec.x(104) = 0.3364717364311218
+_diamsVec.x(105) = 1.4971235990524292
+_diamsVec.x(106) = 0.20000000298023224
+_diamsVec.x(107) = 0.20000000298023224
+_diamsVec.x(108) = 0.8458961248397828
+_diamsVec.x(109) = 1.1570234298706055
+_diamsVec.x(110) = 1.5479880571365356
+_diamsVec.x(111) = 0.20000000298023224
+_diamsVec.x(112) = 0.20000000298023224
+_diamsVec.x(113) = 1.202255368232727
+_diamsVec.x(114) = 0.20000000298023224
+_diamsVec.x(115) = 1.899930477142334
+_diamsVec.x(116) = 0.20000000298023227
+_diamsVec.x(117) = 2.471710681915283
+_diamsVec.x(118) = 2.175797462463379
+_diamsVec.x(119) = 1.0931073427200317
+_diamsVec.x(120) = 1.4367586374282835
+_diamsVec.x(121) = 1.2072750329971313
+_diamsVec.x(122) = 0.20000000298023224
+_diamsVec.x(123) = 0.20000000298023224
+_diamsVec.x(124) = 0.23980912566184998
+_diamsVec.x(125) = 0.20000000298023224
+_diamsVec.x(126) = 0.20000000298023224
+_diamsVec.x(127) = 0.7617751359939575
+_diamsVec.x(128) = 0.6013531684875488
+_diamsVec.x(129) = 0.5998049974441528
+_diamsVec.x(130) = 1.2044240236282349
+_diamsVec.x(131) = 0.20000000298023224
+_diamsVec.x(132) = 2.079195261001587
+_diamsVec.x(133) = 0.20000000298023224
+_diamsVec.x(134) = 0.2871569097042084
+_diamsVec.x(135) = 0.20000000298023227
+_diamsVec.x(136) = 0.9237925410270691
+_diamsVec.x(137) = 1.2751036882400513
+_diamsVec.x(138) = 0.20000000298023224
+_diamsVec.x(139) = 0.20000000298023224
+_diamsVec.x(140) = 0.20000000298023224
+_diamsVec.x(141) = 0.20000000298023224
+_diamsVec.x(142) = 0.20000000298023224
+_diamsVec.x(143) = 1.762685298919678
+_diamsVec.x(144) = 0.9847708940505981
+_diamsVec.x(145) = 0.20000000298023224
+_diamsVec.x(146) = 1.3549611568450928
+_diamsVec.x(147) = 0.20000000298023224
+_diamsVec.x(148) = 0.22284720838069916
+_diamsVec.x(149) = 0.20000000298023224
+_diamsVec.x(150) = 0.20000000298023224
+_diamsVec.x(151) = 1.4618518352508545
+_diamsVec.x(152) = 0.20000000298023224
+_diamsVec.x(153) = 2.4965970516204834
+_diamsVec.x(154) = 0.20000000298023224
+_diamsVec.x(155) = 0.3467461168766022
+_diamsVec.x(156) = 0.5310003757476807
+_diamsVec.x(157) = 0.6401166319847107
+_diamsVec.x(158) = 0.20000000298023224
+_diamsVec.x(159) = 0.20000000298023224
+_diamsVec.x(160) = 1.5563274621963499
+_diamsVec.x(161) = 0.20000000298023227
+_diamsVec.x(162) = 0.20000000298023224
+_diamsVec.x(163) = 0.20000000298023224
+_diamsVec.x(164) = 0.20000000298023224
+_diamsVec.x(165) = 1.3886219263076782
+_diamsVec.x(166) = 0.8559838533401489
+_diamsVec.x(167) = 0.7143664360046387
+_diamsVec.x(168) = 0.749268114566803
+_diamsVec.x(169) = 1.812878966331482
+_diamsVec.x(170) = 0.20000000298023227
+_diamsVec.x(171) = 0.20000000298023224
+_diamsVec.x(172) = 0.8063414096832275
+_diamsVec.x(173) = 0.20000000298023224
+_diamsVec.x(174) = 2.3323700428009033
+_diamsVec.x(175) = 1.5018110275268555
+_diamsVec.x(176) = 0.20000000298023224
+_diamsVec.x(177) = 1.6081722974777222
+_diamsVec.x(178) = 0.20000000298023224
+_diamsVec.x(179) = 0.20000000298023224
+_diamsVec.x(180) = 1.7841144800186157
+_diamsVec.x(181) = 0.8279811143875122
+_diamsVec.x(182) = 0.6484339833259583
+_diamsVec.x(183) = 0.20000000298023224
+_diamsVec.x(184) = 0.6941420435905457
+_diamsVec.x(185) = 0.20000000298023224
+_diamsVec.x(186) = 0.20000000298023224
+_diamsVec.x(187) = 1.7402496337890625
+_diamsVec.x(188) = 0.20000000298023224
+_diamsVec.x(189) = 0.6101055145263672
+_diamsVec.x(190) = 0.20000000298023224
+_diamsVec.x(191) = 0.20000000298023224
+_diamsVec.x(192) = 0.20000000298023224
+_diamsVec.x(193) = 1.5454659461975098
+_diamsVec.x(194) = 1.0716696977615356
+_diamsVec.x(195) = 0.8614132404327393
+_diamsVec.x(196) = 1.3400833606719968
+_diamsVec.x(197) = 0.2352086752653122
+_diamsVec.x(198) = 0.20000000298023224
+_diamsVec.x(199) = 0.538065493106842
+_diamsVec.x(200) = 0.2000000029802322
+_diamsVec.x(201) = 0.5406773090362549
+_diamsVec.x(202) = 0.20000000298023224
+_diamsVec.x(203) = 0.20000000298023224
+_diamsVec.x(204) = 0.34604376554489136
+_diamsVec.x(205) = 0.20000000298023224
+_diamsVec.x(206) = 0.20000000298023224
+_diamsVec.x(207) = 0.20000000298023224
+_diamsVec.x(208) = 0.20000000298023227
+_diamsVec.x(209) = 0.20000000298023224
+_diamsVec.x(210) = 1.1555979251861572
+_diamsVec.x(211) = 0.34062856435775757
+_diamsVec.x(212) = 0.20000000298023224
+_diamsVec.x(213) = 0.9085860848426819
+_diamsVec.x(214) = 2.3491604328155518
+_diamsVec.x(215) = 2.6930994987487793
+_diamsVec.x(216) = 0.20000000298023224
+_diamsVec.x(217) = 0.8287064433097839
+_diamsVec.x(218) = 0.20000000298023224
+_diamsVec.x(219) = 0.20000000298023224
+_diamsVec.x(220) = 0.20000000298023224
+_diamsVec.x(221) = 0.20000000298023224
+_diamsVec.x(222) = 0.7071264386177063
+_diamsVec.x(223) = 0.20000000298023224
+_diamsVec.x(224) = 0.20000000298023224
+_diamsVec.x(225) = 1.0158075094223022
+_diamsVec.x(226) = 1.2240142822265625
+_diamsVec.x(227) = 0.2000000029802322
+_diamsVec.x(228) = 0.42377912998199463
+_diamsVec.x(229) = 0.5313841104507446
+_diamsVec.x(230) = 0.48937073349952703
+_diamsVec.x(231) = 0.3143557012081146
+_diamsVec.x(232) = 0.20000000298023224
+_diamsVec.x(233) = 0.20000000298023224
+_diamsVec.x(234) = 0.20000000298023224
+_diamsVec.x(235) = 0.8302310109138489
+_diamsVec.x(236) = 0.20000000298023224
+_diamsVec.x(237) = 0.25693756341934204
+_diamsVec.x(238) = 1.7503641843795776
+_diamsVec.x(239) = 0.20000000298023224
+_diamsVec.x(240) = 0.7143394351005554
+_diamsVec.x(241) = 1.474421739578247
+_diamsVec.x(242) = 0.20000000298023224
+_diamsVec.x(243) = 0.20000000298023224
+_diamsVec.x(244) = 0.20000000298023224
+_diamsVec.x(245) = 2.724769353866577
+_diamsVec.x(246) = 0.6430873870849609
+_diamsVec.x(247) = 0.20000000298023224
+_diamsVec.x(248) = 0.6286566257476807
+_diamsVec.x(249) = 1.1243467330932617
+_diamsVec.x(250) = 0.20000000298023224
+_diamsVec.x(251) = 0.20000000298023224
+_diamsVec.x(252) = 1.5441404581069946
+_diamsVec.x(253) = 0.20000000298023224
+_diamsVec.x(254) = 0.20000000298023224
+_diamsVec.x(255) = 0.20000000298023224
+_diamsVec.x(256) = 0.20000000298023224
+_diamsVec.x(257) = 0.20000000298023224
+_diamsVec.x(258) = 0.20000000298023224
+_diamsVec.x(259) = 0.20000000298023224
+_diamsVec.x(260) = 0.7235731482505798
+_diamsVec.x(261) = 0.20000000298023224
+_diamsVec.x(262) = 0.6772839426994324
+_diamsVec.x(263) = 0.20000000298023224
+_diamsVec.x(264) = 0.20000000298023224
+_diamsVec.x(265) = 1.5035483837127686
+_diamsVec.x(266) = 1.3640109300613403
+_diamsVec.x(267) = 3.054872512817383
+_diamsVec.x(268) = 0.20000000298023224
+_diamsVec.x(269) = 1.0670008659362793
+_diamsVec.x(270) = 1.2550619840621948
+_diamsVec.x(271) = 0.20000000298023224
+_diamsVec.x(272) = 0.600068986415863
+_diamsVec.x(273) = 0.20000000298023227
+_diamsVec.x(274) = 0.868483304977417
+_diamsVec.x(275) = 0.20000000298023224
+_diamsVec.x(276) = 0.20000000298023224
+_diamsVec.x(277) = 0.20000000298023224
+_diamsVec.x(278) = 0.3286517560482025
+_diamsVec.x(279) = 2.021047592163086
+_diamsVec.x(280) = 1.0794709920883179
+_diamsVec.x(281) = 0.20000000298023224
+_diamsVec.x(282) = 0.4610225856304169
+_diamsVec.x(283) = 1.3464871644973755
+_diamsVec.x(284) = 1.2166155576705933
+_diamsVec.x(285) = 0.20000000298023224
+_diamsVec.x(286) = 0.9439290761947632
+_diamsVec.x(287) = 0.20000000298023224
+_diamsVec.x(288) = 3.007624626159668
+_diamsVec.x(289) = 1.9794031381607056
+_diamsVec.x(290) = 1.7139769792556763
+_diamsVec.x(291) = 0.4305773973464966
+_diamsVec.x(292) = 0.6324878931045532
+_diamsVec.x(293) = 0.2381511777639389
+_diamsVec.x(294) = 0.20000000298023224
+_diamsVec.x(295) = 0.6841649413108826
+_diamsVec.x(296) = 0.9217610359191895
+_diamsVec.x(297) = 0.9257846474647522
+_diamsVec.x(298) = 0.7881413698196411
+_diamsVec.x(299) = 0.9641954898834229
+_diamsVec.x(300) = 1.536446452140808
+_diamsVec.x(301) = 0.20000000298023224
+_diamsVec.x(302) = 0.8286504745483398
+_diamsVec.x(303) = 1.4571764469146729
+_diamsVec.x(304) = 0.24381448328495026
+_diamsVec.x(305) = 1.9802160263061523
+_diamsVec.x(306) = 0.620527446269989
+_diamsVec.x(307) = 1.1139228343963623
+_diamsVec.x(308) = 0.20000000298023224
+_diamsVec.x(309) = 2.5007448196411133
+_diamsVec.x(310) = 0.20000000298023224
+_diamsVec.x(311) = 0.20000000298023224
+_diamsVec.x(312) = 0.20000000298023224
+_diamsVec.x(313) = 0.20000000298023224
+_diamsVec.x(314) = 0.20000000298023224
+_diamsVec.x(315) = 0.20159520208835602
+_diamsVec.x(316) = 0.20000000298023224
+_diamsVec.x(317) = 0.20000000298023224
+_diamsVec.x(318) = 0.37474197149276733
+_diamsVec.x(319) = 0.2000000029802322
+_diamsVec.x(320) = 0.980735182762146
+_diamsVec.x(321) = 0.4471276402473449
+_diamsVec.x(322) = 0.8322285413742064
+_diamsVec.x(323) = 0.7325976490974426
+_diamsVec.x(324) = 1.1270610094070435
+_diamsVec.x(325) = 0.20000000298023224
+_diamsVec.x(326) = 0.40339723229408264
+_diamsVec.x(327) = 1.9040271043777466
+_diamsVec.x(328) = 0.97160404920578
+_diamsVec.x(329) = 0.20000000298023224
+_diamsVec.x(330) = 0.20000000298023224
+_diamsVec.x(331) = 0.6145263910293579
+_diamsVec.x(332) = 0.9556686878204346
+_diamsVec.x(333) = 1.119118332862854
+_diamsVec.x(334) = 1.167224645614624
+_diamsVec.x(335) = 0.8957539200782775
+_diamsVec.x(336) = 0.26874327659606934
+_diamsVec.x(337) = 0.20000000298023224
+_diamsVec.x(338) = 0.20000000298023224
+_diamsVec.x(339) = 0.2434375286102295
+_diamsVec.x(340) = 0.5526689291000366
+_diamsVec.x(341) = 1.0484442710876465
+_diamsVec.x(342) = 0.20000000298023224
+_diamsVec.x(343) = 0.20000000298023224
+_diamsVec.x(344) = 0.20000000298023227
+_diamsVec.x(345) = 0.5982775688171387
+_diamsVec.x(346) = 1.1174827814102173
+_diamsVec.x(347) = 0.20000000298023224
+_diamsVec.x(348) = 0.40159693360328674
+_diamsVec.x(349) = 2.0167126655578613
+_diamsVec.x(350) = 0.20000000298023224
+_diamsVec.x(351) = 0.20000000298023224
+_diamsVec.x(352) = 0.6148996949195862
+_diamsVec.x(353) = 1.3478294610977173
+_diamsVec.x(354) = 1.167563557624817
+_diamsVec.x(355) = 0.20000000298023224
+_diamsVec.x(356) = 0.20000000298023224
+_diamsVec.x(357) = 3.5616025924682617
+_diamsVec.x(358) = 0.20000000298023224
+_diamsVec.x(359) = 1.6208189725875854
+_diamsVec.x(360) = 0.3754386305809021
+_diamsVec.x(361) = 0.20000000298023224
+_diamsVec.x(362) = 0.20946066081523895
+_diamsVec.x(363) = 0.7467241287231445
+_diamsVec.x(364) = 0.20000000298023224
+_diamsVec.x(365) = 0.20000000298023224
+_diamsVec.x(366) = 2.383267402648926
+_diamsVec.x(367) = 0.6729821562767029
+_diamsVec.x(368) = 0.2000000029802322
+_diamsVec.x(369) = 1.341681957244873
+_diamsVec.x(370) = 0.7208575010299683
+_diamsVec.x(371) = 0.4072022736072541
+_diamsVec.x(372) = 2.1486008167266846
+_diamsVec.x(373) = 0.20000000298023224
+_diamsVec.x(374) = 0.21375344693660736
+_diamsVec.x(375) = 1.6790945529937746
+_diamsVec.x(376) = 0.20000000298023224
+_diamsVec.x(377) = 0.20000000298023224
+_diamsVec.x(378) = 1.7527724504470825
+_diamsVec.x(379) = 0.9711263179779053
+_diamsVec.x(380) = 0.20000000298023224
+_diamsVec.x(381) = 2.699594736099243
+_diamsVec.x(382) = 1.6247481107711792
+_diamsVec.x(383) = 0.3649182915687561
+_diamsVec.x(384) = 0.24539005756378174
+_diamsVec.x(385) = 1.5824975967407227
+_diamsVec.x(386) = 1.5337591171264648
+_diamsVec.x(387) = 0.20000000298023224
+_diamsVec.x(388) = 0.20000000298023224
+_diamsVec.x(389) = 0.7591888308525084
+_diamsVec.x(390) = 1.6554659605026245
+_diamsVec.x(391) = 0.20000000298023224
+_diamsVec.x(392) = 0.20000000298023224
+_diamsVec.x(393) = 0.20000000298023224
+_diamsVec.x(394) = 0.3922339677810669
+_diamsVec.x(395) = 0.6090022921562195
+_diamsVec.x(396) = 2.620290756225586
+_diamsVec.x(397) = 0.20000000298023224
+_diamsVec.x(398) = 0.41901272535324097
+_diamsVec.x(399) = 1.9516149759292603
+_diamsVec.x(400) = 2.0201213359832764
+_diamsVec.x(401) = 0.20000000298023224
+_diamsVec.x(402) = 0.2000000029802322
+_diamsVec.x(403) = 0.20000000298023224
+_diamsVec.x(404) = 1.6782585382461548
+_diamsVec.x(405) = 0.20000000298023224
+_diamsVec.x(406) = 0.20000000298023224
+_diamsVec.x(407) = 0.20000000298023224
+_diamsVec.x(408) = 0.348015159368515
+_diamsVec.x(409) = 1.0564688444137573
+_diamsVec.x(410) = 1.4208652973175049
+_diamsVec.x(411) = 0.45009419322013855
+_diamsVec.x(412) = 0.7163483500480652
+_diamsVec.x(413) = 0.20000000298023224
+_diamsVec.x(414) = 0.20000000298023224
+_diamsVec.x(415) = 1.867584228515625
+_diamsVec.x(416) = 0.24910183250904083
+_diamsVec.x(417) = 0.20000000298023224
+_diamsVec.x(418) = 0.20000000298023224
+_diamsVec.x(419) = 1.8190141916275024
+_diamsVec.x(420) = 0.20000000298023224
+_diamsVec.x(421) = 1.3798950910568237
+_diamsVec.x(422) = 1.4083126783370972
+_diamsVec.x(423) = 1.598442554473877
+_diamsVec.x(424) = 0.4955446422100067
+_diamsVec.x(425) = 0.20000000298023224
+_diamsVec.x(426) = 1.1844708919525146
+_diamsVec.x(427) = 0.20000000298023224
+_diamsVec.x(428) = 0.20000000298023224
+_diamsVec.x(429) = 0.20000000298023224
+_diamsVec.x(430) = 1.241585612297058
+_diamsVec.x(431) = 0.21096739172935486
+_diamsVec.x(432) = 0.7864615321159363
+_diamsVec.x(433) = 0.7593777775764465
+_diamsVec.x(434) = 0.37711769342422485
+_diamsVec.x(435) = 0.475063681602478
+_diamsVec.x(436) = 2.104909658432007
+_diamsVec.x(437) = 0.20000000298023224
+_diamsVec.x(438) = 0.20000000298023224
+_diamsVec.x(439) = 0.23470377922058105
+_diamsVec.x(440) = 0.20000000298023224
+_diamsVec.x(441) = 0.20000000298023224
+_diamsVec.x(442) = 0.6759292483329773
+_diamsVec.x(443) = 0.20000000298023224
+_diamsVec.x(444) = 0.20000000298023224
+_diamsVec.x(445) = 0.6640500426292419
+_diamsVec.x(446) = 2.998784065246582
+_diamsVec.x(447) = 1.7163325548171997
+_diamsVec.x(448) = 0.4934205710887909
+_diamsVec.x(449) = 0.20000000298023224
+_diamsVec.x(450) = 0.9898099899291992
+_diamsVec.x(451) = 1.4385980367660522
+_diamsVec.x(452) = 2.1909432411193848
+_diamsVec.x(453) = 2.55898118019104
+_diamsVec.x(454) = 0.3676024079322815
+_diamsVec.x(455) = 0.8592076897621155
+_diamsVec.x(456) = 1.161449670791626
+_diamsVec.x(457) = 2.3753104209899902
+_diamsVec.x(458) = 1.8165644407272339
+_diamsVec.x(459) = 0.5361351370811462
+_diamsVec.x(460) = 0.20000000298023224
+_diamsVec.x(461) = 0.8962704539299011
+_diamsVec.x(462) = 0.6196380257606506
+_diamsVec.x(463) = 0.20000000298023224
+_diamsVec.x(464) = 2.937704086303711
+_diamsVec.x(465) = 0.661534309387207
+_diamsVec.x(466) = 0.20000000298023224
+_diamsVec.x(467) = 0.20000000298023224
+_diamsVec.x(468) = 0.3003607392311096
+_diamsVec.x(469) = 0.7550299763679504
+_diamsVec.x(470) = 0.20000000298023224
+_diamsVec.x(471) = 2.0790908336639404
+_diamsVec.x(472) = 0.2991815209388733
+_diamsVec.x(473) = 0.9876279234886169
+_diamsVec.x(474) = 1.0121681690216064
+_diamsVec.x(475) = 1.8509249687194824
+_diamsVec.x(476) = 1.2478868961334229
+_diamsVec.x(477) = 0.20000000298023224
+_diamsVec.x(478) = 0.20000000298023224
+_diamsVec.x(479) = 0.4885823726654053
+_diamsVec.x(480) = 1.691028356552124
+_diamsVec.x(481) = 2.2474658489227295
+_diamsVec.x(482) = 1.382154107093811
+_diamsVec.x(483) = 1.115799903869629
+_diamsVec.x(484) = 0.822273313999176
+_diamsVec.x(485) = 0.34447336196899414
+_diamsVec.x(486) = 0.20000000298023224
+_diamsVec.x(487) = 0.20000000298023227
+_diamsVec.x(488) = 2.3350770473480225
+_diamsVec.x(489) = 1.5437737703323364
+_diamsVec.x(490) = 0.20000000298023224
+_diamsVec.x(491) = 0.851387083530426
+_diamsVec.x(492) = 1.215081810951233
+_diamsVec.x(493) = 0.3264739215373993
+_diamsVec.x(494) = 0.9088637232780457
+_diamsVec.x(495) = 1.184332013130188
+_diamsVec.x(496) = 0.4662996530532837
+_diamsVec.x(497) = 0.20000000298023224
+_diamsVec.x(498) = 1.8806354999542236
+_diamsVec.x(499) = 1.7271990776062012
+_diamsVec.x(500) = 0.20000000298023224
+_diamsVec.x(501) = 0.3470423221588135
+_diamsVec.x(502) = 0.3892088830471039
+_diamsVec.x(503) = 1.63033926486969
+_diamsVec.x(504) = 1.206526517868042
+_diamsVec.x(505) = 2.457068920135498
+_diamsVec.x(506) = 1.307034969329834
+_diamsVec.x(507) = 0.20000000298023224
+_diamsVec.x(508) = 0.20000000298023224
+_diamsVec.x(509) = 1.2617946863174438
+_diamsVec.x(510) = 0.5416202545166016
+_diamsVec.x(511) = 0.20000000298023224
+_diamsVec.x(512) = 0.21744708716869354
+_diamsVec.x(513) = 0.20000000298023224
+_diamsVec.x(514) = 1.363276481628418
+_diamsVec.x(515) = 0.9207726120948792
+_diamsVec.x(516) = 1.793261170387268
+_diamsVec.x(517) = 0.20000000298023224
+_diamsVec.x(518) = 0.20000000298023224
+_diamsVec.x(519) = 0.20000000298023224
+_diamsVec.x(520) = 0.20000000298023227
+_diamsVec.x(521) = 0.20000000298023224
+_diamsVec.x(522) = 1.7421841621398926
+_diamsVec.x(523) = 0.7184687256813049
+_diamsVec.x(524) = 0.5195719599723816
+_diamsVec.x(525) = 1.4942086935043335
+_diamsVec.x(526) = 1.4758694171905518
+_diamsVec.x(527) = 0.20000000298023224
+_diamsVec.x(528) = 0.20000000298023224
+_diamsVec.x(529) = 0.20000000298023224
+_diamsVec.x(530) = 1.0863696336746216
+_diamsVec.x(531) = 1.525838851928711
+_diamsVec.x(532) = 1.6657292842864988
+_diamsVec.x(533) = 0.20000000298023224
+_diamsVec.x(534) = 1.944466233253479
+_diamsVec.x(535) = 0.20000000298023224
+_diamsVec.x(536) = 2.7029247283935547
+_diamsVec.x(537) = 0.6803263425827026
+_diamsVec.x(538) = 0.20000000298023224
+_diamsVec.x(539) = 1.6720656156539917
+_diamsVec.x(540) = 0.20000000298023224
+_diamsVec.x(541) = 0.3625079393386841
+_diamsVec.x(542) = 0.20000000298023224
+_diamsVec.x(543) = 0.20000000298023227
+_diamsVec.x(544) = 0.41339439153671265
+_diamsVec.x(545) = 0.20000000298023224
+_diamsVec.x(546) = 1.3205591440200806
+_diamsVec.x(547) = 0.46323698759078974
+_diamsVec.x(548) = 0.20000000298023224
+_diamsVec.x(549) = 0.9657333493232727
+_diamsVec.x(550) = 0.9314523935317993
+_diamsVec.x(551) = 1.1921826601028442
+_diamsVec.x(552) = 0.20000000298023224
+_diamsVec.x(553) = 0.40130701661109924
+_diamsVec.x(554) = 0.20000000298023224
+_diamsVec.x(555) = 1.1990959644317627
+_diamsVec.x(556) = 0.5005137920379639
+_diamsVec.x(557) = 0.20000000298023224
+_diamsVec.x(558) = 0.20000000298023224
+_diamsVec.x(559) = 1.757050633430481
+_diamsVec.x(560) = 0.20472201704978943
+_diamsVec.x(561) = 0.4131565988063812
+_diamsVec.x(562) = 0.6155776381492615
+_diamsVec.x(563) = 0.20000000298023224
+_diamsVec.x(564) = 0.20000000298023224
+_diamsVec.x(565) = 0.20000000298023224
+_diamsVec.x(566) = 1.6010342836380005
+_diamsVec.x(567) = 0.20000000298023224
+_diamsVec.x(568) = 0.20000000298023224
+_diamsVec.x(569) = 0.20000000298023224
+_diamsVec.x(570) = 0.20000000298023224
+_diamsVec.x(571) = 0.32966890931129456
+_diamsVec.x(572) = 0.22599300742149353
+_diamsVec.x(573) = 1.3295892477035522
+_diamsVec.x(574) = 0.6121433973312378
+_diamsVec.x(575) = 0.6363519430160521
+_diamsVec.x(576) = 0.20000000298023224
+_diamsVec.x(577) = 3.0348734855651855
+_diamsVec.x(578) = 1.016835331916809
+_diamsVec.x(579) = 0.20000000298023224
+_diamsVec.x(580) = 0.614093542098999
+_diamsVec.x(581) = 0.3276500999927521
+_diamsVec.x(582) = 0.20000000298023224
+_diamsVec.x(583) = 0.9192761182785035
+_diamsVec.x(584) = 0.20000000298023224
+_diamsVec.x(585) = 0.20000000298023224
+_diamsVec.x(586) = 2.5401647090911865
+
+_spineNeckDiamCache = new ReducedSpineNeckDiamCache(_diamsVec)
+
+//////////////////// End of syn set #1: "Import & Edit" measures /////////
+
+//////////////////// Start of syn set #1: Main part //////////////////////
+
+_synSet = new ReducedSynSet(_allSyns, _allComps, 0, 0.5, _spineNecks_ref, _spineHeads_ref, _spineNeckDiamCache, 1, isMinRPlt1, 0)
+
+{ _synSet.createSynStruc(1, 8, "NetStim", "Exp2Syn", "") }
+{ _synSet.initAllHomogenVars(1, 8, 3, -1) }
+
+// Set #1: NetStim -> NetCon -> Exp2Syn -> Section (587 syns)
+{ smAllSynSets.append(_synSet) }
+
+//////////////////// End of syn set #1: Main part ////////////////////////
+
+//////////////////// Start of cleanup ////////////////////////////////////
+
+_comp = nil
+
+_vecOfVals = nil
+_listOfStrs = nil
+
+_allComps = nil
+
+_allGapJuncs = nil
+_sec_ref = nil
+_otherSec_ref = nil
+_selected_ref = nil
+_seedingDensityHelper = nil
+_gapJuncSet = nil
+
+_allSyns = nil
+_spineNecks_ref = nil
+_spineHeads_ref = nil
+_diamsVec = nil
+_spineNeckDiamCache = nil
+_synSet = nil
+
+//////////////////// End of cleanup //////////////////////////////////////
 
 //////////////////// Start of APCount-s //////////////////////////////////
 

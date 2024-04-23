@@ -2,40 +2,21 @@
 begintemplate SynEventsHelper
 
     public ifMetaVarThenUpdateStatus, createNewSynEventsFilterWatcherButTryToInherit, isSefwEnabled
-    public metaVarName, realMechName, realVarType, realVarName, realArrayIndex
     public isMinRPlt1
     
-    external smAllComps
-    // !! external mth      // !! circular file dependencies problem
     external mcu, enumSynCompIdxs
     external inhomAndStochLibrary
+    external utils4FakeMech4SynNetCon
     
-    metaMechIdx = -1        // Correspond to FakeMechanism*ForNetCon
-    metaVarTypeIdx = -1     //
-    strdef metaVarName      //
-    metaArrayIndex = -1     //
-    
-    strdef realMechName     // Correspond to SynEventsFilterWatcher
-    realVarType = -1        //
-    strdef realVarName      //
-    realArrayIndex = -1     //
+    objref allComps
     
     isMinRPlt1 = -1
     
     objref this
     
     
-    proc init() { local metaVarType
-        realMechName = "SynEventsFilterWatcher"     // Keep in sync with proc createNewSynEventsFilterWatcherButTryToInherit
-        realVarType = 1
-        realVarName = "release_probability"
-        realArrayIndex = 0
-        
-        metaMechIdx = 0
-        metaVarType = 1
-        metaVarTypeIdx = 0  // !! mth.convertVarTypeToVarTypeIdx(metaVarType)
-        sprint(metaVarName, "@%s", realVarName)
-        metaArrayIndex = 0
+    proc init() {
+        allComps = $o1
     }
     
     proc ifMetaVarThenUpdateStatus() { local minValue
@@ -60,18 +41,18 @@ begintemplate SynEventsHelper
         if (wasSefwPresentBefore) {
             sefwPp = syn.sefwPp
         } else {
-            _mechStd = smAllComps.o(enumSynCompIdxs.netCon).mechStds[metaMechIdx][metaVarTypeIdx]
+            _mechStd = allComps.o(enumSynCompIdxs.netCon).mechStds[utils4FakeMech4SynNetCon.metaMechIdx][utils4FakeMech4SynNetCon.metaVarTypeIdx]
             
             if (_mechStd != nil) {
                 // This equals NaN if the var was made inhomogen earlier,
                 // but we'll restore all inhomogeneities shortly downstream calling inhomAndStochLibrary.onSynStrucChange
-                release_probability = _mechStd.get(metaVarName, metaArrayIndex)
+                release_probability = _mechStd.get(utils4FakeMech4SynNetCon.metaVarName, utils4FakeMech4SynNetCon.metaArrayIndex)
             } else {
                 // We are in the exported nano HOC file, and all NetCon params are default (so its mechStd is nil)
                 release_probability = 1
             }
             
-            sefwPp = new SynEventsFilterWatcher()     // Keep the name in sync with proc init
+            sefwPp = new SynEventsFilterWatcher()     // Keep the name in sync with UtilsForFakeMechanismForNetCon ctor
             sefwPp.release_probability = release_probability
             // The "seed" will be set shortly downstream (once per rank)
         }
@@ -105,7 +86,7 @@ begintemplate SynEventsHelper
         if (isMinRPlt1) {
             return 1
         }
-        return inhomAndStochLibrary.isAnyStochVarsForSyns()     // Do not move to the IF OR for higher performance
+        return inhomAndStochLibrary.isAnyStochVarsForSynsInTheSet(this)     // Do not move to the IF OR for higher performance
     }
     
     // All next staff is private
@@ -118,6 +99,3 @@ begintemplate SynEventsHelper
     }
     
 endtemplate SynEventsHelper
-
-objref seh
-seh = new SynEventsHelper()

@@ -4,17 +4,17 @@ begintemplate SynManagerMainWidget
 
     public show, onSynLocChangedHandler, onListsFilterLevelChangedHandler, warnIfUserHasNotSelectedPPs, applyChangesToSynStrucIfNeeded, applyChangesToDirtyHomogenVarsIfNeeded, updateNumInhomVarsLabel, updateNumStochVarsLabel, dismissHandler
     
-    external smAllSyns, synGroup, smAllComps
-    external mwh, mth, mcu4t, inhomAndStochLibrary, mechsDllUtils
-    external createEmptyPanel, createElasticSpacer, getGlobalVarsHint, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, unmapIfNotNil, dismissIfNotNil, codeContractViolation
-    external enumSynCompIdxs
+    external smAllSynSets
+    external mwh, mth, mcu4t, utils4FakeMech4SynNetCon, inhomAndStochLibrary, mechsDllUtils
+    external createEmptyPanel, createElasticSpacer, getGlobalVarsHint, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, dismissIfNotNil, codeContractViolation
+    external enumSynCompIdxs, enumSynPpRoles
     external slw, smlfw, varsEditorSubWidget
     
-    objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7
+    objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7, shapeBox
     objref srcChoices, trgChoices, sngChoices
     strdef distRangeVarLabel, numInhomVarsVarLabel, numStochVarsVarLabel, synLocVarLabel
     
-    is3Or1PartInSynStruc = -1
+    objref parentWidget
     
     defSrcChoiceIdx = -1
     defTrgChoiceIdx = -1
@@ -22,40 +22,50 @@ begintemplate SynManagerMainWidget
     
     listBoxHeight = -1
     
+    synSetIdx = -1
+    objref synSet
+    is3Or1PartInSynStruc = -1
+    objref allComps
+    
     objref this
     
     
     proc init() {
-    
-        is3Or1PartInSynStruc = synGroup.is3Or1PartInSynStruc()  // 1: "Source PP -> NetCon -> Target PP -> Section", 0: "Single PP -> Section"
+        parentWidget = $o1
         
         srcChoices = new List()
         trgChoices = new List()
         sngChoices = new List()
+        
+        listBoxHeight = 100
+    }
+    
+    proc show() { local distMin, distMax localobj hBox1, hBox2, hBox3, hBox4, vBox1, vBox2, vBox3, vBox4, vBox5, vBox6, vBox7, deckSpacer
+        strdef text
+        
+        synSetIdx = $1
+        distMin = $2
+        distMax = $3
+        
+        // Just for shorter syntax within this widget
+        synSet = smAllSynSets.o(synSetIdx)
+        is3Or1PartInSynStruc = synSet.is3Or1PartInSynStruc()    // 1: "Source PP -> NetCon -> Target PP -> Section", 0: "Single PP -> Section"
+        allComps = synSet.allComps
         
         while (1) {
             // Prepare available choices for Source PP, Target PP and Single PP
             onListsFilterLevelChangedHandler(1)
             
             // Prepare default selections for Source PP, Target PP and Single PP
-            defSrcChoiceIdx = chooseDefSelItemIdx(0, srcChoices)
-            defTrgChoiceIdx = chooseDefSelItemIdx(1, trgChoices)
-            defSngChoiceIdx = chooseDefSelItemIdx(2, sngChoices)
+            defSrcChoiceIdx = chooseDefSelItemIdx(enumSynPpRoles.srcPp, srcChoices)
+            defTrgChoiceIdx = chooseDefSelItemIdx(enumSynPpRoles.trgPp, trgChoices)
+            defSngChoiceIdx = chooseDefSelItemIdx(enumSynPpRoles.sngPp, sngChoices)
             if (defSrcChoiceIdx != -1 && defTrgChoiceIdx != -1 && defSngChoiceIdx != -1) {
                 break
             }
             
             smlfw.loosenFilter()
         }
-        
-        listBoxHeight = 100
-    }
-    
-    proc show() { local distMin, distMax localobj hBox1, hBox2, hBox3, hBox4, vBox1, vBox2, vBox3, vBox4, vBox5, vBox6, vBox7, deckSpacer1
-        strdef text
-        
-        distMin = $1
-        distMax = $2
         
         mainBox = new VBox()
         mainBox.intercept(1)
@@ -70,7 +80,7 @@ begintemplate SynManagerMainWidget
             {
                 // !! how to apply a fixed (i.e. widget resize independant) width to this panel?
                 xpanel("")
-                sprint(text, "Number of synapses: %d", smAllSyns.count())
+                sprint(text, "Number of synapses in this set: %d", synSet.allSyns.count())
                 xlabel(text)
                 setDistRangeVarLabel(distMin, distMax)
                 xvarlabel(distRangeVarLabel)
@@ -88,20 +98,20 @@ begintemplate SynManagerMainWidget
                     xvarlabel(synLocVarLabel)
                     xbutton("Change", "synLocChangeHandler()")
                     xpanel()
-                    deckSpacer1 = new Deck()    // Just to fill the remaining space below in cyan
-                    deckSpacer1.intercept(1)
+                    deckSpacer = new Deck()     // Just to fill the remaining space below in cyan
+                    deckSpacer.intercept(1)
                     {
                         xpanel("")
                         xlabel("Synapse structure:")
-                        sprint(text, "%s -> %s -> %s -> Section", smAllComps.o(enumSynCompIdxs.srcPp).name, smAllComps.o(enumSynCompIdxs.netCon).name, smAllComps.o(enumSynCompIdxs.trgPp).name)
+                        sprint(text, "%s -> %s -> %s -> Section", allComps.o(enumSynCompIdxs.srcPp).name, allComps.o(enumSynCompIdxs.netCon).name, allComps.o(enumSynCompIdxs.trgPp).name)
                         xradiobutton(text, "synStrucChangedHandler(1)", is3Or1PartInSynStruc)
-                        sprint(text, "%s -> Section", smAllComps.o(enumSynCompIdxs.sngPp).name)
+                        sprint(text, "%s -> Section", allComps.o(enumSynCompIdxs.sngPp).name)
                         xradiobutton(text, "synStrucChangedHandler(0)", !is3Or1PartInSynStruc)
                         xpanel()
                     }
-                    deckSpacer1.intercept(0)
-                    deckSpacer1.flip_to(0)
-                    deckSpacer1.map()
+                    deckSpacer.intercept(0)
+                    deckSpacer.flip_to(0)
+                    deckSpacer.map()
                 }
                 vBox1.intercept(0)
                 vBox1.map()
@@ -122,7 +132,7 @@ begintemplate SynManagerMainWidget
                         vBox3.intercept(1)
                         {
                             xpanel("")
-                            sprint(text, "%s:", smAllComps.o(enumSynCompIdxs.srcPp).name)
+                            sprint(text, "%s:", allComps.o(enumSynCompIdxs.srcPp).name)
                             xlabel(text)
                             xpanel()
                             srcChoices.browser("", "s")
@@ -134,7 +144,7 @@ begintemplate SynManagerMainWidget
                         vBox4.intercept(1)
                         {
                             xpanel("")
-                            sprint(text, "%s:", smAllComps.o(enumSynCompIdxs.trgPp).name)
+                            sprint(text, "%s:", allComps.o(enumSynCompIdxs.trgPp).name)
                             xlabel(text)
                             xpanel()
                             trgChoices.browser("", "s")
@@ -158,7 +168,7 @@ begintemplate SynManagerMainWidget
                         vBox6.intercept(1)
                         {
                             xpanel("")
-                            sprint(text, "%s:", smAllComps.o(enumSynCompIdxs.sngPp).name)
+                            sprint(text, "%s:", allComps.o(enumSynCompIdxs.sngPp).name)
                             xlabel(text)
                             xpanel()
                             sngChoices.browser("", "s")
@@ -213,7 +223,7 @@ begintemplate SynManagerMainWidget
             deck7.intercept(1)
             {
                 xpanel("")
-                sprint(text, "Edit %s vars", smAllComps.o(enumSynCompIdxs.netCon).name)
+                sprint(text, "Edit %s vars", allComps.o(enumSynCompIdxs.netCon).name)
                 xbutton(text, "editNetConVars()")
                 xpanel()
                 createEmptyPanel()
@@ -225,17 +235,22 @@ begintemplate SynManagerMainWidget
             xlabel("")
             xbutton("Apply", "applyHandler()")
             xlabel("")
+            xbutton("* Show all locations", "showAllLocationsHandler()")
+            mcu4t.addHintBelowShowAllLocationsButton()
+            xlabel("")
             xbutton("Adjust lists filter (I cannot find a PP in the lists above)", "adjustListsFilterHandler()")
             xpanel()
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Manager of synapses", 60, 10, -1, -1)
+        mainBox.map("Manager of synapses", 460, 10, -1, -1)
         
         synStrucChangedHandler(is3Or1PartInSynStruc)
         selectNewSrc(defSrcChoiceIdx)
         selectNewTrg(defTrgChoiceIdx)
         selectNewSng(defSngChoiceIdx)
+        
+        showAllLocationsHandler()
     }
     
     proc onSynLocChangedHandler() { local distMin, distMax, isReviewAfterApply localobj list, pb
@@ -251,6 +266,8 @@ begintemplate SynManagerMainWidget
         // It looks like there is no way in NEURON to rebind PP-s from one section to other,
         // so we have to destroy old Target/Single PPs and create new ones
         applyHandler(1)
+        
+        showAllLocationsUpdate()
         
         if (!isReviewAfterApply) {
             return
@@ -370,18 +387,18 @@ begintemplate SynManagerMainWidget
             mwh.startIntercepting()
             {
                 if (srcChoices.selected() == -1) {
-                    mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.srcPp)
+                    mcu4t.showPleaseSelectPpMsg(allComps, enumSynCompIdxs.srcPp)
                     isOK = 0
                 }
                 if (trgChoices.selected() == -1) {
-                    mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.trgPp)
+                    mcu4t.showPleaseSelectPpMsg(allComps, enumSynCompIdxs.trgPp)
                     isOK = 0
                 }
             }
             mwh.endIntercepting()
         } else {
             if (sngChoices.selected() == -1) {
-                mcu4t.showPleaseSelectPpMsg(smAllComps, enumSynCompIdxs.sngPp)
+                mcu4t.showPleaseSelectPpMsg(allComps, enumSynCompIdxs.sngPp)
                 isOK = 0
             }
         }
@@ -409,13 +426,14 @@ begintemplate SynManagerMainWidget
         
         mwh.showPleaseWaitBox("Changing synapse structure.")
         {
-            isSmthChanged = synGroup.applyChangesToStrucIfNeeded(is3Or1PartInSynStruc, srcMechIdx, trgMechIdx, sngMechIdx, srcMechName, trgMechName, sngMechName, isForceNewTrgOrSng)
+            isSmthChanged = synSet.applyChangesToStrucIfNeeded(synSetIdx, is3Or1PartInSynStruc, srcMechIdx, trgMechIdx, sngMechIdx, srcMechName, trgMechName, sngMechName, isForceNewTrgOrSng)
         }
         mwh.hidePleaseWaitBox()
         
         if (isSmthChanged) {
             updateNumInhomVarsLabel()
             updateNumStochVarsLabel()
+            parentWidget.onApplyInChildHandler(synSetIdx)
         }
         
         return isSmthChanged
@@ -427,7 +445,7 @@ begintemplate SynManagerMainWidget
         sngMechIdx = mcu4t.getSelMechIdxOrMinusOne(sngChoices)
         mwh.showPleaseWaitBox("Changing synapse homogen vars.")
         {
-            isSmthChanged = synGroup.applyChangesToDirtyHomogenVars(srcMechIdx, trgMechIdx, sngMechIdx)
+            isSmthChanged = synSet.applyChangesToDirtyHomogenVars(srcMechIdx, trgMechIdx, sngMechIdx)
         }
         mwh.hidePleaseWaitBox()
         updateNumInhomVarsLabel()
@@ -435,16 +453,31 @@ begintemplate SynManagerMainWidget
     }
     
     proc updateNumInhomVarsLabel() {
-        mcu4t.updateNumInhomVarsLabel(numInhomVarsVarLabel)
+        mcu4t.updateNumInhomVarsLabel(0, synSetIdx, numInhomVarsVarLabel)
     }
     
     proc updateNumStochVarsLabel() {
-        mcu4t.updateNumStochVarsLabel(numStochVarsVarLabel)
+        mcu4t.updateNumStochVarsLabel(0, synSetIdx, numStochVarsVarLabel)
     }
     
-    proc dismissHandler() {
+    proc dismissHandler() { localobj nil
+        
+        if (mainBox == nil) {
+            return
+        }
+        
+        if (!mainBox.ismapped()) {
+            return
+        }
+        
+        shapeBox.unmap()
+        
         dismissChilds()
-        unmapIfNotNil(mainBox)
+        
+        mainBox.unmap()
+        
+        synSet = nil    // Not to keep an extra reference to synSet.allSyns
+        allComps = nil  // Just in case
     }
     
     // All next staff is private
@@ -457,7 +490,7 @@ begintemplate SynManagerMainWidget
     }
     
     proc setSynLocVarLabel() {
-        slw.getSynLocName(synLocVarLabel)
+        slw.getSynLocName(synLocVarLabel, synSet)
     }
     
     // !!! code dup. with GapJuncManagerMainWidget
@@ -467,7 +500,7 @@ begintemplate SynManagerMainWidget
         enumPpRole = $1
         list = $o2
         
-        synGroup.getPpNameOrEmpty(enumPpRole, ppName)
+        synSet.getPpNameOrEmpty(enumPpRole, ppName)
         
         if (stringEmpty(ppName)) {
             return 0
@@ -484,7 +517,7 @@ begintemplate SynManagerMainWidget
     
     proc synLocChangeHandler() {
         dismissChilds()
-        slw.show()
+        slw.show(synSet)
     }
     
     proc synStrucChangedHandler() { local cardIdx
@@ -580,7 +613,7 @@ begintemplate SynManagerMainWidget
         ppCompIdx = $1
         mechIdx = $2
         
-        sprint(label, "Edit %s vars", smAllComps.o(ppCompIdx).name)
+        sprint(label, "Edit %s vars", allComps.o(ppCompIdx).name)
         
         xpanel("")
         xmenu(label)
@@ -645,7 +678,7 @@ begintemplate SynManagerMainWidget
             // Convert from varType to varTypeIdx
             varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
             
-            ppComp = smAllComps.o(ppCompIdx)
+            ppComp = allComps.o(ppCompIdx)
             
             mechStd = ppComp.mechStds[mechIdx][varTypeIdx]
             
@@ -658,7 +691,7 @@ begintemplate SynManagerMainWidget
             // mechStd.panel(header)
             
             // New editor
-            varsEditorSubWidget = new VarsEditorWidget(1, ppCompIdx, mechIdx, varType)
+            varsEditorSubWidget = new VarsEditorWidget(1, 0, synSetIdx, ppCompIdx, mechIdx, varType)
             varsEditorSubWidget.show()
         } else {
             if (!mth.doesMechHaveGlobalVars(1, mechIdx)) {
@@ -674,7 +707,7 @@ begintemplate SynManagerMainWidget
     proc editNetConVars() {
         dismissChilds()
         
-        varsEditorSubWidget = new VarsEditorWidget(2, enumSynCompIdxs.netCon, 0, 1)
+        varsEditorSubWidget = new VarsEditorWidget(2, 0, synSetIdx, enumSynCompIdxs.netCon, utils4FakeMech4SynNetCon.mechIdx, 1)
         varsEditorSubWidget.show()
     }
     
@@ -703,8 +736,10 @@ begintemplate SynManagerMainWidget
         if (isCalledOnSynLocChange) {
             // All inhomogeneities in PPs and NetCon-s applied earlier get a bit inconsistent with their models due to a small change in "dist",
             // so we apply them again
-            inhomAndStochLibrary.onTapLocChange()
+            inhomAndStochLibrary.onTapLocChange(0, synSetIdx)
         }
+        
+        parentWidget.onApplyInChildHandler(synSetIdx)
         
         mcu4t.showApplyMsg(isSmthChanged, "synapses")
     }
@@ -712,6 +747,25 @@ begintemplate SynManagerMainWidget
     proc adjustListsFilterHandler() {
         dismissChilds()
         smlfw.show(this)
+    }
+    
+    // !! code dup. with GapJuncManagerMainWidget.showAllLocationsHandler
+    proc showAllLocationsHandler() { localobj shape
+        shapeBox = new VBox()
+        shapeBox.intercept(1)
+        {
+            shape = new Shape()
+            shape.exec_menu("View = plot")
+            synSet.updateMarks(shape)
+        }
+        shapeBox.intercept(0)
+        shapeBox.map("Target PP or Single PP locations", 1020, 10, 300, 250)
+    }
+    
+    proc showAllLocationsUpdate() {
+        if (shapeBox.ismapped()) {
+            showAllLocationsHandler()
+        }
     }
     
     proc dismissChilds() { local numArg, isIgnoreListsFilterWidget, isCondIgnoreVarsEditorWidget, synCompIdx

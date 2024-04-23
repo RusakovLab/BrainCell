@@ -1,24 +1,38 @@
 
 begintemplate VarLibId
     
-    // !!! tapGroupIdx
     // !!! isDmOrTapPart, enumPpRoleOrMinus1, mechName, varTypeIdx, varName, arraySize
     
     public enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex
+    public isGapJuncOrSyn, tapSetIdx    // For taps only ("-1" for biophys vars)
     public isEqual
+    
+    external codeContractViolation
     
     proc init() {
         enumDmPpFk = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
-        varIdx = $5
-        arrayIndex = $6
+        isGapJuncOrSyn = $2     // Must be "-1" for biophys vars
+        tapSetIdx = $3          //
+        compIdx = $4
+        mechIdx = $5
+        varType = $6
+        varIdx = $7
+        arrayIndex = $8
+        
+        if (enumDmPpFk == 0) {
+            if (isGapJuncOrSyn != -1 || tapSetIdx != -1) {
+                codeContractViolation()
+            }
+        } else {
+            if (isGapJuncOrSyn == -1 || tapSetIdx == -1) {
+                codeContractViolation()
+            }
+        }
     }
     
     func isEqual() { localobj other
         other = $o1
-        return (enumDmPpFk == other.enumDmPpFk && compIdx == other.compIdx && mechIdx == other.mechIdx && varType == other.varType && varIdx == other.varIdx && arrayIndex == other.arrayIndex)
+        return (enumDmPpFk == other.enumDmPpFk && isGapJuncOrSyn == other.isGapJuncOrSyn && tapSetIdx == other.tapSetIdx && compIdx == other.compIdx && mechIdx == other.mechIdx && varType == other.varType && varIdx == other.varIdx && arrayIndex == other.arrayIndex)
     }
     
 endtemplate VarLibId

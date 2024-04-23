@@ -2,24 +2,49 @@
 begintemplate UtilsForFakeMechanismForNetCon
 
     public getNumVars, getVarNameAndArraySize, getVarUnits, getNetConVar, setNetConVar
-    public mechName, numGlobalVars
+    public mechIdx, mechName, numGlobalVars
+    public metaMechIdx, metaVarTypeIdx, metaVarName, metaArrayIndex, realMechName, realVarType, realVarName, realArrayIndex
     
-    external pyObj, seh
+    // !! external mth      // !! created only after we need to use it here
+    external pyObj
     
+    mechIdx = -1
     strdef mechName
     numGlobalVars = -1
+    
+    metaMechIdx = -1        // Correspond to FakeMechanism*ForNetCon
+    metaVarTypeIdx = -1     //
+    strdef metaVarName      //
+    metaArrayIndex = -1     //
+    
+    strdef realMechName     // Correspond to SynEventsFilterWatcher
+    realVarType = -1        //
+    strdef realVarName      //
+    realArrayIndex = -1     //
     
     objref _pyUnitsDict, _tempNetCon, this
     _tempValue = -1
     
     
-    proc init() {
+    proc init() { local metaVarType
         strdef pyCommand
         
+        mechIdx = 1     // !!!!! keep in sync with ReducedMechTypeHelper.createMechStd
         mechName = "NetCon"
         numGlobalVars = 0
         
-        sprint(pyCommand, "{'threshold': 'mV', 'delay': 'ms', 'weight': '', '%s': ''}", seh.metaVarName)
+        realMechName = "SynEventsFilterWatcher"     // Keep in sync with proc SynEventsHelper.createNewSynEventsFilterWatcherButTryToInherit
+        realVarType = 1
+        realVarName = "release_probability"
+        realArrayIndex = 0
+        
+        metaMechIdx = 0
+        metaVarType = 1
+        metaVarTypeIdx = 0  // !! mth.convertVarTypeToVarTypeIdx(metaVarType)
+        sprint(metaVarName, "@%s", realVarName)
+        metaArrayIndex = 0
+        
+        sprint(pyCommand, "{'threshold': 'mV', 'delay': 'ms', 'weight': '', '%s': ''}", metaVarName)
         _pyUnitsDict = pyObj.ev(pyCommand)
     }
     

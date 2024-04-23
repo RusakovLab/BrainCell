@@ -8,15 +8,18 @@ begintemplate SimFrapLine
     public preShowCheck, show, preRun, preContinue, advance, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public LineWidth, BasicFRAP, AlphaFRAP, DFreeFRAP, iterationTime, iterations
+    
     external setInitialLineConcentration, closeFileAndShowCompleteMsg
     external createVector, listOfSecRefToSecList, removeItemFromList, addVarToGraph, createEmptyPanel, unmapIfNotNil, codeContractViolation
-    external geomMath, plotShapeUtils, graphUtils, mwh
+    external cbbUtils, geomMath, plotShapeUtils, graphUtils, mwh
     external eachSecInList
     external dendrite_ref
     external altRunControlWidget
     external tstop
     external flush_list, fast_flush_list, graphList
-    external enumColours
+    external enumMouseEvents, enumColours
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
@@ -232,13 +235,16 @@ begintemplate SimFrapLine
         tstop = iterations*iterationTime*2
     }
     
-    proc setDefaultAnchorPoints() { local defaultAlphaX, defaultY_Coor, ptIdx
+    proc setDefaultAnchorPoints() { local defaultAlphaX, defaultY_Coor, _, yMin, yMax, ptIdx
         defaultAlphaX = $1
         defaultY_Coor = $2
-        xVec = createVector(-50, 50)    // !! hardcode (keep in sync with defaultAlphaX and defaultY_Coor)
-        yVec = new Vector(2)
+        
+        cbbUtils.analyzeCellBoundingBox(&_, &yMin, &_, &_, &yMax, &_)
+        
+        yVec = createVector(yMin, yMax)
+        xVec = new Vector(2)
         for ptIdx = 0, 1 {
-            yVec.x[ptIdx] = defaultAlphaX * xVec.x[ptIdx] + defaultY_Coor
+            xVec.x[ptIdx] = (yVec.x[ptIdx] - defaultY_Coor) / defaultAlphaX
         }
     }
     
@@ -255,20 +261,20 @@ begintemplate SimFrapLine
                 xpanel("")
                 xlabel("====================== Initial parameters ======================")
                 xlabel("Width of linear bleaching area in um")
-                xvalue("Line width (um) ","LineWidth", 1, "updateStripMarker()", 0, 1)
+                xpvalue("Line width (um)", &LineWidth, 1, "updateStripMarker()")
                 xlabel("---------------------------------------------------------------------------------------------------------------------")
                 xlabel("Initial indicator  concentration")
-                xvalue("Indicator concentration (mM)","BasicFRAP", 1, "", 0, 1)
+                xpvalue("Indicator concentration (mM)", &BasicFRAP, 1)
                 xlabel("Photobleaching rate")
-                xvalue("Rate (mM/ms)","AlphaFRAP", 1, "", 0, 1)
-                xvalue("DFree (um2/ms)","DFreeFRAP", 1, "", 0, 1)
+                xpvalue("Rate (mM/ms)", &AlphaFRAP, 1)
+                xpvalue("DFree (um2/ms)", &DFreeFRAP, 1)
                 xlabel("===========================================================")
                 xpanel(0)
                 
                 xpanel("")
                 xlabel("========================== Running ==========================")
-                xvalue("Duration of bleaching (recovery) (ms)","iterationTime", 1, "updateTstop()", 0, 1)
-                xvalue("Bleaching-recovery iterations","iterations", 1, "updateTstop()", 0, 1)
+                xpvalue("Duration of bleaching (recovery) (ms)", &iterationTime, 1, "updateTstop()")
+                xpvalue("Bleaching-recovery iterations", &iterations, 1, "updateTstop()")
                 xlabel("Run simulation. Results are saved to the TimeFRAP.txt")
                 xbutton("Run FRAP", "altRunControlWidget.initAndRunHandler()")
                 xlabel("===========================================================")
@@ -387,7 +393,7 @@ begintemplate SimFrapLine
         }
     }
     
-    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isMoveOrResize, isDrag
+    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isMoveOrResize, isDrag, isUpdate
         eventType = $1
         x_screen = $2
         y_screen = $3
@@ -397,7 +403,7 @@ begintemplate SimFrapLine
         
         // !! BUG: we don't lock it when user uses RunControl or AltRunControl
         if (enumLockLevel > 0) {
-            isPress = (eventType == 2)
+            isPress = (eventType == enumMouseEvents.press)
             if (!isPress || enumLockLevel == 2) {
                 return
             }
@@ -411,24 +417,32 @@ begintemplate SimFrapLine
         
         isMoveOrResize = (keystate != 2)    // 2: Shift
         if (isMoveOrResize) {
-            isDrag = (eventType == 1)
-            moveOneOrBothAnchorPoints(x_screen, y_screen, isDrag)
+            isDrag = (eventType == enumMouseEvents.dragging)
+            isUpdate = moveOneOrBothAnchorPoints(x_screen, y_screen, isDrag)
         } else {
             changeStripWidth(x_screen, y_screen)
+            isUpdate = 1
         }
-        updateStripMarker()
+        
+        if (isUpdate) {
+            updateStripMarker()
+        }
     }
     
-    proc moveOneOrBothAnchorPoints() { local x_screen, y_screen, isDrag, apIdx, delta_x, delta_y, ptIdx
+    func moveOneOrBothAnchorPoints() { local x_screen, y_screen, isDrag, apIdx, delta_x, delta_y, ptIdx
         x_screen = $1
         y_screen = $2
         isDrag = $3
         
         if (!isDrag) {
-            apIdx = findNearestAnchorPoint(x_screen, y_screen)
+            apIdx = getSelectedAnchorPointIdxOrMinus1(x_screen, y_screen)
             apIdx_last = apIdx
         } else {
             apIdx = apIdx_last
+        }
+        
+        if (apIdx == -1) {
+            return 0
         }
         
         if (apIdx == 0 || apIdx == 1) {
@@ -444,9 +458,11 @@ begintemplate SimFrapLine
         } else {
             codeContractViolation()
         }
+        
+        return 1
     }
     
-    func findNearestAnchorPoint() { local x_screen, y_screen, distSq1, distSq2, distSq3 localobj distSqVec
+    func getSelectedAnchorPointIdxOrMinus1() { local x_screen, y_screen, distSq1, distSq2, distSq3
         x_screen = $1
         y_screen = $2
         
@@ -454,9 +470,7 @@ begintemplate SimFrapLine
         distSq2 = geomMath.dist2D_PtToPt_squared(x_screen, y_screen, xVec.x[1], yVec.x[1])
         distSq3 = geomMath.dist2D_PtToPt_squared(x_screen, y_screen, xVec.mean(), yVec.mean())
         
-        distSqVec = createVector(distSq1, distSq2, distSq3)
-        
-        return distSqVec.min_ind()
+        return cbbUtils.getNearestAnchorPointIdxOrMinus1(distSq1, distSq2, distSq3)
     }
     
     // Following the visual style of: NEURON Main Menu -> Vector -> Draw: "%NEURONHOME%\lib\hoc\mkcurve.hoc"

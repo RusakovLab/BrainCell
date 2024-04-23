@@ -5,42 +5,45 @@
     
 begintemplate GapJuncPPComp
     
-    public name, enumDmPpFk, isExtOrInt, enumPpRole, isMechVarTypeInhom, mechStds
+    public name, enumDmPpFk, enumPpRole, isMechVarTypeInhom, mechStds
     public isMechVarInhom, prepareVarsEditorHeader, getDistRange, getSecList, markMechDirty, updateStatsCurve, updateVerbatimModelCurve, applyInhomogeneity
     public isMechVarTypeInhom, mechStds, isMechDirty
     
     external mth, math, mcu
-    external gjmAllGapJuncs, gapJuncGroups, tapGroup
+    external tapSet
     external stringsEqual, codeContractViolation
-    external enumGapJuncPpRoles
+    external enumGapJuncPpRoles, enumArgTypes
     
     strdef name
     enumDmPpFk = -1
-    isExtOrInt = -1
     enumPpRole = -1
+    objref gapJuncSet
     
     double isMechVarTypeInhom[1][1]     // 0/1 flags
     // !! would it make sense to create these MechanismStandard-s without 2nd ctor arg and get rid of 2nd dimension in this array?
     objref mechStds[1][1]
     double isMechDirty[1]               // 0/1 flags
     
-    objref gjmAllGapJuncsOfThisType, gapJuncGroupOfThisType
-    
     objref this
     
     
-    proc init() { local numArg, numMechs, mechIdx, varType, varTypeIdx localobj impRedObj, actFirstPpOrNil, mechStd, nil
+    proc init() { local numArg, argType, numMechs, mechIdx, varType, varTypeIdx localobj impRedObj, actFirstPpOrNil, mechStd, nil
         strdef actPpName, thisPpName
         
         numArg = numarg()
-        if (numArg == 1) {
+        if (numArg != 2) {
+            codeContractViolation()
+        }
+        
+        argType = argtype(1)
+        if (argType == enumArgTypes.objref_) {
             // Load data from the imported reduced template (part 1)
             impRedObj = $o1
+            gapJuncSet = $o2
             name = impRedObj.name
-            isExtOrInt = impRedObj.isExtOrInt
-        } else if (numArg == 2) {
+        } else if (argType == enumArgTypes.strdef_) {
             name = $s1
-            isExtOrInt = $2
+            gapJuncSet = $o2
         } else {
             codeContractViolation()
         }
@@ -48,18 +51,15 @@ begintemplate GapJuncPPComp
         enumDmPpFk = 1
         enumPpRole = enumGapJuncPpRoles.sngPp
         
-        gjmAllGapJuncsOfThisType = gjmAllGapJuncs[isExtOrInt]
-        gapJuncGroupOfThisType = gapJuncGroups[isExtOrInt]
-        
         numMechs = mth.getNumMechs(enumDmPpFk)
         
         double isMechVarTypeInhom[numMechs][3]  // 0/1 flags
         objref mechStds[numMechs][3]            // 0: "PARAMETER", 1: "ASSIGNED", 2: "STATE"
         double isMechDirty[numMechs]            // 0/1 flags
         
-        gapJuncGroupOfThisType.getPpNameOrEmpty(actPpName)
-        if (gjmAllGapJuncsOfThisType.count() > 0) {
-            actFirstPpOrNil = gjmAllGapJuncsOfThisType.o(0).sngPp
+        gapJuncSet.getPpNameOrEmpty(actPpName)
+        if (gapJuncSet.allGapJuncs.count() > 0) {
+            actFirstPpOrNil = gapJuncSet.allGapJuncs.o(0).sngPp
         } else {
             actFirstPpOrNil = nil
         }
@@ -128,11 +128,11 @@ begintemplate GapJuncPPComp
     }
     
     proc getDistRange() {
-        gapJuncGroupOfThisType.getDistRange(&$&1, &$&2)
+        gapJuncSet.getDistRange(&$&1, &$&2)
     }
     
     obfunc getSecList() {
-        return gapJuncGroupOfThisType.getSecList()
+        return gapJuncSet.getSecList()
     }
     
     proc markMechDirty() { local mechIdx
@@ -140,7 +140,7 @@ begintemplate GapJuncPPComp
         isMechDirty[mechIdx] = 1
     }
     
-    proc updateStatsCurve() { local yMin, yMax, varType, arraySize, arrayIndex, y localobj graph, nil, mechStd, gapJunc, pp
+    proc updateStatsCurve() { local yMin, yMax, varType, arraySize, arrayIndex, y localobj graph, mechStd, gapJunc, pp, nil
         strdef mechName, varName, actPpName
         
         graph = $o1
@@ -152,7 +152,7 @@ begintemplate GapJuncPPComp
         arraySize = $7  // Just a placeholder
         arrayIndex = $8
         
-        gapJuncGroupOfThisType.getPpNameOrEmpty(actPpName)
+        gapJuncSet.getPpNameOrEmpty(actPpName)
         if (!stringsEqual(actPpName, mechName)) {
             // The actual gap junctions don't have PPs with this !!!role!!! or use different PPs
             return
@@ -160,7 +160,7 @@ begintemplate GapJuncPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for tapGroup.updateStatsCurveIter(gapJunc, gjmAllGapJuncsOfThisType, graph, &y, &yMin, &yMax) {
+        for tapSet.updateStatsCurveIter(gapJunc, gapJuncSet.allGapJuncs, graph, &y, &yMin, &yMax) {
             pp = gapJunc.sngPp
             mechStd.in(pp)
             y = mechStd.get(varName, arrayIndex)
@@ -175,7 +175,7 @@ begintemplate GapJuncPPComp
         codeContractViolation()
     }
     
-    // Keep in sync with !!!ReducedGapJuncPPComp2!!!.applyInhomogeneity
+    // Keep in sync with SynPPComp.applyInhomogeneity and ReducedPPComp2.applyInhomogeneity
     proc applyInhomogeneity() { local varType, arraySize, arrayIndex, y localobj distFuncHelper, mechStd, gapJunc, thisPp
         strdef mechName, varName
         
@@ -192,7 +192,7 @@ begintemplate GapJuncPPComp
         
         mechStd = new MechanismStandard(mechName, varType)
         
-        for tapGroup.applyInhomogeneityIter(gapJunc, gjmAllGapJuncsOfThisType, distFuncHelper) {
+        for tapSet.applyInhomogeneityIter(gapJunc, gapJuncSet.allGapJuncs, distFuncHelper) {
             thisPp = gapJunc.sngPp
             mechStd.in(thisPp)
             y = distFuncHelper.calculateAt(gapJunc.dist)

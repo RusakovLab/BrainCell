@@ -4,19 +4,23 @@ _tempValue = -1
 
 begintemplate ExposedOrSweptInputVar
     
-    public enumDmTpCeSt, compIdx, mechIdx, varType, varName, varNameWithIndex, customExpr
+    public enumBioGjSynCeSt, tapSetIdx, compIdx, mechIdx, varType, varName, varNameWithIndex, customExpr
     public gridInfoOrNil
     public s, sg
     public prepareShownStrings, getValue, getUnitsCommentOrEmpty, isEqual, isReleaseProbability
     
-    external isAstrocyteOrNeuron
-    external mth, mcu, compUtils
+    external mth, mcu, compUtils, utils4FakeMech4GapJuncExtValue
     external getWatchedVarUnits, stringEmpty, stringsEqual, codeContractViolation
+    external gjmAllGapJuncSets
     external _tempValue
     
     isExposedOrSwept = -1
     
-    enumDmTpCeSt = -1   // 0: "Distributed mechanism", 1: "Tap !!!type/part", 2: "Custom expression", 3: "Standard NEURON var (exposed only)"
+    enumBioGjSynCeSt = -1   // 0: "Distributed mechanism", 1: "Gap junc part", 2: "Synapse part", 3: "Custom expression", 4: "Standard NEURON var (exposed only)"
+    enumBioGjSyn = -1
+    isBioOrTapPart = -1
+    isGapJuncOrSyn = -1     // For taps only
+    tapSetIdx = -1          //
     compIdx = -1
     mechIdx = -1
     varType = -1
@@ -40,10 +44,10 @@ begintemplate ExposedOrSweptInputVar
         if (numArg == 2) {
             isExposedOrSwept = $1
             customExpr = $s2
-            enumDmTpCeSt = 2
+            enumBioGjSynCeSt = 3
         } else if (numArg == 3 || numArg == 4) {
             isExposedOrSwept = $1
-            enumDmTpCeSt = $2
+            enumBioGjSynCeSt = $2
             customExpr = $s3
             if (numArg == 4) {
                 isInteger = $4
@@ -51,60 +55,97 @@ begintemplate ExposedOrSweptInputVar
             if (!isExposedOrSwept) {
                 codeContractViolation()
             }
-            if (enumDmTpCeSt != 3) {
+            if (enumBioGjSynCeSt != 4) {
                 codeContractViolation()
             }
-        } else if (numArg == 8) {
+        } else if (numArg == 9) {
             isExposedOrSwept = $1
-            enumDmTpCeSt = $2
-            compIdx = $3
-            mechIdx = $4
-            varType = $5
-            varName = $s6
-            arraySize = $7
-            arrayIndex = $8
+            enumBioGjSynCeSt = $2
+            tapSetIdx = $3
+            compIdx = $4
+            mechIdx = $5
+            varType = $6
+            varName = $s7
+            arraySize = $8
+            arrayIndex = $9
             mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
         } else {
             codeContractViolation()
         }
         
+        if (enumBioGjSynCeSt < 3) {
+            enumBioGjSyn = enumBioGjSynCeSt
+        } else {
+            enumBioGjSyn = -1
+        }
+        
+        // !!! code dup. with AddOneInputVarWidget ctor
+        if (enumBioGjSyn == 0) {
+            isBioOrTapPart = 1
+            isGapJuncOrSyn = -1
+        } else if (enumBioGjSyn == 1) {
+            isBioOrTapPart = 0
+            isGapJuncOrSyn = 1
+        } else if (enumBioGjSyn == 2) {
+            isBioOrTapPart = 0
+            isGapJuncOrSyn = 0
+        } else {
+            isBioOrTapPart = -1
+            isGapJuncOrSyn = -1
+        }
+        
         prepareShownStrings()
     }
     
-    proc prepareShownStrings() { local isDmOrTapPart, enumDmPpFk localobj comp, nil
-        strdef compTypeName, compName, varTypeName, mechName
+    proc prepareShownStrings() { local enumDmPpFk, idxForTapSet localobj comp, nil
+        strdef compTypeName, compName, varTypeName, mechName, templ
         
-        if (enumDmTpCeSt == 0) {
+        if (enumBioGjSynCeSt == 0) {
             compTypeName = "Bio"
-        } else if (enumDmTpCeSt == 1) {
-            if (isAstrocyteOrNeuron) {
-                compTypeName = "GJ"
-            } else {
-                compTypeName = "Syn"
-            }
-        } else if (enumDmTpCeSt == 2) {
+        } else if (enumBioGjSynCeSt == 1) {
+            compTypeName = "GJ"
+        } else if (enumBioGjSynCeSt == 2) {
+            compTypeName = "Syn"
+        } else if (enumBioGjSynCeSt == 3) {
             compTypeName = "Cust"   // Keep in sync with enterVarExpression
-        } else if (enumDmTpCeSt == 3) {
+        } else if (enumBioGjSynCeSt == 4) {
             compTypeName = "Std"
         } else {
             codeContractViolation()
         }
         
-        if (enumDmTpCeSt < 2) {
-            isDmOrTapPart = 1 - enumDmTpCeSt
-            comp = compUtils.getComp(isDmOrTapPart, compIdx)
+        if (enumBioGjSynCeSt < 3) {
+            comp = compUtils.getComp(enumBioGjSyn, tapSetIdx, compIdx)
             compName = comp.name
             mth.getVarTypeName(varType, varTypeName)
             enumDmPpFk = comp.enumDmPpFk
-            if (enumDmPpFk != 2) {
-                mth.getMechName(enumDmPpFk, mechIdx, mechName)
-                if (varType != -1) {    // -1: GLOBAL
-                    sprint(s, "%s: %s \\ %s \\ %s \\ %s", compTypeName, compName, mechName, varTypeName, varNameWithIndex)
-                } else {
-                    sprint(s, "%s: @All \\ %s \\ %s \\ %s", compTypeName, mechName, varTypeName, varNameWithIndex)
+            mth.getMechName(enumDmPpFk, mechIdx, mechName)
+            if (varType == -1) {    // -1: GLOBAL
+                if (enumDmPpFk == 2) {
+                    codeContractViolation()
                 }
+                sprint(s, "%s: @All \\ %s \\ %s \\ %s", compTypeName, mechName, varTypeName, varNameWithIndex)
             } else {
-                sprint(s, "%s: %s \\ %s \\ %s", compTypeName, compName, varTypeName, varNameWithIndex)
+                // !!! BUG: for syns, this is not the same as "idxForSpineSet", so user will be confused
+                idxForTapSet = tapSetIdx + 1
+                
+                templ = "%s set #%d: %s \\ %s \\ %s \\ %s"
+                
+                if (enumDmPpFk == 0) {
+                    sprint(s, "%s: %s \\ %s \\ %s \\ %s", compTypeName, compName, mechName, varTypeName, varNameWithIndex)
+                } else if (enumDmPpFk == 1) {
+                    sprint(s, templ, compTypeName, idxForTapSet, compName, mechName, varTypeName, varNameWithIndex)
+                } else if (enumDmPpFk == 2) {
+                    if (enumBioGjSynCeSt == 1) {
+                        sprint(s, templ, compTypeName, idxForTapSet, compName, mechName, varTypeName, varNameWithIndex)
+                    } else if (enumBioGjSynCeSt == 2) {
+                        sprint(s, "%s set #%d: %s \\ %s \\ %s", compTypeName, idxForTapSet, compName, varTypeName, varNameWithIndex)
+                    } else {
+                        codeContractViolation()
+                    }
+                } else {
+                    codeContractViolation()
+                }
             }
         } else {
             sprint(s, "%s: %s", compTypeName, customExpr)   // Keep in sync with enterVarExpression
@@ -121,11 +162,10 @@ begintemplate ExposedOrSweptInputVar
         }
     }
     
-    func getValue() { local isDmOrTapPart, varTypeIdx localobj comp
-        if (enumDmTpCeSt < 2) {
+    func getValue() { local varTypeIdx localobj comp
+        if (enumBioGjSynCeSt < 3) {
             if (varType != -1) {    // PARAMETER, ASSIGNED, STATE
-                isDmOrTapPart = 1 - enumDmTpCeSt
-                comp = compUtils.getComp(isDmOrTapPart, compIdx)
+                comp = compUtils.getComp(enumBioGjSyn, tapSetIdx, compIdx)
                 varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
                 return comp.mechStds[mechIdx][varTypeIdx].get(varName, arrayIndex)
             } else {                // GLOBAL
@@ -136,7 +176,7 @@ begintemplate ExposedOrSweptInputVar
         }
     }
     
-    proc getUnitsCommentOrEmpty() { local numArg, isDmOrTapPart, enumDmPpFk
+    proc getUnitsCommentOrEmpty() { local numArg, enumDmPpFk
         strdef unitsOrEmpty
         
         numArg = numarg()
@@ -147,9 +187,13 @@ begintemplate ExposedOrSweptInputVar
         // !! is that needed?
         unitsOrEmpty = ""
         
-        if (enumDmTpCeSt < 2) {
-            isDmOrTapPart = 1 - enumDmTpCeSt
-            enumDmPpFk = compUtils.getComp(isDmOrTapPart, compIdx).enumDmPpFk
+        if (enumBioGjSynCeSt < 3) {
+            enumDmPpFk = compUtils.getComp(enumBioGjSyn, tapSetIdx, compIdx).enumDmPpFk
+            
+            if (enumBioGjSynCeSt == 1 && enumDmPpFk == 2) {
+                utils4FakeMech4GapJuncExtValue.setNewVarIfNeeded(gjmAllGapJuncSets.o(tapSetIdx))
+            }
+            
             mth.getVarUnits(enumDmPpFk, mechIdx, varName, varNameWithIndex, unitsOrEmpty)
         } else {
             getWatchedVarUnits(customExpr, unitsOrEmpty)
@@ -165,27 +209,30 @@ begintemplate ExposedOrSweptInputVar
         }
     }
     
-    func isEqual() { local isDmOrTapPart, enumDmPpFk, res localobj comp
-        if (enumDmTpCeSt == 2) {
+    // in: enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varName, arrayIndex
+    func isEqual() { local enumDmPpFk, res localobj comp
+        if (enumBioGjSynCeSt == 3) {
             return 0
-        } else if (enumDmTpCeSt >= 3) {
+        } else if (enumBioGjSynCeSt >= 4) {
             codeContractViolation()
         }
-        isDmOrTapPart = 1 - enumDmTpCeSt
-        comp = compUtils.getComp(isDmOrTapPart, compIdx)
+        comp = compUtils.getComp(enumBioGjSyn, tapSetIdx, compIdx)
         enumDmPpFk = comp.enumDmPpFk
-        res = (enumDmPpFk == $1 && mechIdx == $3 && varType == $4 && stringsEqual(varName, $s5) && arrayIndex == $6)
+        res = (enumDmPpFk == $1 && mechIdx == $5 && varType == $6 && stringsEqual(varName, $s7) && arrayIndex == $8)
         if (varType != -1) {    // -1: GLOBAL
-            res = res && (compIdx == $2)
+            res = res && (compIdx == $4)
+            if (!isBioOrTapPart) {
+                res = res && (isGapJuncOrSyn == $2 && tapSetIdx == $3)
+            }
         }
         return res
     }
     
     func isReleaseProbability() { local enumDmPpFk localobj comp
-        if (isAstrocyteOrNeuron || enumDmTpCeSt != 1) {
+        if (enumBioGjSynCeSt != 2) {
             return 0
         }
-        comp = compUtils.getComp(0, compIdx)
+        comp = compUtils.getComp(2, tapSetIdx, compIdx)
         enumDmPpFk = comp.enumDmPpFk
         return (enumDmPpFk == 2 && mcu.isMetaVar(varName))
     }

@@ -112,11 +112,11 @@ PARAMETER {
     naoinit = -1 (mM)       :   na_ion\GLOBAL\nao0_na_ion
     koinit = -1 (mM)        :   k_ion\GLOBAL\ko0_k_ion
     caoinit = -1 (mM)       :   ca_ion\GLOBAL\cao0_ca_ion
-    cloinit = -1 (mM)       :   cl_init\GLOBAL\clo0_cl_ion
+    cloinit = -1 (mM)       :   cl_ion\GLOBAL\clo0_cl_ion
     : Neurotransmitters
-    achoinit = -1 (mM)      :   ach_init\GLOBAL\acho0_ach_ion
-    gluoinit = -1 (mM)      :   glu_init\GLOBAL\gluo0_glu_ion
-    gabaoinit = -1 (mM)     :   gaba_init\GLOBAL\gabao0_gaba_ion
+    achoinit = -1 (mM)      :   ach_ion\GLOBAL\acho0_ach_ion
+    gluoinit = -1 (mM)      :   glu_ion\GLOBAL\gluo0_glu_ion
+    gabaoinit = -1 (mM)     :   gaba_ion\GLOBAL\gabao0_gaba_ion
     : Specific
     frapionoinit = -1 (mM)  :   frapion_ion\GLOBAL\frapiono0_frapion_ion
     ip3oinit = -1 (mM)      :   ip3_ion\GLOBAL\ip3o0_ip3_ion

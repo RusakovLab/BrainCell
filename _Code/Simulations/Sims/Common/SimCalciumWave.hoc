@@ -6,6 +6,9 @@ begintemplate SimCalciumWave
     public preShowCheck, show, advance, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public TimeDelayCaWave, InitIp3
+    
     external showCaParameters
     external vBoxCadifusParams
     external addplot
@@ -83,10 +86,10 @@ begintemplate SimCalciumWave
         {
             xpanel("")
             xlabel("=========== Parameters of waves===========")
-            xvalue("IP3 increase onset (ms)","TimeDelayCaWave", 1,"", 0, 1)
-            xvalue("IP3 peak concentration (mM)","InitIp3", 1,"", 0, 1  )
+            xpvalue("IP3 increase onset (ms)", &TimeDelayCaWave, 1)
+            xpvalue("IP3 peak concentration (mM)", &InitIp3, 1)
             xlabel("=========================================")
-            xvalue("Run time (ms)","tstop", 1,"", 0, 1  )
+            xpvalue("Run time (ms)", &tstop, 1)
             xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel()
         }

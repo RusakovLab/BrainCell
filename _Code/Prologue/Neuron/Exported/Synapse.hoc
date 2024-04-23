@@ -3,9 +3,10 @@ begintemplate Synapse
 
     public sec_ref, connectionPoint, dist
     public srcPp, netCon, trgPp, sngPp, sefwPp, sefwNetCon
-    public getPointProcess, changeLocation, changeStructure, calcAndCacheDist
+    public is3Or1Part, getPointProcess, changeLocation, changeStructure, calcAndCacheDist
     
     external codeContractViolation
+    external enumSynPpRoles
     
     // Synapse location info
     objref sec_ref
@@ -37,17 +38,24 @@ begintemplate Synapse
         calcAndCacheDist()
     }
     
+    func is3Or1Part() { localobj nil
+        return (netCon != nil)
+    }
+    
+    // !!!!! rename to getSynPart
     obfunc getPointProcess() { local enumPpRoleExt localobj nil
-        enumPpRoleExt = $1     // 0: "Source PP", 1: "Target PP", 2: "Single PP", 3: "Target PP or Single PP"
+        enumPpRoleExt = $1
         
-        if (enumPpRoleExt == 0) {
+        if (enumPpRoleExt == enumSynPpRoles.srcPp) {
             return srcPp
-        } else if (enumPpRoleExt == 1) {
+        } else if (enumPpRoleExt == enumSynPpRoles.netCon) {
+            return netCon
+        } else if (enumPpRoleExt == enumSynPpRoles.trgPp) {
             return trgPp
-        } else if (enumPpRoleExt == 2) {
+        } else if (enumPpRoleExt == enumSynPpRoles.sngPp) {
             return sngPp
-        } else if (enumPpRoleExt == 3) {
-            if (netCon != nil) {
+        } else if (enumPpRoleExt == enumSynPpRoles.trgPpOrSngPp) {
+            if (is3Or1Part()) {
                 return trgPp
             } else {
                 return sngPp
@@ -110,6 +118,3 @@ begintemplate Synapse
     }
     
 endtemplate Synapse
-
-objref smAllSyns
-smAllSyns = new List()

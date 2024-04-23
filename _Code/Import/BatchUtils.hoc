@@ -1,21 +1,4 @@
 
-// Create or clean up the temporary folder
-// $s1 - The temporary folder relative path and name
-proc createOrCleanUpTempFolder() { local status
-    strdef tempFolderRelPathName, tempFolderPathName, sysCommandTempl, sysCommand
-    
-    tempFolderRelPathName = $s1
-    
-    sprint(tempFolderPathName, "%s%s", getcwd(), tempFolderRelPathName)
-    sysCommandTempl = "if not exist \"%s\" (mkdir \"%s\") else (rmdir /s /q \"%s\" && mkdir \"%s\")"
-    sprint(sysCommand, sysCommandTempl, tempFolderPathName, tempFolderPathName, tempFolderPathName, tempFolderPathName)
-    
-    status = system(sysCommand)
-    if (status) {
-        printImportFailedMsgAndRaiseError("Cannot create or clean up the temporary folder")
-    }
-}
-
 // Test the selected file with NLMorphologyConverter
 // $s1 - Input file path and name
 // $s2 - Output report file path and name

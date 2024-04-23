@@ -3,11 +3,6 @@
 proc initParamsMain() {
     if (isAstrocyteOrNeuron) {
         nanoBranchesManager.reseedBranches(createVector(nanoDistrLoaded, nanoDistrLoaded))  // !! why here?
-        if (isBaseOrNanoStart) {
-            // !!!!! BUG: need to do this after each reseed
-            gapJuncSeedingDensityHelpers[0].minSeedingDistance = defMinSeedingDistanceForIntGapJuncs    // Internal gap junctions
-            gapJuncSeedingDensityHelpers[1].minSeedingDistance = defMinSeedingDistanceForExtGapJuncs    // External gap junctions
-        }
     }
     
     initVoltageAndRunControlParams()

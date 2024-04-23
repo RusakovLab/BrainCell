@@ -1,33 +1,34 @@
 
+// !!! BUG: the changes are committed to gapJuncSet.seedingDensityHelper before user clicks "Apply"
+
+
 // !!! if user seeds gap juncs on selected sections, is it OK to allow connecting the pointers outside this set of sections? (currently we do)
 
 // !!! BUG: when creating internal GJ pointers, we don't care if the target section has the required biophys mech, so we can catch exceptions of type "* mechanism not inserted in section *"
-// !!! BUG: when user selects an internal GJ PP that has no POINTER, we show the pointer locations on the Shape-s anyway (see GapJuncGroup.updateColormap)
+// !!! BUG: when user selects an internal GJ PP that has no POINTER, we show the pointer locations on the Shape-s anyway (see GapJuncSet.updateMarks)
 // !!! maybe BUG: we don't prevent seeding two random GJs in the same location; the same for two random internal GJ pointers
-// !!! BUG: somehow caught a NullObject error somewhere in mainBox.unmap() when playing with inhom and stoch vars and other child widgets
 
-// !!! for some proc-s below, there is no need to pass "isExtOrInt" as an arg: use "isExtOrIntGapJunc" instead
+// !!! for func choicesSelectHandlerCore below, maybe there is no need to pass "_isExtOrInt" as an arg: use "isExtOrInt" instead
 
 // !!! major code dup. with SynManagerMainWidget
 begintemplate GapJuncManagerMainWidget
 
-    public show, selectSectionsHandler_layer2, onListsFilterLevelChangedHandler, warnIfUserHasNotSelectedPPs, applyChangesToGapJuncStrucIfNeeded, applyChangesToDirtyHomogenVarsIfNeeded, updateNumInhomVarsLabel, updateNumStochVarsLabel, dismissHandler
+    public show, selectSectionsHandler_layer2, onListsFilterLevelChangedHandler, warnIfUserHasNotSelectedPP, applyChangesToGapJuncStrucIfNeeded, applyChangesToDirtyHomogenVarsIfNeeded, updateNumInhomVarsLabel, updateNumStochVarsLabel, dismissHandler
     
-    external gjmAllComps, gjmAllGapJuncs
-    external mwh, mth, mcu4t, utils4FakeMech4GapJuncExtValue, inhomAndStochLibrary, mechsDllUtils, math, gapJuncSeedingDensityHelpers, gapJuncGroups
-    external getGlobalVarsHint, showSeedingDensityWidget, getGraphedOrPointedVarUnits, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, createElasticSpacer, createEmptyPanel, dismissIfNotNil, codeContractViolation
+    external isAstrocyteOrNeuron
+    external gjmAllGapJuncSets
+    external mwh, mth, mcu4t, utils4FakeMech4GapJuncExtValue, inhomAndStochLibrary, mechsDllUtils, math
+    external getGlobalVarsHint, showSeedingDensityWidget, stringEmpty, stringsEqual, stringToLowerCase, containsSubstring, createElasticSpacer, createEmptyPanel, dismissIfNotNil, codeContractViolation
     external enumGapJuncCompIdxs
     external seedingDensityWidget, gjmlfw, varsEditorSubWidget
-    external defIsExtOrIntGapJuncs
     external pyObj
     
-    objref mainBox, deck1, deck2, deck3, decks4[2], decks5[2], decks6[2], shapeBoxes[2]
+    objref mainBox, deck1, deck2, decks3[2], decks4[2], decks5[2], shapeBox
     objref extChoices, intChoices
-    strdef maxDistVarLabel, numExtGapJuncsLabel, numIntGapJuncsLabel, numInhomVarsVarLabel, numStochVarsVarLabel
+    strdef maxDistVarLabel, numGapJuncsLabel, numInhomVarsVarLabel, numStochVarsVarLabel
     
-    objref ssSubWidget
+    objref parentWidget, ssSubWidget
     
-    isExtOrIntGapJunc = -1
     isReseed = -1
     isReseedingRequired = -1
     
@@ -37,31 +38,28 @@ begintemplate GapJuncManagerMainWidget
     listBoxWidth = -1
     listBoxHeight = -1
     
+    gapJuncSetIdx = -1
+    objref gapJuncSet
+    objref allComps
+    
+    isExtOrInt = -1
+    isAllOrSomeSecsSeeded = -1
+    objref selected_ref
+    maxNumGapJuncsPerSec = -1
+    maxRadiusForIntGapJuncs = -1
+    isCrissCrossForIntGapJuncs = -1
+    
     objref this
     
     
     proc init() {
+        parentWidget = $o1
         
-        isExtOrIntGapJunc = defIsExtOrIntGapJuncs
         isReseed = 0
         isReseedingRequired = 0
         
         extChoices = new List()
         intChoices = new List()
-        
-        while (1) {
-            // Prepare available choices for External GJ PP and Internal GJ PP
-            onListsFilterLevelChangedHandler(1)
-            
-            // Prepare default selections for External GJ PP and Internal GJ PP
-            defExtChoiceIdx = chooseDefSelItemIdx(1, extChoices)
-            defIntChoiceIdx = chooseDefSelItemIdx(0, intChoices)
-            if (defExtChoiceIdx != -1 && defIntChoiceIdx != -1) {
-                break
-            }
-            
-            gjmlfw.loosenFilter()
-        }
         
         listBoxWidth = 145
         listBoxHeight = 214
@@ -72,7 +70,38 @@ begintemplate GapJuncManagerMainWidget
     proc show() { local maxDist localobj hBox, vBox
         strdef text
         
-        maxDist = $1
+        gapJuncSetIdx = $1
+        maxDist = $2
+        
+        // Just for shorter syntax within this widget
+        gapJuncSet = gjmAllGapJuncSets.o(gapJuncSetIdx)
+        allComps = gapJuncSet.allComps
+        
+        // These temp copies are used to avoid committing the changes to gapJuncSet before user clicks "Apply"
+        isExtOrInt = gapJuncSet.isExtOrInt
+        isAllOrSomeSecsSeeded = gapJuncSet.isAllOrSomeSecsSeeded
+        selected_ref = gapJuncSet.selected_ref
+        maxNumGapJuncsPerSec = gapJuncSet.maxNumGapJuncsPerSec
+        maxRadiusForIntGapJuncs = gapJuncSet.maxRadiusForIntGapJuncs
+        isCrissCrossForIntGapJuncs = gapJuncSet.isCrissCrossForIntGapJuncs
+        
+        if (!isAstrocyteOrNeuron && !isExtOrInt) {
+            codeContractViolation()
+        }
+        
+        while (1) {
+            // Prepare available choices for External GJ PP and Internal GJ PP
+            onListsFilterLevelChangedHandler(1)
+            
+            // Prepare default selections for External GJ PP and Internal GJ PP
+            defExtChoiceIdx = chooseDefSelItemIdx(extChoices)
+            defIntChoiceIdx = chooseDefSelItemIdx(intChoices)
+            if ((isExtOrInt && defExtChoiceIdx != -1) || (!isExtOrInt && defIntChoiceIdx != -1)) {
+                break
+            }
+            
+            gjmlfw.loosenFilter()
+        }
         
         mainBox = new VBox()
         mainBox.intercept(1)
@@ -86,10 +115,8 @@ begintemplate GapJuncManagerMainWidget
             hBox.intercept(1)
             {
                 xpanel("")
-                updateNumExtGapJuncsLabel()
-                xvarlabel(numExtGapJuncsLabel)
-                updateNumIntGapJuncsLabel()
-                xvarlabel(numIntGapJuncsLabel)
+                updateNumGapJuncsLabel()
+                xvarlabel(numGapJuncsLabel)
                 updateNumInhomVarsLabel()
                 xvarlabel(numInhomVarsVarLabel)
                 updateNumStochVarsLabel()
@@ -101,42 +128,31 @@ begintemplate GapJuncManagerMainWidget
                 vBox.intercept(1)
                 {
                     xpanel("")
-                    xlabel("Edit gap junctions of type:")
-                    xradiobutton("External (with other astrocytes)", "gapJuncTypeChangedHandler(1)", isExtOrIntGapJunc)
-                    xradiobutton("Internal (within this astrocyte)", "gapJuncTypeChangedHandler(0)", !isExtOrIntGapJunc)
+                    xlabel("Gap junctions type:")
+                    if (isAstrocyteOrNeuron) {
+                        xradiobutton("External (with other cells)", "gapJuncTypeChangedHandler(1)", isExtOrInt)
+                        xradiobutton("Internal (within this astrocyte)", "gapJuncTypeChangedHandler(0)", !isExtOrInt)
+                    } else {
+                        xlabel("External (with other cells)")
+                    }
                     xpanel()
                     deck1 = new Deck()
                     deck1.intercept(1)
                     {
                         xpanel("")
                         xlabel("External gap junction structure:")
-                        sprint(text, "[Stub -> Pointer -> ] %s PP -> Section", gjmAllComps.o(enumGapJuncCompIdxs.extGjPp).name)
+                        sprint(text, "[Stub -> Pointer -> ] %s PP -> Section", allComps.o(enumGapJuncCompIdxs.extGjPp).name)
                         xlabel(text)
                         xpanel()
                         xpanel("")
                         xlabel("Internal gap junction structure:")
-                        sprint(text, "Other Section -> Pointer -> %s PP -> Section", gjmAllComps.o(enumGapJuncCompIdxs.intGjPp).name)
+                        sprint(text, "Other Section -> Pointer -> %s PP -> Section", allComps.o(enumGapJuncCompIdxs.intGjPp).name)
                         xlabel(text)
                         xpanel()
                     }
                     deck1.intercept(0)
                     // deck1.flip_to(*)     // Will be done below in gapJuncTypeChangedHandler
                     deck1.map()
-                    deck2 = new Deck()
-                    deck2.intercept(1)
-                    {
-                        xpanel("")
-                        sprint(text, "Create some %ss", gjmAllComps.o(enumGapJuncCompIdxs.extGjPp).name)
-                        xcheckbox(text, &gapJuncGroups[1].isCreateSomeGapJuncs, "createSomeGapJuncsCheckBoxHandler(1)")
-                        xpanel()
-                        xpanel("")
-                        sprint(text, "Create some %ss", gjmAllComps.o(enumGapJuncCompIdxs.intGjPp).name)
-                        xcheckbox(text, &gapJuncGroups[0].isCreateSomeGapJuncs, "createSomeGapJuncsCheckBoxHandler(1)")
-                        xpanel()
-                    }
-                    deck2.intercept(0)
-                    // deck2.flip_to(*)     // Will be done below in gapJuncTypeChangedHandler
-                    deck2.map()
                 }
                 vBox.intercept(0)
                 vBox.map()
@@ -144,11 +160,9 @@ begintemplate GapJuncManagerMainWidget
             hBox.intercept(0)
             hBox.map()
             
-            deck3 = new Deck()
-            deck3.intercept(1)
+            deck2 = new Deck()
+            deck2.intercept(1)
             {
-                createEmptyPanel()
-                
                 hBox = new HBox()
                 hBox.intercept(1)
                 {
@@ -160,7 +174,7 @@ begintemplate GapJuncManagerMainWidget
                         xpanel()
                         extChoices.browser("", "s")
                         extChoices.select_action("extChoicesSelectHandler(hoc_ac_)")
-                        decks4[1] = createEditPPVarsDeck(enumGapJuncCompIdxs.extGjPp)
+                        decks3[1] = createEditPPVarsDeck(enumGapJuncCompIdxs.extGjPp)
                     }
                     vBox.intercept(0)
                     vBox.map("", -1, -1, listBoxWidth + 3.6, listBoxHeight)     // !!! hack
@@ -181,7 +195,7 @@ begintemplate GapJuncManagerMainWidget
                         xpanel()
                         intChoices.browser("", "s")
                         intChoices.select_action("intChoicesSelectHandler(hoc_ac_)")
-                        decks4[0] = createEditPPVarsDeck(enumGapJuncCompIdxs.intGjPp)
+                        decks3[0] = createEditPPVarsDeck(enumGapJuncCompIdxs.intGjPp)
                     }
                     vBox.intercept(0)
                     vBox.map("", -1, -1, listBoxWidth, listBoxHeight)
@@ -191,44 +205,42 @@ begintemplate GapJuncManagerMainWidget
                 hBox.intercept(0)
                 hBox.map()
             }
-            deck3.intercept(0)
-            // deck3.flip_to(*)     // Will be done below in gapJuncTypeChangedHandler
-            deck3.map("", -1, -1, 1, listBoxHeight)
+            deck2.intercept(0)
+            // deck2.flip_to(*)     // Will be done below in gapJuncTypeChangedHandler
+            deck2.map("", -1, -1, 1, listBoxHeight)
             
             xpanel("")
             xlabel("")
             xbutton("Apply", "applyHandler()")
             xcheckbox("Reseed all GJs in new random locations", &isReseed, "isReseedCheckBoxHandler()")
             xlabel("")
-            xbutton("* Show current GJ PP / Ptr locations", "showLocationsHandler()")
-            xlabel("* Alternatively, you can use this standard tool that shows the \"SectionName(x)\" list:")
-            xlabel("  \"NEURON Main Manu\" -> Tools -> \"Point Processes\" -> Viewers -> PointProcesses")
-            xlabel("  (to review the Int GJ Pointer locations, select \"PointProcessMark\")")
+            xbutton("* Show all locations", "showAllLocationsHandler()")
+            mcu4t.addHintBelowShowAllLocationsButton()
+            if (isAstrocyteOrNeuron) {
+                xlabel("  (to review the Int GJ Pointer locations, select \"PointProcessMark\")")
+            }
             xlabel("")
-            xbutton("Adjust lists filter (I cannot find a PP in the lists above)", "adjustListsFilterHandler()")
+            xbutton("Adjust list filter (I cannot find a PP in the list above)", "adjustListFilterHandler()")
             xpanel()
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Manager of gap junctions", 60, 10, -1, -1)
+        mainBox.map("Manager of gap junctions", 400, 10, -1, -1)
         
         _isShow = 1
         {
-            gapJuncTypeChangedHandler(isExtOrIntGapJunc)
+            gapJuncTypeChangedHandler(isExtOrInt)
             selectNewExt(defExtChoiceIdx)
             selectNewInt(defIntChoiceIdx)
         }
         _isShow = 0
         
-        whereToSeedChangedHandler(0, gapJuncGroups[0].isAllOrSomeSecsSeeded)
-        whereToSeedChangedHandler(1, gapJuncGroups[1].isAllOrSomeSecsSeeded)
+        whereToSeedChangedHandler(isAllOrSomeSecsSeeded)
         
-        gapJuncGroups[0].deployMarkerPointProcessesForIntGapJuncPointers()
-        showLocationsHandler()
-        
-        // !!! maybe it would be better to call it lazily:
-        //     when user enables the internal gap juncs for the first time after opening this widget OR reopens the widget with already enabled internal gap juncs
-        pyObj.intGapJuncPtrSeedingHelper.cacheAllSegms3DCoords()
+        if (!isExtOrInt) {
+            gapJuncSet.deployMarkerPointProcessesForIntGapJuncPointers()
+        }
+        showAllLocationsHandler()
         
         forceOrUnforceReseeding(0)
     }
@@ -315,16 +327,15 @@ begintemplate GapJuncManagerMainWidget
         // At this point, we can have list(s) with no selection (if user switched from less restrictive to more restrictive filter)
     }
     
-    func warnIfUserHasNotSelectedPPs() { local isOK
+    func warnIfUserHasNotSelectedPP() { local isOK
         isOK = 1
         mwh.startIntercepting()
         {
-            if (extChoices.selected() == -1) {
-                mcu4t.showPleaseSelectPpMsg(gjmAllComps, enumGapJuncCompIdxs.extGjPp)
+            if (isExtOrInt && extChoices.selected() == -1) {
+                mcu4t.showPleaseSelectPpMsg(allComps, enumGapJuncCompIdxs.extGjPp)
                 isOK = 0
-            }
-            if (intChoices.selected() == -1) {
-                mcu4t.showPleaseSelectPpMsg(gjmAllComps, enumGapJuncCompIdxs.intGjPp)
+            } else if (!isExtOrInt && intChoices.selected() == -1) {
+                mcu4t.showPleaseSelectPpMsg(allComps, enumGapJuncCompIdxs.intGjPp)
                 isOK = 0
             }
         }
@@ -334,81 +345,85 @@ begintemplate GapJuncManagerMainWidget
     
     func applyChangesToGapJuncLocIfNeeded() {
         
-        getOldPpNames($s1, $s2)
+        getOldPpName($s1)
         
         if (!isReseed) {
             return 0
         }
         
+        commitVarsToGapJuncSet()
+        
         mwh.showPleaseWaitBox("Reseeding GJ PPs / Ptrs in new random locations.")
         {
-            gapJuncGroups[0].applyChangesToLoc()
-            gapJuncGroups[1].applyChangesToLoc()
+            gapJuncSet.applyChangesToLoc()
         }
         mwh.hidePleaseWaitBox()
         
-        updateNumExtGapJuncsLabel()
-        updateNumIntGapJuncsLabel()
+        updateNumGapJuncsLabel()
         
         forceOrUnforceReseeding(0)
         
         return 1
     }
     
-    func applyChangesToGapJuncStrucIfNeeded() { local numArg, isLocChanged, intMechIdx, extMechIdx, isSmthChanged
-        strdef intMechNameOrEmpty_old, extMechNameOrEmpty_old, intMechName, extMechName
+    func applyChangesToGapJuncStrucIfNeeded() { local numArg, isLocChanged, isExtOrInt_old, mechIdx, isSmthChanged
+        strdef mechNameOrEmpty_old, mechName
         
         numArg = numarg()
         if (numArg == 0) {
             isLocChanged = 0
-            getOldPpNames(intMechNameOrEmpty_old, extMechNameOrEmpty_old)
+            isExtOrInt_old = getIsExtOrInt()
+            getOldPpName(mechNameOrEmpty_old)
         } else if (numArg == 3) {
             isLocChanged = $1
-            intMechNameOrEmpty_old = $s2
-            extMechNameOrEmpty_old = $s3
+            isExtOrInt_old = $2
+            mechNameOrEmpty_old = $s3
         } else {
             codeContractViolation()
         }
         
-        intMechIdx = mcu4t.getSelMechIdxOrMinusOne(intChoices)
-        extMechIdx = mcu4t.getSelMechIdxOrMinusOne(extChoices)
-        mcu4t.getSelMechNameOrEmptyString(intChoices, intMechName)
-        mcu4t.getSelMechNameOrEmptyString(extChoices, extMechName)
+        mechIdx = getSelMechIdxAndOptionalName(mechName)
+        
+        commitVarsToGapJuncSet()
         
         mwh.showPleaseWaitBox("Creating GJ PP structure.")
         {
-            isSmthChanged = gapJuncGroups[0].applyChangesToStrucIfNeeded(intMechIdx, intMechName, isLocChanged, intMechNameOrEmpty_old)
-            isSmthChanged = gapJuncGroups[1].applyChangesToStrucIfNeeded(extMechIdx, extMechName, isLocChanged, extMechNameOrEmpty_old) || isSmthChanged
+            isSmthChanged = gapJuncSet.applyChangesToStrucIfNeeded(gapJuncSetIdx, mechIdx, mechName, isLocChanged, isExtOrInt_old, mechNameOrEmpty_old)
         }
         mwh.hidePleaseWaitBox()
         
         if (isSmthChanged) {
             updateNumInhomVarsLabel()
             updateNumStochVarsLabel()
+            parentWidget.onApplyInChildHandler(gapJuncSetIdx)
         }
         
         return isSmthChanged
     }
     
-    func applyChangesToDirtyHomogenVarsIfNeeded() { local intMechIdx, extMechIdx, isSmthChanged
-        intMechIdx = mcu4t.getSelMechIdxOrMinusOne(intChoices)
-        extMechIdx = mcu4t.getSelMechIdxOrMinusOne(extChoices)
+    func applyChangesToDirtyHomogenVarsIfNeeded() { local mechIdx, isSmthChanged
+        
+        mechIdx = getSelMechIdxAndOptionalName()
+        
+        commitVarsToGapJuncSet()
+        
         mwh.showPleaseWaitBox("Updating GJ PP homogen vars.")
         {
-            isSmthChanged = gapJuncGroups[0].applyChangesToDirtyHomogenVars(intMechIdx)
-            isSmthChanged = gapJuncGroups[1].applyChangesToDirtyHomogenVars(extMechIdx) || isSmthChanged
+            isSmthChanged = gapJuncSet.applyChangesToDirtyHomogenVars(mechIdx)
         }
         mwh.hidePleaseWaitBox()
+        
         updateNumInhomVarsLabel()
+        
         return isSmthChanged
     }
     
     proc updateNumInhomVarsLabel() {
-        mcu4t.updateNumInhomVarsLabel(numInhomVarsVarLabel)
+        mcu4t.updateNumInhomVarsLabel(1, gapJuncSetIdx, numInhomVarsVarLabel)
     }
     
     proc updateNumStochVarsLabel() {
-        mcu4t.updateNumStochVarsLabel(numStochVarsVarLabel)
+        mcu4t.updateNumStochVarsLabel(1, gapJuncSetIdx, numStochVarsVarLabel)
     }
     
     proc dismissHandler() { localobj nil
@@ -421,27 +436,31 @@ begintemplate GapJuncManagerMainWidget
             return
         }
         
-        shapeBoxes[0].unmap()
-        shapeBoxes[1].unmap()
+        shapeBox.unmap()
         
         dismissChilds()
         
         mainBox.unmap()
         
-        gapJuncGroups[0].destroyMarkerPointProcessesForIntGapJuncPointers()
+        if (!gapJuncSet.isExtOrInt) {   // Don't use the temp copy "isExtOrInt" here
+            gapJuncSet.destroyMarkerPointProcessesForIntGapJuncPointers()
+        }
         
-        pyObj.intGapJuncPtrSeedingHelper.destroyCache()
+        gapJuncSet = nil    // Not to keep an extra reference to gapJuncSet.allGapJuncs
+        allComps = nil          // Just in case
+        selected_ref = nil      //
     }
     
     // All next staff is private
     
     
-    proc createWhereToSeedBox() { local isExtOrInt, h localobj vBox1, hBox, vBox2, deck
-        strdef Word, Wor, text, hocCommand
+    // !!! code dup. with SpineSeedingSubWidget and MainUI
+    proc createWhereToSeedBox() { local _isExtOrInt, h localobj vBox1, hBox, vBox2, deck
+        strdef Word, Wor, text
         
-        isExtOrInt = $1
+        _isExtOrInt = $1
         
-        if (isExtOrInt) {
+        if (_isExtOrInt) {
             Word = "External"
             Wor = "Ext"
         } else {
@@ -460,19 +479,16 @@ begintemplate GapJuncManagerMainWidget
             hBox.intercept(1)
             {
                 xpanel("")
-                sprint(hocCommand, "whereToSeedChangedHandler(%d, 1)", isExtOrInt)
-                xradiobutton("All sections", hocCommand, gapJuncGroups[isExtOrInt].isAllOrSomeSecsSeeded == 1)
-                sprint(hocCommand, "whereToSeedChangedHandler(%d, 0)", isExtOrInt)
-                xradiobutton("Some sections (I will select them)", hocCommand, gapJuncGroups[isExtOrInt].isAllOrSomeSecsSeeded == 0)
+                xradiobutton("All sections", "whereToSeedChangedHandler(1)", isAllOrSomeSecsSeeded == 1)
+                xradiobutton("Some sections (I will select them)", "whereToSeedChangedHandler(0)", isAllOrSomeSecsSeeded == 0)
                 xpanel()
                 deck = new Deck()
-                decks5[isExtOrInt] = deck
+                decks4[_isExtOrInt] = deck
                 deck.intercept(1)
                 {
                     createEmptyPanel()
                     xpanel("")
-                    sprint(hocCommand, "selectSectionsHandler(%d)", isExtOrInt)
-                    xbutton("Select", hocCommand)
+                    xbutton("Select", "selectSectionsHandler()")
                     xpanel()
                 }
                 deck.intercept(0)
@@ -487,20 +503,19 @@ begintemplate GapJuncManagerMainWidget
             xpanel()
             xpanel("")
             sprint(text, "Max numb %s GJs per section", Wor)
-            xpvalue(text, &gapJuncGroups[isExtOrInt].maxNumGapJuncsPerSec, 1, "forceOrUnforceReseeding(1)")
+            xpvalue(text, &maxNumGapJuncsPerSec, 1, "forceOrUnforceReseeding(1)")
             sprint(text, "Edit Min distribution over branches for %s GJs", Wor)
-            sprint(hocCommand, "_showSeedingDensityWidget(%d)", isExtOrInt)
-            xbutton(text, hocCommand)
+            xbutton(text, "_showSeedingDensityWidget()")
             xpanel()
             deck = new Deck()
-            decks6[isExtOrInt] = deck
+            decks5[_isExtOrInt] = deck
             deck.intercept(1)
             {
                 createEmptyPanel()
                 vBox2 = new VBox()
                 vBox2.intercept(1)
                 {
-                    if (isExtOrInt) {
+                    if (_isExtOrInt) {
                         xpanel("")
                         sprint(text, "With what value (stub) to feed the %s GJ pointer:", Word)
                         xlabel(text)
@@ -515,11 +530,11 @@ begintemplate GapJuncManagerMainWidget
                         xlabel(text)
                         xpanel()
                         xpanel("")
-                        xpvalue("Max radius of connection", &gapJuncGroups[0].maxRadiusForIntGapJuncs, 1, "forceOrUnforceReseeding(1)")
+                        xpvalue("Max radius of connection", &maxRadiusForIntGapJuncs, 1, "forceOrUnforceReseeding(1)")
                         xpanel()
                         xpanel("")
                         // !!! when user switches this, it would be better not to force the reseeding gap juncs and ptrs in new random locations
-                        xcheckbox("Place PPs by pairs (criss-cross connection)", &gapJuncGroups[0].isCrissCrossForIntGapJuncs, "forceOrUnforceReseeding(1)")
+                        xcheckbox("Place PPs by pairs (criss-cross connection)", &isCrissCrossForIntGapJuncs, "forceOrUnforceReseeding(1)")
                         xpanel()
                         h = 152.75
                     }
@@ -541,73 +556,46 @@ begintemplate GapJuncManagerMainWidget
         sprint(maxDistVarLabel, "Max distance for cell: %g (%s)", maxDist, units("L"))
     }
     
-    proc updateNumExtGapJuncsLabel() { local numExtGapJuncs
-        numExtGapJuncs = gjmAllGapJuncs[1].count()
-        sprint(numExtGapJuncsLabel, "Number of External GJs: %d", numExtGapJuncs)
-    }
-    
-    proc updateNumIntGapJuncsLabel() { local numIntGapJuncs
-        numIntGapJuncs = gjmAllGapJuncs[0].count()
-        sprint(numIntGapJuncsLabel, "Number of Internal GJs: %d", numIntGapJuncs)
+    proc updateNumGapJuncsLabel() { local numGapJuncs
+        numGapJuncs = gapJuncSet.allGapJuncs.count()
+        sprint(numGapJuncsLabel, "Number of GJs in this set: %d", numGapJuncs)
     }
     
     proc gapJuncTypeChangedHandler() { local cardIdx
-        isExtOrIntGapJunc = $1
+        isExtOrInt = $1
         dismissChilds(1)
-        cardIdx = 1 - isExtOrIntGapJunc
+        cardIdx = 1 - isExtOrInt
         deck1.flip_to(cardIdx)
         deck2.flip_to(cardIdx)
-        createSomeGapJuncsCheckBoxHandler(0)
-    }
-    
-    proc createSomeGapJuncsCheckBoxHandler() { local isCalledFromCheckBox
-        isCalledFromCheckBox = $1
-        if (!gapJuncGroups[isExtOrIntGapJunc].isCreateSomeGapJuncs) {
-            cardIdx = 0
-        } else {
-            cardIdx = 2 - isExtOrIntGapJunc
-        }
-        dismissChilds(1)
-        deck3.flip_to(cardIdx)
-        
-        if (isCalledFromCheckBox) {
-            forceOrUnforceReseeding(1)
-            if (isExtOrIntGapJunc) {
-                extChoicesSelectHandler(defExtChoiceIdx)
-            } else {
-                intChoicesSelectHandler(defIntChoiceIdx)
-            }
-        }
-    }
-    
-    proc whereToSeedChangedHandler() { local isExtOrInt, isAllOrSome, cardIdx
-        isExtOrInt = $1
-        isAllOrSome = $2
-        dismissIfNotNil(ssSubWidget)
-        gapJuncGroups[isExtOrInt].isAllOrSomeSecsSeeded = isAllOrSome
-        cardIdx = 1 - isAllOrSome
-        decks5[isExtOrInt].flip_to(cardIdx)
+        cardIdx = 1 - isAllOrSomeSecsSeeded
+        decks4[isExtOrInt].flip_to(cardIdx)
         forceOrUnforceReseeding(1)
     }
     
-    proc selectSectionsHandler() { local isExtOrInt
-        isExtOrInt = $1
+    proc whereToSeedChangedHandler() { local cardIdx
+        isAllOrSomeSecsSeeded = $1
         dismissIfNotNil(ssSubWidget)
-        ssSubWidget = new SectionsSelectorWidget(2, gapJuncGroups[isExtOrInt].selected_ref)
-        ssSubWidget.show()  // --> selectSectionsHandler_layer2
+        cardIdx = 1 - isAllOrSomeSecsSeeded
+        decks4[isExtOrInt].flip_to(cardIdx)
+        forceOrUnforceReseeding(1)
+    }
+    
+    proc selectSectionsHandler() {
+        dismissIfNotNil(ssSubWidget)
+        ssSubWidget = new SectionsSelectorWidget(3, selected_ref)
+        ssSubWidget.show(900, 100)      // --> selectSectionsHandler_layer2
     }
     
     proc selectSectionsHandler_layer2() {
         // User cannot switch between ext and int GJs in GapJuncManagerMainWidget when SectionsSelectorWidget is shown
-        gapJuncGroups[isExtOrIntGapJunc].selected_ref = $o1
+        selected_ref = $o1
         
         forceOrUnforceReseeding(1)
     }
     
-    proc _showSeedingDensityWidget() { local isExtOrInt
-        isExtOrInt = $1
+    proc _showSeedingDensityWidget() {
         
-        showSeedingDensityWidget(gapJuncSeedingDensityHelpers[isExtOrInt])
+        showSeedingDensityWidget(gapJuncSet.seedingDensityHelper, 900, 300)
         
         forceOrUnforceReseeding(1)
     }
@@ -615,18 +603,17 @@ begintemplate GapJuncManagerMainWidget
     proc editExtValueHandler() {
         editMechVarsOrExtValueCommonPrologue()
         
-        varsEditorSubWidget = new VarsEditorWidget(2, enumGapJuncCompIdxs.extGjExtValue, 0, 1)
+        varsEditorSubWidget = new VarsEditorWidget(2, 1, gapJuncSetIdx, enumGapJuncCompIdxs.extGjExtValue, utils4FakeMech4GapJuncExtValue.mechIdx, 1)
         varsEditorSubWidget.show()
     }
     
     // !!! code dup. with SynManagerMainWidget
-    func chooseDefSelItemIdx() { local isExtOrInt, idx localobj list
+    func chooseDefSelItemIdx() { local idx localobj list
         strdef ppName
         
-        isExtOrInt = $1
-        list = $o2
+        list = $o1
         
-        gapJuncGroups[isExtOrInt].getPpNameOrEmpty(ppName)
+        gapJuncSet.getPpNameOrEmpty(ppName)
         
         if (stringEmpty(ppName)) {
             return 0
@@ -656,7 +643,7 @@ begintemplate GapJuncManagerMainWidget
     // !!! a lot of code dup. with SynManagerMainWidget below
     
     proc extChoicesSelectHandler() { local isNoSelection, doesHavePtr
-        strdef mechName, dmVarNameWithIndex, varUnits
+        strdef mechName
         
         defExtChoiceIdx = $1
         
@@ -666,10 +653,7 @@ begintemplate GapJuncManagerMainWidget
         }
         
         if (doesHavePtr) {
-            dmVarNameWithIndex = pyObj.ms_getGapJuncExtVarNameWithIndex(mechName)
-            getGraphedOrPointedVarUnits(dmVarNameWithIndex, varUnits)
-            // !!! BUG: this operation has immediate effect, but it should not until user clicks "Apply"
-            utils4FakeMech4GapJuncExtValue.setNewVar(dmVarNameWithIndex, varUnits)
+            utils4FakeMech4GapJuncExtValue.setNewVarCore(mechName)
         }
     }
     
@@ -700,16 +684,17 @@ begintemplate GapJuncManagerMainWidget
         }
     }
     
-    func choicesSelectHandlerCore() { local isExtOrInt, defChoiceIdx, mechIdxOrMinus1, doesHavePtr, cardIdx localobj choices, deck
+    // !!!! maybe don't pass _isExtOrInt as an arg here
+    func choicesSelectHandlerCore() { local _isExtOrInt, defChoiceIdx, mechIdxOrMinus1, doesHavePtr, cardIdx localobj choices, deck
         strdef mechName
         
-        isExtOrInt = $1
+        _isExtOrInt = $1
         choices = $o2
         defChoiceIdx = $3
         
-        deck = decks6[isExtOrInt]
+        deck = decks5[_isExtOrInt]
         
-        mechIdxOrMinus1 = flipEditPPVarsDeckAndDismissChilds(decks4[isExtOrInt], choices, defChoiceIdx)
+        mechIdxOrMinus1 = flipEditPPVarsDeckAndDismissChilds(decks3[_isExtOrInt], choices, defChoiceIdx)
         if (mechIdxOrMinus1 == -1) {
             deck.flip_to(0)
             return 1
@@ -769,7 +754,7 @@ begintemplate GapJuncManagerMainWidget
         ppCompIdx = $1
         mechIdx = $2
         
-        sprint(label, "Edit %s PP vars", gjmAllComps.o(ppCompIdx).name)
+        sprint(label, "Edit %s PP vars", allComps.o(ppCompIdx).name)
         
         xpanel("")
         xmenu(label)
@@ -834,7 +819,7 @@ begintemplate GapJuncManagerMainWidget
             // Convert from varType to varTypeIdx
             varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
             
-            ppComp = gjmAllComps.o(ppCompIdx)
+            ppComp = allComps.o(ppCompIdx)
             
             mechStd = ppComp.mechStds[mechIdx][varTypeIdx]
             
@@ -847,7 +832,7 @@ begintemplate GapJuncManagerMainWidget
             // mechStd.panel(header)
             
             // New editor
-            varsEditorSubWidget = new VarsEditorWidget(1, ppCompIdx, mechIdx, varType)
+            varsEditorSubWidget = new VarsEditorWidget(1, 1, gapJuncSetIdx, ppCompIdx, mechIdx, varType)
             varsEditorSubWidget.show()
         } else {
             if (!mth.doesMechHaveGlobalVars(1, mechIdx)) {
@@ -860,70 +845,63 @@ begintemplate GapJuncManagerMainWidget
         }
     }
     
-    proc applyHandler() { local isOK, isLocChanged, isSmthChanged
-        strdef intMechNameOrEmpty_old, extMechNameOrEmpty_old
+    proc applyHandler() { local isOK, isExtOrInt_old, isLocChanged, isSmthChanged
+        strdef mechNameOrEmpty_old
         
-        isOK = warnIfUserHasNotSelectedPPs()
+        isOK = warnIfUserHasNotSelectedPP()
         if (!isOK) {
             return
         }
         
         dismissChilds()
         
-        isLocChanged = applyChangesToGapJuncLocIfNeeded(intMechNameOrEmpty_old, extMechNameOrEmpty_old)
-        isSmthChanged = applyChangesToGapJuncStrucIfNeeded(isLocChanged, intMechNameOrEmpty_old, extMechNameOrEmpty_old) || isLocChanged
+        isExtOrInt_old = getIsExtOrInt()
+        
+        isLocChanged = applyChangesToGapJuncLocIfNeeded(mechNameOrEmpty_old)
+        isSmthChanged = applyChangesToGapJuncStrucIfNeeded(isLocChanged, isExtOrInt_old, mechNameOrEmpty_old) || isLocChanged
         
         if (isLocChanged) {     // !!! maybe do this after calling applyChangesToDirtyHomogenVarsIfNeeded?
-            inhomAndStochLibrary.onTapLocChange()
+            inhomAndStochLibrary.onTapLocChange(1, gapJuncSetIdx)
         }
         
         // !!! maybe no need to do this when isStrucChanged because it's already done, so we need just to unset isDirty flags
         isSmthChanged = applyChangesToDirtyHomogenVarsIfNeeded() || isSmthChanged
         
         if (isLocChanged) {
-            showLocationsUpdate(1)
-            showLocationsUpdate(0)
+            showAllLocationsUpdate()
         }
         
         mcu4t.showApplyMsg(isSmthChanged, "gap junctions")
         
         forceOrUnforceReseeding(0)
-    }
-    
-    proc showLocationsHandler() {
-        showLocationsCore(1)
-        showLocationsCore(0)
-    }
-    
-    proc showLocationsCore() { local isExtOrInt, y localobj shapeBox, shape
-        strdef title
         
-        isExtOrInt = $1
+        parentWidget.onApplyInChildHandler(gapJuncSetIdx)
+    }
+    
+    // !! code dup. with SynManagerMainWidget.showAllLocationsHandler
+    proc showAllLocationsHandler() { localobj shape
+        strdef title
         
         if (isExtOrInt) {
             title = "External GJ PP locations"
         } else {
             title = "Internal GJ PP and Ptr locations"
         }
-        y = 10 + !isExtOrInt * 400
         
         shapeBox = new VBox()
-        shapeBoxes[isExtOrInt] = shapeBox
         shapeBox.intercept(1)
         {
             shape = new Shape()
-            shape.exec_menu("Shape Plot")
             shape.exec_menu("View = plot")
-            gapJuncGroups[isExtOrInt].updateColormap(shape, 1)
+            gapJuncSet.updateMarks(shape, 1)
         }
         shapeBox.intercept(0)
-        shapeBox.map(title, 625, y, 300, 250)
+        shapeBox.map(title, 965, 10, 300, 250)
     }
     
-    proc showLocationsUpdate() { local isExtOrInt
-        isExtOrInt = $1
-        if (shapeBoxes[isExtOrInt].ismapped()) {
-            showLocationsCore(isExtOrInt)
+    proc showAllLocationsUpdate() {
+        if (shapeBox.ismapped()) {
+            showAllLocationsHandler()
         }
     }
     
@@ -934,7 +912,7 @@ begintemplate GapJuncManagerMainWidget
         }
     }
     
-    proc adjustListsFilterHandler() {
+    proc adjustListFilterHandler() {
         dismissChilds()
         gjmlfw.show(this)
     }
@@ -959,24 +937,56 @@ begintemplate GapJuncManagerMainWidget
         return isGapInName
     }
     
-    proc editMechVarsOrExtValueCommonPrologue() { local isLocChanged
-        strdef intMechNameOrEmpty_old, extMechNameOrEmpty_old
+    proc editMechVarsOrExtValueCommonPrologue() { local isExtOrInt_old, isLocChanged
+        strdef mechNameOrEmpty_old
         
         dismissChilds()
         
-        isLocChanged = applyChangesToGapJuncLocIfNeeded(intMechNameOrEmpty_old, extMechNameOrEmpty_old)
+        isExtOrInt_old = getIsExtOrInt()
+        
+        isLocChanged = applyChangesToGapJuncLocIfNeeded(mechNameOrEmpty_old)
         if (isLocChanged) {
-            applyChangesToGapJuncStrucIfNeeded(1, intMechNameOrEmpty_old, extMechNameOrEmpty_old)
-            inhomAndStochLibrary.onTapLocChange()
+            applyChangesToGapJuncStrucIfNeeded(1, isExtOrInt_old, mechNameOrEmpty_old)
+            inhomAndStochLibrary.onTapLocChange(1, gapJuncSetIdx)
             // !!!?? applyChangesToDirtyHomogenVarsIfNeeded()
-            showLocationsUpdate(1)
-            showLocationsUpdate(0)
+            showAllLocationsUpdate()
         }
     }
     
-    proc getOldPpNames() {
-        gapJuncGroups[0].getPpNameOrEmpty($s1)
-        gapJuncGroups[1].getPpNameOrEmpty($s2)
+    func getIsExtOrInt() {
+        return gapJuncSet.getIsExtOrInt()
+    }
+    
+    proc getOldPpName() {
+        gapJuncSet.getPpNameOrEmpty($s1)    // !!! maybe disallow "Empty" here and rename
+    }
+    
+    func getSelMechIdxAndOptionalName() { local numArg localobj choices
+        numArg = numarg()
+        if (numArg > 1) {
+            codeContractViolation()
+        }
+        
+        if (isExtOrInt) {
+            choices = extChoices
+        } else {
+            choices = intChoices
+        }
+        
+        if (numArg == 1) {
+            mcu4t.getSelMechNameOrEmptyString(choices, $s1)
+        }
+        
+        return mcu4t.getSelMechIdxOrMinusOne(choices)
+    }
+    
+    proc commitVarsToGapJuncSet() {
+        gapJuncSet.isExtOrInt = isExtOrInt
+        gapJuncSet.isAllOrSomeSecsSeeded = isAllOrSomeSecsSeeded
+        gapJuncSet.selected_ref = selected_ref
+        gapJuncSet.maxNumGapJuncsPerSec = maxNumGapJuncsPerSec
+        gapJuncSet.maxRadiusForIntGapJuncs = maxRadiusForIntGapJuncs
+        gapJuncSet.isCrissCrossForIntGapJuncs = isCrissCrossForIntGapJuncs
     }
     
     proc dismissChilds() { local numArg, isIgnoreListsFilterWidget

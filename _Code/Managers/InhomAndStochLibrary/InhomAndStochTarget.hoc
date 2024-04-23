@@ -6,18 +6,21 @@ if (!isBaseOrNanoStart) {
 begintemplate InhomAndStochTarget
 
     public makeOrUpdateInhom, makeOrUpdateStoch, isEqual, isStochEnabled, getInhomModelData, getStochModelData, setPlayIfPossible, stopPlayingVars, onInit, onStep, restoreInhomogeneity, disableInhomOrStoch
-    public varLibId, isDmOrTapPart, mechName, isInhom, distFuncCatIdx, distFuncIdx, distFuncHelper, isStoch, stochFuncCatIdx, stochFuncIdx
+    public varLibId, isDmOrTapPart, isGapJuncOrSyn, tapSetIdx, mechName, isInhom, distFuncCatIdx, distFuncIdx, distFuncHelper, isStoch, stochFuncCatIdx, stochFuncIdx
+    public seh
     
-    external isAstrocyteOrNeuron
-    external gjmAllGapJuncs, smAllSyns
+    external gjmAllGapJuncSets, smAllSynSets
     external mwh, rngUtils, mth, compUtils
     external codeContractViolation
+    external enumGapJuncPpRoles, enumSynPpRoles
     external eachItemInList, eachSecInList, eachSegmInSecList
     
     // "init" args
     objref varLibId
     isDmOrTapPart = -1
-    enumPpRoleOrMinus1 = -1
+    isGapJuncOrSyn = -1         // For taps only ("-1" for biophys vars)
+    tapSetIdx = -1              //
+    enumPpRoleOrMinus1 = -1     //
     strdef mechName
     varTypeIdx = -1
     strdef varName
@@ -27,7 +30,7 @@ begintemplate InhomAndStochTarget
     objref boundingHelper, stochFuncHelper
     
     objref list_ref
-    objref gjmAllGapJuncsOfThisType
+    objref allGapJuncs, allSyns, seh
     
     isInhom = -1
     distFuncCatIdx = -1
@@ -41,7 +44,7 @@ begintemplate InhomAndStochTarget
     objref this
     
     
-    proc init() { local numArg localobj impRedObj, comp, nil
+    proc init() { local numArg localobj impRedObj, comp, synSet, nil
         numArg = numarg()
         
         if (numArg < 1 || numArg > 2) {
@@ -56,24 +59,36 @@ begintemplate InhomAndStochTarget
         }
         
         isDmOrTapPart = (varLibId.enumDmPpFk == 0)
+        isGapJuncOrSyn = varLibId.isGapJuncOrSyn
+        tapSetIdx = varLibId.tapSetIdx
         
-        comp = compUtils.getComp(isDmOrTapPart, varLibId.compIdx)
+        comp = compUtils.getComp(varLibId)
         
         if (isDmOrTapPart) {
+            if (isGapJuncOrSyn != -1 || tapSetIdx != -1) {
+                codeContractViolation()
+            }
             list_ref = comp.list_ref
-        } else if (isAstrocyteOrNeuron) {
-            gjmAllGapJuncsOfThisType = gjmAllGapJuncs[comp.isExtOrInt]
+        } else {
+            if (isGapJuncOrSyn == -1) {
+                codeContractViolation()
+            }
+            if (isGapJuncOrSyn) {
+                allGapJuncs = gjmAllGapJuncSets.o(tapSetIdx).allGapJuncs
+            } else {
+                synSet = smAllSynSets.o(tapSetIdx)
+                allSyns = synSet.allSyns
+                seh = synSet.seh
+            }
         }
         
-        // !!!!! try to replace this IF with simple assignment enumPpRoleOrMinus1 = comp.enumPpRole
-        if (varLibId.enumDmPpFk == 1) {
+        // !!!!! rename enumPpRoleOrMinus1 to enumTapPartOrMinus1
+        if (varLibId.enumDmPpFk == 0) {
+            enumPpRoleOrMinus1 = -1
+        } else if (varLibId.enumDmPpFk < 3) {
             enumPpRoleOrMinus1 = comp.enumPpRole
         } else {
-            if (isAstrocyteOrNeuron) {
-                enumPpRoleOrMinus1 = 2      // !!!! keep in sync with EnumGapJuncPpRoles
-            } else {
-                enumPpRoleOrMinus1 = -1
-            }
+            codeContractViolation()
         }
         
         mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
@@ -201,16 +216,18 @@ begintemplate InhomAndStochTarget
     
     // Keep in sync with ReducedInhomAndStochTarget.onInit
     proc onInit() {
-        if (isStoch) {
-            // One unused value to set up the generator and the colourizer
-            boundingHelper.generateFirstBoundedValue(stochFuncHelper)
-            
-            if (!isDmOrTapPart) {
-                // Stochastic synaptic vars can hold the values from the previous simulation for a long time before the first synaptic event on this simulation,
-                // and this is why we restore the base values here for reproducibility of the experiments
-                // Notice that stochastic biophys vars change their values on each iteration, so there is no need to restore their base values here
-                makeStepOrRestoreBaseValues(0)
-            }
+        if (!isStoch) {
+            return
+        }
+        
+        // One unused value to set up the generator and the colourizer
+        boundingHelper.generateFirstBoundedValue(stochFuncHelper)
+        
+        if (!isDmOrTapPart && !isGapJuncOrSyn) {
+            // For synapses, stochastic vars can hold the values from the previous simulation for a long time before the first synaptic event on this simulation,
+            // and this is why we restore the base values here for reproducibility of the experiments
+            // Notice that for biophysics and gap junctions, stochastic vars change their values on each iteration, so there is no need to restore their base values here
+            makeStepOrRestoreBaseValues(0)
         }
     }
     
@@ -224,7 +241,7 @@ begintemplate InhomAndStochTarget
             codeContractViolation()
         }
         
-        comp = compUtils.getComp(isDmOrTapPart, varLibId.compIdx)
+        comp = compUtils.getComp(varLibId)
         if (isDmOrTapPart) {
             // !!
             mwh.showNotImplementedWarning()
@@ -291,7 +308,7 @@ begintemplate InhomAndStochTarget
         if (isDmOrTapPart) {
             dmStep(isStoch_, homogenValue)
         } else {
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 gapJuncPartStep(isStoch_, homogenValue)
             } else {
                 synPartStepOrRestore(isStepOrRestore, isStoch_, homogenValue)
@@ -346,7 +363,7 @@ begintemplate InhomAndStochTarget
         }
         
         prevSec_ref = nil
-        for eachItemInList(gapJunc, gjmAllGapJuncsOfThisType) {
+        for eachItemInList(gapJunc, allGapJuncs) {
             if (gapJunc.sec_ref != prevSec_ref && isInhom) {
                 distFuncHelper.onJustBeforeNewSection()
             }
@@ -383,7 +400,7 @@ begintemplate InhomAndStochTarget
         
         isWeightVar = mth.isWeightNetConVar(varName)
         prevSec_ref = nil
-        for eachItemInList(syn, smAllSyns) {
+        for eachItemInList(syn, allSyns) {
             if (syn.sec_ref != prevSec_ref && isInhom) {
                 distFuncHelper.onJustBeforeNewSection()
             }
@@ -393,15 +410,7 @@ begintemplate InhomAndStochTarget
                 continue
             }
             
-            // !!!!! try to simplify this to: synPart = syn.getPointProcess(enumPpRoleOrMinus1)
-            //       and then rename getPointProcess to getSynPart, enumPpRoleOrMinus1 to enumTapPartOrMinus1
-            if (varLibId.enumDmPpFk == 1) {
-                synPart = syn.getPointProcess(enumPpRoleOrMinus1)
-            } else if (varLibId.enumDmPpFk == 2) {
-                synPart = syn.netCon
-            } else {
-                codeContractViolation()
-            }
+            synPart = syn.getPointProcess(enumPpRoleOrMinus1)
             
             // The base value
             if (isInhom) {

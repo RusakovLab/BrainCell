@@ -5,7 +5,7 @@ begintemplate MechCompImportCreateRescanHelper
 
     public rescanNow, scheduleRescan, makeSureMechCompsCreatedOrImportedAndRescanned
     
-    external isAstrocyteOrNeuron, isBaseOrNanoStart
+    external isAstrocyteOrNeuron, isBaseOrNanoStart, NumberNanoBranches
     external soma_ref, dendrite_ref, endFoot_ref, axon_ref, nanoProximal_ref, nanoDistal_ref
     external mmAllComps
     external _findAllRemainingSects
@@ -20,7 +20,7 @@ begintemplate MechCompImportCreateRescanHelper
     // 2 - all mechs in all comps (used by MechManagerMainWidget.rescanHandler; slower, but simpler solution compared to all next rescan types)
     // 3 - (!! never called) only nanogeometry on reseed (used by ManageAndRunWidget.onNanoReseedOrUpdateHandler)
     // 4 - only nanogeometry on update (used by ManageAndRunWidget.onNanoReseedOrUpdateHandler)
-    // 5 - only spine_neck.diam and ions in dendrite_ref or spine_head (used by SynGroup.applyChangesToLoc)
+    // 5 - only spine_neck.diam and ions in dendrite_ref or spine_head (used by SynSet.applyChangesToLoc)
     // 6 - only "*o" ion vars (used by ExtracellularManagerMainWidget.applyHandler)
     // !! some ideas:
     //     * maybe split type 4 into three: geometry, LargeGlia.g_pas, spine_neck/head.nseg
@@ -147,7 +147,7 @@ begintemplate MechCompImportCreateRescanHelper
     }
     
     proc createAllComps() { local compIdx localobj other_ref, comp, nil
-        strdef msg
+        strdef msg, nanoProxyCompName, nanoDistCompName
         
         getPleaseWaitMsg("Analyzing all", msg)
         mwh.showPleaseWaitBox(msg)
@@ -162,13 +162,20 @@ begintemplate MechCompImportCreateRescanHelper
                     mmAllComps.append(new MechComp("End Foot", endFoot_ref))
                 }
                 
-                mmAllComps.append(new MechComp("Small Glia", nanoProximal_ref))
-                mmAllComps.append(new MechComp("Large Glia", nanoDistal_ref))
+                nanoProxyCompName = "Small Glia"
+                nanoDistCompName = "Large Glia"
             } else {
                 concatenateTwoLists(mmAllComps, createListOfMechCompsBasedOnMechInsertion("Axon", axon_ref))
                 
-                mmAllComps.append(new MechComp("Spine Neck", nanoProximal_ref))
-                mmAllComps.append(new MechComp("Spine Head", nanoDistal_ref))
+                nanoProxyCompName = "Spine Neck"
+                nanoDistCompName = "Spine Head"
+            }
+            
+            if (NumberNanoBranches != 0) {
+                mmAllComps.append(new MechComp(nanoProxyCompName, nanoProximal_ref))
+                mmAllComps.append(new MechComp(nanoDistCompName, nanoDistal_ref))
+            } else if (nanoProximal_ref.count() != 0 || nanoDistal_ref.count() != 0) {
+                codeContractViolation()
             }
             
             other_ref = _findAllRemainingSects()

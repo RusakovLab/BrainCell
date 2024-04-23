@@ -8,14 +8,17 @@ begintemplate SimFrapInCircleGeometry
     public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public frapRadius, initialFrapConcentration, numberOfTrials, rangeRadius
+    
     external setInitialCircleConcentration, closeFileAndShowCompleteMsg
     external altRunControlWidget
     external tstop
     external createEmptyPanel, removeItemFromList, unmapIfNotNil, codeContractViolation
-    external geomMath, rngUtils, plotShapeUtils, mwh
+    external cbbUtils, geomMath, rngUtils, plotShapeUtils, mwh
     external eachSecInList
     external fast_flush_list
-    external enumColours
+    external enumMouseEvents, enumColours
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
@@ -199,16 +202,19 @@ begintemplate SimFrapInCircleGeometry
     }
     
     // Sets initial UI and simulation params.
-    proc initParamsFrapCircle() {
-        frapCenterX = 20    // um
-        frapCenterY = 20    // um
-        frapRadius = 50     // um   !! was: 1
-        rangeRadius = 100   // um
+    proc initParamsFrapCircle() { local xMin, yMin, _, xMax, yMax, D
+        
+        D = cbbUtils.analyzeCellBoundingBox(&xMin, &yMin, &_, &xMax, &yMax, &_)
+        
+        frapCenterX = 0.3 * xMin + 0.7 * xMax   // !! was: 20 um
+        frapCenterY = 0.3 * yMin + 0.7 * yMax   // !! was: 20 um
+        frapRadius = D / 4                      // !! was: 1 um
+        rangeRadius = D / 2                     // !! was: square
         
         initialFrapConcentration = 0    // mM
-        numberOfTrials = 10 //      !! was: 1
+        numberOfTrials = 10                     // !! was: 1
         
-        tstop = 10          // ms
+        tstop = 10      // ms
     }
     
     // Shows FRAP Circle simulation window.
@@ -227,10 +233,10 @@ begintemplate SimFrapInCircleGeometry
                 xlabel("Next ones will be generated randomly.")
                 xlabel("-------------------------------------------------------------------------------------------------------------------------")
                 xlabel("Radius of bleaching area")
-                xvalue("Spot radius (um)","frapRadius", 1, "updateCircleMarkers()", 0, 1)
+                xpvalue("Spot radius (um)", &frapRadius, 1, "updateCircleMarkers()")
                 xlabel("-------------------------------------------------------------------------------------------------------------------------")
                 xlabel("Photobleaching of area is instantaneous with initial concentration")
-                xvalue("Initial concentration (mM)","initialFrapConcentration", 1, "", 0, 1)
+                xpvalue("Initial concentration (mM)", &initialFrapConcentration, 1)
                 xlabel("========================================================== = ")
                 xpanel()
                 
@@ -241,13 +247,13 @@ begintemplate SimFrapInCircleGeometry
                     xlabel("========================== Running ==========================")
                     xlabel("Number of FRAP trials for the circle activation.")
                     xlabel("Each trial generates new random location of bleaching spot within scattering area.")
-                    xvalue("Number of FRAP trials","numberOfTrials",1, "", 0, 1)
+                    xpvalue("Number of FRAP trials", &numberOfTrials, 1)
                     xlabel("-------------------------------------------------------------------------------------------------------------------------")
                     xlabel("Radius of random scattering area")
-                    xvalue("Scatter radius (um)","rangeRadius", 1, "updateCircleMarkers()", 0, 1)
+                    xpvalue("Scatter radius (um)", &rangeRadius, 1, "updateCircleMarkers()")
                     xlabel("-------------------------------------------------------------------------------------------------------------------------")
                     xlabel("Time of recovery after photobleaching")
-                    xvalue("Time of recovery (ms)","tstop",10)
+                    xpvalue("Time of recovery (ms)", &tstop, 1)
                     xlabel("-------------------------------------------------------------------------------------------------------------------------")
                     xlabel("Run simulation. Results are saved to the CircularFrapAverage.txt")
                     xbutton("Run FRAP", "altRunControlWidget.initAndRunHandler()")
@@ -344,7 +350,7 @@ begintemplate SimFrapInCircleGeometry
         }
     }
     
-    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isMoveOrResize, radius, isSpotOrRange
+    proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isPress, isMoveOrResize, radius, diff1, diff2, isSpotOrRangeOrMinus1
         eventType = $1
         x_screen = $2
         y_screen = $3
@@ -354,7 +360,7 @@ begintemplate SimFrapInCircleGeometry
         
         // !! BUG: we don't lock it when user uses RunControl or AltRunControl
         if (enumLockLevel > 0) {
-            isPress = (eventType == 2)
+            isPress = (eventType == enumMouseEvents.press)
             if (!isPress || enumLockLevel == 2) {
                 return
             }
@@ -372,11 +378,25 @@ begintemplate SimFrapInCircleGeometry
             frapCenterY = y_screen
         } else {
             radius = geomMath.dist2D_PtToPt(frapCenterX, frapCenterY, x_screen, y_screen)
-            isSpotOrRange = (abs(radius - frapRadius) < abs(radius - rangeRadius))
-            if (isSpotOrRange) {
-                frapRadius = radius
+            
+            diff1 = frapRadius - radius
+            diff2 = radius - rangeRadius
+            if (diff1 > 0) {
+                isSpotOrRangeOrMinus1 = 1
+            } else if (diff2 > 0) {
+                isSpotOrRangeOrMinus1 = 0
             } else {
+                isSpotOrRangeOrMinus1 = cbbUtils.getNearestAnchorPointIdxOrMinus1(diff2 ^ 2, diff1 ^ 2)
+            }
+            
+            if (isSpotOrRangeOrMinus1 == 1) {
+                frapRadius = radius
+            } else if (isSpotOrRangeOrMinus1 == 0) {
                 rangeRadius = radius
+            } else if (isSpotOrRangeOrMinus1 == -1) {
+                return
+            } else {
+                codeContractViolation()
             }
         }
         updateCircleMarkers()

@@ -4,14 +4,16 @@ begintemplate SynLocationWidget
     public show, getSynLocName, dismissHandler
     
     external pyObj
-    external mth, synGroup
+    external mth
     external createEmptyPanel, unmapIfNotNil, codeContractViolation
-    external smEnumSynLoc, smSynLocP
+    external enumArgTypes
     
     objref mainBox, deck
     
-    selEnumSynLoc = -1
-    p = -1
+    objref synSet
+    
+    enumSynLoc = -1
+    randomSynLocP = -1
     isReviewAfterApply = -1
     
     pMin = -1
@@ -24,14 +26,16 @@ begintemplate SynLocationWidget
         pMin = 0
         pMax = 1
         
-        variable_domain(&p, pMin, pMax)
+        variable_domain(&randomSynLocP, pMin, pMax)
     }
     
     proc show() { local synLocIdx
         strdef synLocName, handlerHocCommand, text
         
-        selEnumSynLoc = smEnumSynLoc
-        p = smSynLocP
+        synSet = $o1
+        
+        enumSynLoc = synSet.enumSynLoc
+        randomSynLocP = synSet.randomSynLocP
         
         mainBox = new VBox()
         mainBox.intercept(1)
@@ -41,7 +45,7 @@ begintemplate SynLocationWidget
             for synLocIdx = 0, 2 {
                 getSynLocName(synLocName, synLocIdx)
                 sprint(handlerHocCommand, "synLocChangedHandler(%d)", synLocIdx)
-                xradiobutton(synLocName, handlerHocCommand, selEnumSynLoc == synLocIdx)
+                xradiobutton(synLocName, handlerHocCommand, enumSynLoc == synLocIdx)
             }
             xpanel()
             deck = new Deck()
@@ -55,8 +59,8 @@ begintemplate SynLocationWidget
                     sprint(text, "p = %d means \"all on %s\"", synLocIdx, synLocName)
                     xlabel(text)
                 }
-                xpvalue("p", &p, 1)
-                xslider(&p, pMin, pMax)
+                xpvalue("p", &randomSynLocP, 1)
+                xslider(&randomSynLocP, pMin, pMax)
                 xpanel()
             }
             deck.intercept(0)
@@ -67,7 +71,7 @@ begintemplate SynLocationWidget
             getSynLocName(synLocName, 1)
             sprint(text, "* When a synapse is moved to %s,", synLocName)
             xlabel(text)
-            sprint(text, "  we set Spine Neck diam to %s (%s).", pyObj.str(synGroup.witheredSpineNeckDiam), units(mth.diamVarName))
+            sprint(text, "  we set Spine Neck diam to %s (%s).", pyObj.str(synSet.witheredSpineNeckDiam), units(mth.diamVarName))
             xlabel(text)
             getSynLocName(synLocName, 0)
             sprint(text, "* When the synapse is moved back to %s,", synLocName)
@@ -81,18 +85,19 @@ begintemplate SynLocationWidget
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Synapse location", 610, 65, -1, -1)
+        mainBox.map("Synapse location", 950, 65, -1, -1)
         
-        synLocChangedHandler(selEnumSynLoc)
+        synLocChangedHandler(enumSynLoc)
     }
     
-    proc getSynLocName() { local numArg, synLocIdx
-        numArg = numarg()
+    proc getSynLocName() { local argType, synLocIdx localobj _synSet
+        argType = argtype(2)
         
-        if (numArg == 1) {
-            synLocIdx = smEnumSynLoc
-        } else if (numArg == 2) {
+        if (argType == enumArgTypes.number) {
             synLocIdx = $2
+        } else if (argType == enumArgTypes.objref_) {
+            _synSet = $o2
+            synLocIdx = _synSet.enumSynLoc
         } else {
             codeContractViolation()
         }
@@ -108,25 +113,27 @@ begintemplate SynLocationWidget
         }
     }
     
-    proc dismissHandler() {
+    proc dismissHandler() { localobj nil
         unmapIfNotNil(mainBox)
+        
+        synSet = nil
     }
     
     // All next staff is private
     
     
     proc synLocChangedHandler() { local cardIdx
-        selEnumSynLoc = $1
-        cardIdx = (selEnumSynLoc == 2)
+        enumSynLoc = $1
+        cardIdx = (enumSynLoc == 2)
         deck.flip_to(cardIdx)
     }
     
     proc applyHandler() {
-        smEnumSynLoc = selEnumSynLoc
-        if (selEnumSynLoc == 2) {
-            smSynLocP = p
+        synSet.enumSynLoc = enumSynLoc
+        if (enumSynLoc == 2) {
+            synSet.randomSynLocP = randomSynLocP
         }
-        synGroup.applyChangesToLoc(isReviewAfterApply)
+        synSet.applyChangesToLoc(isReviewAfterApply)
         isReviewAfterApply = 0
         dismissHandler()
     }

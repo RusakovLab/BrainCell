@@ -19,10 +19,3 @@ if (isAstrocyteOrNeuron) {
 if (!name_declared("dendrite_ref")) {
     printMsgAndRaiseError("Invalid nanogeometry file")
 }
-
-
-// !!! don't forget to remove this once I update the default loaded nano HOC file:
-if (isAstrocyteOrNeuron) {
-    load_file("../_Code/Prologue/Astrocyte/CreateDefaultGapJuncs.hoc")
-    reseedAstrocyteGapJuncs()
-}

@@ -4,27 +4,31 @@ begintemplate FakeMechanismType
     public count
     public select, selected
     
-    external codeContractViolation
+    external isAstrocyteOrNeuron
+    external utils4FakeMech4GapJuncExtValue, utils4FakeMech4SynNetCon
     
-    strdef theMechName
+    objref mechNames
     count = -1
+    
+    selMechIdx = -1
     
     
     proc init() {
-        theMechName = $s1
-        count = 1
+        mechNames = new List()
+        mechNames.append(new String(utils4FakeMech4GapJuncExtValue.mechName))
+        if (!isAstrocyteOrNeuron) {
+            mechNames.append(new String(utils4FakeMech4SynNetCon.mechName))
+        }
+        
+        count = mechNames.count()
     }
     
-    proc select() { local selMechIdx
+    proc select() {
         selMechIdx = $1
-        
-        if (selMechIdx != 0) {
-            codeContractViolation()
-        }
     }
     
     proc selected() {
-        $s1 = theMechName
+        $s1 = mechNames.o(selMechIdx).s
     }
     
 endtemplate FakeMechanismType

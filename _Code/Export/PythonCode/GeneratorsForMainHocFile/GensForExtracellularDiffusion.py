@@ -123,22 +123,28 @@ class GensForExtracellularDiffusion:
             
         lines = []
         
-        lines.append('objref spatialInfo, temporalInfo, capacityInfo, seriesInfo')
+        lines.append('objref _spatialInfo, _temporalInfo, _capacityInfo, _seriesInfo')
         lines.append('')
         ecsList = hocObj.ecsLibrary.ecsList
         
         for ecs in ecsList:
             lines.append('// ' + ecs.s)
-            lines.append(f'spatialInfo = new ECSSpatialInfo({self._getSpatialInfoCtorArgs(ecs.spatialInfo)})')
-            lines.append(f'temporalInfo = new ECSTemporalInfo({self._getTemporalInfoCtorArgs(ecs.temporalInfo)})')
-            lines.append(f'capacityInfo = new ECSCapacityInfo({self._getCapacityInfoCtorArgs(ecs.spatialInfo.enumPointSphere, ecs.temporalInfo.enumStaticSwitchSpike, ecs.capacityInfo)})')
+            lines.append(f'_spatialInfo = new ECSSpatialInfo({self._getSpatialInfoCtorArgs(ecs.spatialInfo)})')
+            lines.append(f'_temporalInfo = new ECSTemporalInfo({self._getTemporalInfoCtorArgs(ecs.temporalInfo)})')
+            lines.append(f'_capacityInfo = new ECSCapacityInfo({self._getCapacityInfoCtorArgs(ecs.spatialInfo.enumPointSphere, ecs.temporalInfo.enumStaticSwitchSpike, ecs.capacityInfo)})')
             isSeries = (ecs.temporalInfo.isSeriesOrMinus1 == 1)
             if isSeries:
-                lines.append(f'seriesInfo = new ECSSeriesInfo({self._getSeriesInfoCtorArgs(ecs.seriesInfoOrNil)})')
+                lines.append(f'_seriesInfo = new ECSSeriesInfo({self._getSeriesInfoCtorArgs(ecs.seriesInfoOrNil)})')
             lines.append(f'{{ ecsLibrary.addNewSource({self._getExtracellularSourceCtorArgs(ecs, isSeries)}) }}')
             lines.append('')
             
         lines.append('{ applyExtracellularSources() }')
+        
+        lines.append('')
+        lines.append('_spatialInfo = nil')
+        lines.append('_temporalInfo = nil')
+        lines.append('_capacityInfo = nil')
+        lines.append('_seriesInfo = nil')
         
         return lines
         
@@ -247,9 +253,9 @@ class GensForExtracellularDiffusion:
         spcCatIdx = int(ecs.spcCatIdx)
         species = '"' + ecs.species + '"'
         
-        args = [spcCatIdx, species, 'spatialInfo', 'temporalInfo', 'capacityInfo']
+        args = [spcCatIdx, species, '_spatialInfo', '_temporalInfo', '_capacityInfo']
         if isSeries:
-            args.append('seriesInfo')
+            args.append('_seriesInfo')
             
         return self._toCSV(args)
         

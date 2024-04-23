@@ -107,7 +107,7 @@ begintemplate MechOp2Helper
         
         dismissChilds()
         
-        defineDistFuncSubWidget = mcu.defineDistFuncHandler(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        defineDistFuncSubWidget = mcu.defineDistFuncHandler(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
 endtemplate MechOp2Helper

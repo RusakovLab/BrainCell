@@ -22,9 +22,9 @@ class GensForHomogenVars:
         mechName = h.ref('')
         for compIdx in range(len(mmAllComps)):
             comp = mmAllComps[compIdx]
-            procNameId = prepareUniqueNameId(comp.name)
-            procName = 'addHomogenBiophysInfoTo{}Comp'.format(procNameId)
+            procName = '_addHomogenVarsInfoToBiophysComp{}'.format(compIdx + 1)
             procNames.append(procName)
+            lines.append('// "{}"'.format(comp.name))
             lines.append('proc {}() {{ localobj comp, mechStd'.format(procName))
             lines.append('    comp = $o1')
             lines.append('    ')
@@ -38,7 +38,7 @@ class GensForHomogenVars:
                 if not comp.isMechInserted[mechIdx]:
                     continue
                 # Generate code to init "mechStds" array slice for this mech of this comp
-                newLines = self._exportHomogenVarsOfThisMech(compIdx, comp, mechIdx, hocObj.exportOptions.isExportDistMechAssignedAndState, hocObj.exportOptions.isExportDistMechInhoms)
+                newLines = self._exportHomogenVarsOfThisMech(-1, -1, compIdx, comp, mechIdx, hocObj.exportOptions.isExportDistMechAssignedAndState, hocObj.exportOptions.isExportDistMechInhoms)
                 lines.extend(newLines)
                 
             lines[-1] = '}'
@@ -48,55 +48,63 @@ class GensForHomogenVars:
         newLines = self._finishExportOfHomogenVars(mmAllComps, 'mmAllComps', procNames)
         lines.extend(newLines)
         
-        lines.append('for eachItemInList(comp, mmAllComps) {')
-        lines.append('    comp.initHomogenBiophysics()')
+        lines.append('')
+        lines.append('for eachItemInList(_comp, mmAllComps) {')
+        lines.append('    _comp.initHomogenBiophysics()')
         lines.append('}')
         
         return lines
         
-    # Keep in sync with hoc:EnumSynCompIdxs.init, hoc:createOrImportSynComps and py:createReducedSynComps
-    def initHomogenSynVars(self):
-        if not hocObj.exportOptions.isExportSyns:
-            return emptyParagraphHint()
-            
+    def initHomogenTapVars(self, allComps, mechIdxsOrMinus1, gapJuncOrSynStr, tapSetIdx, isGapJuncOrSyn, isExportedCompPredicate, isExportAssignedAndState, isExportInhoms):
+        
         lines = []
         
-        synGroup = hocObj.synGroup
-        
-        mechIdxs = [None] * 4
-        mechIdxs[0] = int(synGroup.getMechIdxAndOptionalName(0))    # "Source PP"
-        mechIdxs[1] = 0                                             # "NetCon"
-        mechIdxs[2] = int(synGroup.getMechIdxAndOptionalName(1))    # "Target PP"
-        mechIdxs[3] = int(synGroup.getMechIdxAndOptionalName(2))    # "Single PP"
-        
-        smAllComps = hocObj.smAllComps
-        
-        # Create number of proc-s to prepare and set "mechStds" for each syn comp
+        if not isGapJuncOrSyn:
+            lines.append('isMinRPlt1 = 0')
+            lines.append('')
+            
+        # Create number of proc-s to prepare and set "mechStds" for each tap comp
         procNames = []
-        for compIdx, mechIdx in zip(range(len(smAllComps)), mechIdxs):
-            comp = smAllComps[compIdx]
-            procNameId = prepareUniqueNameId(comp.name)
-            procName = 'addHomogenVarsInfoTo{}SynComp'.format(procNameId)
+        for compIdx, mechIdxOrMinus1 in zip(range(len(allComps)), mechIdxsOrMinus1):
+            comp = allComps[compIdx]
+            procName = '_addHomogenVarsInfoTo{}Comp{}'.format(gapJuncOrSynStr, compIdx + 1)
             procNames.append(procName)
+            lines.append('// "{}"'.format(comp.name))
             lines.append('proc {}() {{ localobj comp, mechStd'.format(procName))
             lines.append('    comp = $o1')
             lines.append('    ')
-            if self._isExportedSynComp(compIdx):
-                newLines = self._exportHomogenVarsOfThisMech(compIdx, comp, mechIdx, hocObj.exportOptions.isExportSynAssignedAndState, hocObj.exportOptions.isExportSynInhoms)
+            if mechIdxOrMinus1 != -1 and isExportedCompPredicate(tapSetIdx, compIdx):
+                newLines = self._exportHomogenVarsOfThisMech(isGapJuncOrSyn, tapSetIdx, compIdx, comp, mechIdxOrMinus1, isExportAssignedAndState, isExportInhoms)
                 lines.extend(newLines)
                 
             lines[-1] = '}'
             lines.append('')
             
         # For each comp, generate the call of corresponding proc
-        newLines = self._finishExportOfHomogenVars(smAllComps, 'smAllComps', procNames)
+        newLines = self._finishExportOfHomogenVars(allComps, '_allComps', procNames)
         lines.extend(newLines)
         
         return lines
         
-        
+    def isExportedGapJuncComp(self, gapJuncSetIdx, compIdx):
+        isExtOrInt = hocObj.gjmAllGapJuncSets[gapJuncSetIdx].isExtOrInt
+        enumGapJuncCompIdxs = hocObj.enumGapJuncCompIdxs
+        if isExtOrInt:
+            return compIdx in [enumGapJuncCompIdxs.extGjPp, enumGapJuncCompIdxs.extGjExtValue]
+        else:
+            return compIdx == enumGapJuncCompIdxs.intGjPp
+            
+    def isExportedSynComp(self, synSetIdx, compIdx):
+        is3Or1PartInSynStruc = hocObj.smAllSynSets[synSetIdx].is3Or1PartInSynStruc()
+        enumSynCompIdxs = hocObj.enumSynCompIdxs
+        if is3Or1PartInSynStruc:
+            return compIdx in [enumSynCompIdxs.srcPp, enumSynCompIdxs.netCon, enumSynCompIdxs.trgPp]
+        else:
+            return compIdx == enumSynCompIdxs.sngPp
+            
+            
     # Generate code to init "mechStds" array slice for this mech of this comp
-    def _exportHomogenVarsOfThisMech(self, compIdx, comp, mechIdx, isExportAssignedAndState, isExportInhoms):
+    def _exportHomogenVarsOfThisMech(self, isGapJuncOrSyn, tapSetIdx, compIdx, comp, mechIdx, isExportAssignedAndState, isExportInhoms):
         lines = []
         
         mth = hocObj.mth
@@ -126,31 +134,36 @@ class GensForHomogenVars:
             if enumDmPpFk != 2:
                 defaultMechStd = h.MechanismStandard(mechName, varType)
             else:
-                defaultMechStd = h.FakeMechanismStandardForNetCon()
+                if isGapJuncOrSyn:
+                    defaultMechStd = h.FakeMechanismStandardForExtValue()
+                    fakeMechStdTemplName = 'FakeMechanismStandardForExtValue'
+                else:
+                    defaultMechStd = h.FakeMechanismStandardForNetCon()
+                    fakeMechStdTemplName = 'FakeMechanismStandardForNetCon'
             newLines = []
             isAllDefault = True
             if enumDmPpFk != 2:
                 newLines.append('    mechStd = new MechanismStandard("{}", {})    // {}'.format(mechName, varType, varTypeName))
             else:
-                newLines.append('    mechStd = new FakeMechanismStandardForNetCon()')
+                newLines.append('    mechStd = new {}()'.format(fakeMechStdTemplName))
             numVars = int(mth.getNumMechVars(enumDmPpFk, mechIdx, varType))
             for varIdx in range(numVars):
                 varName = h.ref('')
                 arraySize = int(mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName))
                 varName = varName[0]
                 for arrayIndex in range(arraySize):
-                    isContinue, isExposedOrSweptVar, isValueNaN, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty = self._getOneValueInfo(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars)
+                    isContinue, isExposedOrSweptVar, isValueNaN, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty = self._getOneValueInfo(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars)
                     if isContinue:
                         continue
                     if arraySize == 1:
                         newLines.append('    mechStd.set("{}", {}){}'.format(varName, valueOrMathNaNOrExposedNameOrSweptInitializer, unitsCommentOrEmpty))
-                        if enumDmPpFk == 2 and mcu.isMetaVar(varName):
+                        if not isGapJuncOrSyn and enumDmPpFk == 2 and mcu.isMetaVar(varName):
                             if isExposedOrSweptVar:
                                 # !! for swept vars, the generated code calls "getSweptVarValue" twice;
                                 #    it would be better to assign the value to a local var and then use it twice
-                                newLines.append(f'    seh.isMinRPlt1 = ({valueOrMathNaNOrExposedNameOrSweptInitializer} < 1)')
+                                newLines.append(f'    isMinRPlt1 = ({valueOrMathNaNOrExposedNameOrSweptInitializer} < 1)')
                             elif isValueNaN or valueOrMathNaNOrExposedNameOrSweptInitializer < 1:
-                                newLines.append('    seh.isMinRPlt1 = 1')
+                                newLines.append('    isMinRPlt1 = 1')
                     else:
                         newLines.append('    mechStd.set("{}", {}, {}){}'.format(varName, valueOrMathNaNOrExposedNameOrSweptInitializer, arrayIndex, unitsCommentOrEmpty))
                     isAllDefault = False
@@ -165,7 +178,7 @@ class GensForHomogenVars:
             
         return lines
         
-    def _getOneValueInfo(self, enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars):
+    def _getOneValueInfo(self, enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex,  comp, varTypeIdx, varName, arraySize, defaultMechStd, isExportInhoms, isAnyExposedVars, isAnySweptVars):
     
         # !! need to make sure that user doesn't select the same var as both exposed and swept,
         #    but selection of a fixed exposed var (e.g. "v_init" or other from hocObj.exportOptions.stdExposedVarsList) as a swept var is fine:
@@ -178,24 +191,23 @@ class GensForHomogenVars:
         varNameWithIndex = h.ref('')
         mth.getVarNameWithIndex(varName, arraySize, arrayIndex, varNameWithIndex)
         varNameWithIndex = varNameWithIndex[0]
-        isDmOrTapPart = (comp.enumDmPpFk == 0)
-        unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForDmOrTapPart(isDmOrTapPart, compIdx, mechIdx, varName, varNameWithIndex)
+        unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForDmOrTapPart(enumDmPpFk, mechIdx, varName, varNameWithIndex)
         
         if isAnySweptVars:
-            sweptVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(False, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.sweptVarsList, getSweptVarName)
+            sweptVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(False, enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.sweptVarsList, getSweptVarName)
             if sweptVarNameOrEmpty:
                 sweptVarInitializer = f'getSweptVarValue("{sweptVarNameOrEmpty}", {value})'
                 return False, True, None, sweptVarInitializer, unitsCommentOrEmpty
                 
         if isAnyExposedVars:
-            exposedVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(True, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.exposedVarsList, getExposedVarName)
+            exposedVarNameOrEmpty = self._getExposedOrSweptVarNameOrEmpty(True, enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varName, arrayIndex, hocObj.exportOptions.exposedVarsList, getExposedVarName)
             if exposedVarNameOrEmpty:
                 return False, True, None, exposedVarNameOrEmpty, ''
                 
         # Decide whether to skip "mechStd.set" for this var;
         # for stoch vars, we don't skip it even though the value is default
         # because we'll need to read it just before adding the noise
-        varLibId = h.VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
         if not hocObj.inhomAndStochLibrary.isStochEnabledFor(varLibId):
             defaultValue = defaultMechStd.get(varName, arrayIndex)
             # !! not sure about the 2nd condition in IF below,
@@ -221,9 +233,9 @@ class GensForHomogenVars:
                     
         return False, False, isValueNaN, value, unitsCommentOrEmpty
         
-    def _getExposedOrSweptVarNameOrEmpty(self, isExposedOrSweptVar, enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex, varsList, getVarName):
+    def _getExposedOrSweptVarNameOrEmpty(self, isExposedOrSweptVar, enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varName, arrayIndex, varsList, getVarName):
         for varIdx in range(len(varsList)):
-            if varsList[varIdx].isEqual(enumDmPpFk, compIdx, mechIdx, varType, varName, arrayIndex):
+            if varsList[varIdx].isEqual(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varName, arrayIndex):
                 if isExposedOrSweptVar:
                     varIdx += len(hocObj.exportOptions.stdExposedVarsList)
                 return getVarName(varIdx)
@@ -234,20 +246,14 @@ class GensForHomogenVars:
         lines = []
         
         for compIdx in range(len(allComps)):
-            lines.append('comp = {}.o({})'.format(allCompsVarName, compIdx))
+            if compIdx != 0:
+                lines.append('')
+            lines.append('_comp = {}.o({})'.format(allCompsVarName, compIdx))
             procName = procNames[compIdx]
-            lines.append('{}(comp)'.format(procName))
-            lines.append('')
+            compName = allComps[compIdx].name
+            lines.append('{}(_comp)    // "{}"'.format(procName, compName))
             
         # !! BUG: we don't export GLOBAL-s
         
         return lines
         
-    def _isExportedSynComp(self, compIdx):
-        is3Or1PartInSynStruc = hocObj.synGroup.is3Or1PartInSynStruc()
-        enumSynCompIdxs = hocObj.enumSynCompIdxs
-        if is3Or1PartInSynStruc:
-            return compIdx in [enumSynCompIdxs.srcPp, enumSynCompIdxs.netCon, enumSynCompIdxs.trgPp]
-        else:
-            return compIdx == enumSynCompIdxs.sngPp
-            

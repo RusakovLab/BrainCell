@@ -13,13 +13,25 @@ tstop = 1500
 // Watch some var just to test stochasticity applied with AltRunControlWidget
 objref stochTestGraph
 stochTestGraph = new Graph()
-{ stochTestGraph.addvar("gjmAllGapJuncs[1].o(123).sngPp.BasicCa") }
-{ stochTestGraph.size(0, tstop, 0.99, 1.01) }
+strdef varName
+if (isAstrocyteOrNeuron) {
+    varName = "BasicCa"
+    yMin = 0.99
+    yMax = 1.01
+} else {
+    varName = "VoltageGap"
+    yMin = -85.01
+    yMax = -84.99
+}
+strdef var
+{ sprint(var, "gjmAllGapJuncSets.o(0).allGapJuncs.o(55).sngPp.%s", varName) }
+{ stochTestGraph.addvar(var) }
+{ stochTestGraph.size(0, tstop, yMin, yMax) }
 { graphList[0].append(stochTestGraph) }
 
 { load_file("../_Code/Managers/CommonLoads.hoc") }
 { load_file("../_Code/Managers/GapJuncManager/GapJuncManager.hoc") }
 
-makeSureGapJuncCompsCreatedOrImportedThenShowGapJuncManagerBaseWidget()
+makeSureGapJuncSetsCreatedOrImportedThenShowGapJuncManagerBaseWidget()
 
 { chdir("..") }     // Without this, getcwd() will return different path compared to the start from "init.hoc"

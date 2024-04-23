@@ -41,10 +41,14 @@ proc roadmapChosenHandler() { local isLoaded localobj plotShape, nil
             // (Don't encapsulate initNeuron() into "initNeuron.hoc" because the file browser will use different default folder)
         }
     } else {
-        if (!isAstrocyteOrNeuron && smAllSyns == nil) {
-            printWasNotExportedSoWeWillCreateDefaultWarning("synapses")
-            load_file("_Code/Prologue/Neuron/AddSynapses.hoc")
+        if (gjmAllGapJuncSets == nil) {
+            // !!! maybe don't create the default gap junc set because user can do it themself in contrast to the default syn set
+            printWasNotExportedSoWeWillCreateDefaultWarning("gap junctions")
         }
+        if (!isAstrocyteOrNeuron && smAllSynSets == nil) {
+            printWasNotExportedSoWeWillCreateDefaultWarning("synapses")
+        }
+        
         initVoltageAndRunControlParams()
         prologueCompleteHandler()
     }
@@ -53,7 +57,7 @@ proc roadmapChosenHandler() { local isLoaded localobj plotShape, nil
 { load_file("_Code/RoadmapWidget.hoc") }
 
 proc showRoadmapWidget() { localobj roadmapWidgetCopy
-    // !!! not sure why this temporary copy is needed, but without it we'll catch Segmentation violation
+    // !! not sure why this temporary copy is needed, but without it we'll catch Segmentation violation
     roadmapWidgetCopy = roadmapWidget
     
     roadmapWidget = new RoadmapWidget()

@@ -4,13 +4,12 @@ begintemplate StochEditorSubWidget
     public show, updateModelCurves, dismissHandler
     public boundingHelper, sampleSize
     
-    external isAstrocyteOrNeuron
     external cvode
     external varsEditorSubWidget, gapJuncManagerMainWidget, synManagerMainWidget
-    external mwh, math, mth, mmmowb, mcu, mcu4t, graphUtils, sfc, compUtils, inhomAndStochLibrary, seh
+    external mwh, math, mth, mmmowb, mcu, mcu4t, graphUtils, sfc, compUtils, inhomAndStochLibrary
     external createEmptyPanel, oneZeroToYesNo, codeContractViolation
     external eachPointInGrid
-    external enumColours
+    external enumColours, enumSynPpRoles
     
     objref mainBox, deck1, deck2, deck3, deck4, deck5, deck6, deck7, deck8, deck9, deck10, graph1, graph2, graph3, graph4, graph5, graph6, graph7, this
     strdef isStochVarLabel
@@ -31,6 +30,7 @@ begintemplate StochEditorSubWidget
     
     objref varLibId
     isBioOrTapEditor = -1
+    isGapJuncOrSyn = -1     // For taps only
     objref comp
     strdef mechName
     varTypeIdx = -1
@@ -55,8 +55,9 @@ begintemplate StochEditorSubWidget
         varLibId = $o1
         
         isBioOrTapEditor = (varLibId.enumDmPpFk == 0)
+        isGapJuncOrSyn = varLibId.isGapJuncOrSyn
         
-        comp = compUtils.getComp(isBioOrTapEditor, varLibId.compIdx)
+        comp = compUtils.getComp(varLibId)
         mth.getMechName(varLibId.enumDmPpFk, varLibId.mechIdx, mechName)
         varTypeIdx = mth.convertVarTypeToVarTypeIdx(varLibId.varType)
         arraySize = mth.getVarNameAndArraySize(varLibId.enumDmPpFk, varLibId.mechIdx, varLibId.varType, varLibId.varIdx, varName)
@@ -70,8 +71,8 @@ begintemplate StochEditorSubWidget
             isCalledFromVarsEditor = 1
             isCalledFromReviewStochVars = 0
             isSynAndSinglePP = 0
-            if (!isAstrocyteOrNeuron && varLibId.enumDmPpFk == 1) { // Don't combine into one IF because other comps don't have "enumPpRole"
-                if (comp.enumPpRole == 2) {                         //
+            if (!isGapJuncOrSyn && varLibId.enumDmPpFk == 1) {  // Don't combine into one IF because other comps don't have "enumPpRole"
+                if (comp.enumPpRole == enumSynPpRoles.sngPp) {  //
                     isSynAndSinglePP = 1
                 }
             }
@@ -189,13 +190,13 @@ begintemplate StochEditorSubWidget
             xpanel()
             */
             xpanel("")
-            mcu.createApplyReminder(isBioOrTapEditor, 0)
+            mcu.createApplyReminder(isBioOrTapEditor, isGapJuncOrSyn, 0)
             xpanel()
             hBox1 = new HBox()
             hBox1.intercept(1)
             {
                 xpanel("")
-                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, compName, mechName, varTypeName, varNameWithIndexAndUnits)
+                mcu.createEditorSubWidgetDigest(varLibId.enumDmPpFk, isGapJuncOrSyn, compName, mechName, varTypeName, varNameWithIndexAndUnits)
                 oneZeroToYesNo(isInhom, yesNo)
                 sprint(text, "Inhomogeneous: %s", yesNo)
                 xlabel(text)
@@ -527,7 +528,7 @@ begintemplate StochEditorSubWidget
                 if (isBioOrTapEditor) {
                     when = "ITERATION"
                 } else {
-                    if (isAstrocyteOrNeuron) {
+                    if (isGapJuncOrSyn) {
                         when = "ITERATION"
                     } else {
                         if (isSynAndSinglePP) {
@@ -578,11 +579,13 @@ begintemplate StochEditorSubWidget
         }
     }
     
-    proc dismissHandler() {
+    proc dismissHandler() { localobj nil
         dismissChild()
         if (mainBox.ismapped()) {
             mainBox.unmap()
         }
+        
+        comp = nil
     }
     
     // All next staff is private
@@ -1153,7 +1156,7 @@ begintemplate StochEditorSubWidget
                 return
             }
             
-            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs(isGapJuncOrSyn)
             if (!isOK) {
                 return
             }
@@ -1161,7 +1164,7 @@ begintemplate StochEditorSubWidget
         
         colourizationHelper.consumeSettings()
         
-        // For synapses, this affects seh.isSefwEnabled, so must be called before changing the synapse structure
+        // For synapses, this affects synSet.seh.isSefwEnabled, so must be called before changing the synapse structure
         wasStoch = inhomAndStochLibrary.onStochApply(varLibId, boundingHelper, stochFuncHelpers[stochFuncIdx], stochFuncCatIdx, stochFuncIdx)
         
         if (!isBioOrTapEditor) {
@@ -1191,13 +1194,13 @@ begintemplate StochEditorSubWidget
     proc disableHandler() { local isOK, wasStoch
     
         if (!isBioOrTapEditor) {
-            isOK = mcu4t.warnIfUserHasNotSelectedPPs()
+            isOK = mcu4t.warnIfUserHasNotSelectedPPs(isGapJuncOrSyn)
             if (!isOK) {
                 return
             }
         }
         
-        // For synapses, this affects seh.isSefwEnabled, so must be called before changing the synapse structure
+        // For synapses, this affects synSet.seh.isSefwEnabled, so must be called before changing the synapse structure
         wasStoch = inhomAndStochLibrary.onStochDisable(varLibId)
         
         if (isBioOrTapEditor) {
@@ -1217,7 +1220,7 @@ begintemplate StochEditorSubWidget
     }
     
     proc tapEditorCommonPrologue() {
-        if (isAstrocyteOrNeuron) {
+        if (isGapJuncOrSyn) {
             gapJuncManagerMainWidget.applyChangesToGapJuncStrucIfNeeded()
             gapJuncManagerMainWidget.applyChangesToDirtyHomogenVarsIfNeeded()
         } else {
@@ -1234,7 +1237,7 @@ begintemplate StochEditorSubWidget
         }
         if (!isBioOrTapEditor) {
             // !! this was called in tapEditorCommonPrologue upstream, but we updated stoch status later, so have to call it again
-            if (isAstrocyteOrNeuron) {
+            if (isGapJuncOrSyn) {
                 gapJuncManagerMainWidget.updateNumStochVarsLabel()
             } else {
                 synManagerMainWidget.updateNumStochVarsLabel()

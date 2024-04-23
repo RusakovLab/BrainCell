@@ -4,7 +4,7 @@
 begintemplate MechComp
 
     public name, enumDmPpFk, list_ref, isMechInserted, isMechVarTypeInhom, mechStds, isCompDirty
-    public rescanAllVarsInAllMechs, finishAllVerbatimInhomProtos, split, mergeAllSectsFrom, showMechStdPanel, markMechDirty, markAllMechsDirty, applyHomogenChangesToDirtyMechs, getDistRange, getDistRangeAsVec, getSecList, applySegmentationAndInhomogeneity, updateStatsCurve, updateVerbatimModelCurve, isMechVarInhom, prepareVarsEditorHeader, onJustBeforeCompHomogenBiophysImport, onJustAfterCompHomogenBiophysImport
+    public rescanAllVarsInAllMechs, finishAllVerbatimInhomProtos, split, mergeAllSectsFrom, showMechStdPanel, markMechDirty, applyHomogenChangesToDirtyMechs, getDistRange, getDistRangeAsVec, getSecList, applySegmentationAndInhomogeneity, updateStatsCurve, updateVerbatimModelCurve, isMechVarInhom, prepareVarsEditorHeader, onJustAfterCompMerge, onJustBeforeCompHomogenBiophysImport, onJustAfterCompHomogenBiophysImport
     
     external mmAllComps
     external mwh, math, mth, mmmowb, mcu, dfc
@@ -104,6 +104,10 @@ begintemplate MechComp
             }
         }
         
+        // Doing this just to remove NaN from mechStds[0][0] and to have isMechVarTypeInhom[0][0] = 0
+        // if we got the homogen diams after splitting the inhom ones
+        analyzeMorphology()
+        
         // !! for higher performance, it would be better to implement a copy constructor
         //    but there will be an inconvenience because the copy constructor can only "live" within a branch of "IF" block in the same "init" proc,
         //    and so the "init" proc will have to have two sets of input args: for simple ctor and for copy ctor
@@ -150,20 +154,12 @@ begintemplate MechComp
         mmmowb.isDirty = 1
     }
     
-    // !! think about applyChangesToDirtySects instead of this
-    proc markAllMechsDirty() { local numMechs, mechIdx
-        numMechs = mth.getNumMechs(enumDmPpFk)
-        for mechIdx = 0, numMechs - 1 {
-            isMechDirty[mechIdx] = 1
-        }
-        isCompDirty = 1
-        mmmowb.isDirty = 1
-    }
-    
     // !! need to test all isDirty staff carefully
     // Keep in sync with ReducedMechComp.initHomogenBiophysics in the exported file
-    proc applyHomogenChangesToDirtyMechs() { local numMechs, mechIdx, varType, varTypeIdx, x, diamValue localobj mechType, compMechStd, tempMechStd
+    func applyHomogenChangesToDirtyMechs() { local wasMorphologyDirty, numMechs, mechIdx, varType, varTypeIdx, x, diamValue localobj mechType, compMechStd, tempMechStd
         strdef mechName, autoAddedIons, msg
+        
+        wasMorphologyDirty = 0
         
         mechType = mth.getMechType(0)
         
@@ -204,6 +200,7 @@ begintemplate MechComp
                         diamValue = mechStds[mechIdx][varTypeIdx].get(mth.diamVarName)
                         if (!math.isNaN(diamValue)) {
                             diam = diamValue
+                            wasMorphologyDirty = 1
                         }
                     }
                 } else {
@@ -239,6 +236,8 @@ begintemplate MechComp
             sprint(msg, "The next ions were inserted into %s automatically:", name)
             mwh.showWarningBox(msg, autoAddedIons)
         }
+        
+        return wasMorphologyDirty
     }
     
     // !! the range returned by this func depends on the initial segmentation;
@@ -376,6 +375,17 @@ begintemplate MechComp
         $&3 = yMax
     }
     
+    proc onJustAfterCompMerge() {
+        // Doing this just to assign NaN in mechStds[0][0] and to have isMechVarTypeInhom[0][0] = 1
+        // if we got the inhom diams after the merge
+        analyzeMorphology()
+        
+        // Applying mechanisms
+        // !! we can improve perf here applying changes to the borrowed sections only,
+        //    but this can be done only when we don't borrow any "sticky" mechs
+        applyAllHomogenModelsExceptMorphology()
+    }
+    
     obfunc onJustBeforeCompHomogenBiophysImport() { local numMechs, mechIdx, varType, varTypeIdx localobj mechType, stickyMechNamesPyList
         strdef mechName
         
@@ -396,7 +406,7 @@ begintemplate MechComp
                 stickyMechNamesPyList.append(mechName)
             }
             
-            if (mechIdx == mth.morphologyMechIdx || mth.isDistMechSticky(mechIdx)) {
+            if (mechIdx == mth.morphologyMechIdx || mth.isDistMechSticky(mechIdx) || stringsEqual(mechName, "ECDCalcAndConsHelper")) {
                 // !! do we need to reset mechStd for a sticky mech to defaults if it was inserted before and not imported? (currently we don't reset them)
                 continue
             }
@@ -423,10 +433,7 @@ begintemplate MechComp
     }
     
     proc onJustAfterCompHomogenBiophysImport() {
-        markAllMechsDirty()
-        isMechDirty[mth.morphologyMechIdx] = 0      // !! and the same for sticky mechs?
-        applyHomogenChangesToDirtyMechs()
-        mmmowb.isDirty = 0
+        applyAllHomogenModelsExceptMorphology()
     }
     
     // All next staff is private
@@ -602,7 +609,7 @@ begintemplate MechComp
                             compIdx = mmAllComps.count()
                         }
                         
-                        varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+                        varLibId = new VarLibId(enumDmPpFk, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
                         isNonVerbatimInhomModelFound = inhomAndStochLibrary.doesThisVarHaveVerbatimOrNonVerbatimInhomModel(varLibId, 0)
                         if (isNonVerbatimInhomModelFound) {
                             continue
@@ -748,6 +755,33 @@ begintemplate MechComp
         
         $&5 = yMin
         $&6 = yMax
+    }
+    
+    proc analyzeMorphology() { localobj nil
+        if (mth.morphologyMechIdx != 0) {
+            codeContractViolation()
+        }
+        analyzeMechHomogeneity(1)
+        analyzeMechInhomogeneity(1)
+        inhomTargetProtos = nil
+    }
+    
+    // !! think about applyChangesToDirtySects instead of this
+    proc applyAllHomogenModelsExceptMorphology() { local numMechs, mechIdx
+        if (mth.morphologyMechIdx != 0) {
+            codeContractViolation()
+        }
+        numMechs = mth.getNumMechs(enumDmPpFk)
+        // !! maybe skip the sticky mechs here as well
+        for mechIdx = mth.morphologyMechIdx + 1, numMechs - 1 {
+            isMechDirty[mechIdx] = 1
+        }
+        isCompDirty = 1
+        mmmowb.isDirty = 1
+        
+        applyHomogenChangesToDirtyMechs()
+        
+        mmmowb.isDirty = 0
     }
     
 endtemplate MechComp

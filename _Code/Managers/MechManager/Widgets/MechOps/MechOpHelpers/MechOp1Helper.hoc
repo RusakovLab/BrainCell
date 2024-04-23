@@ -33,7 +33,7 @@ begintemplate MechOp1Helper
         return !mmAllComps.o(compIdx).isMechInserted[mechIdx]
     }
     
-    // !! a lot of code dupl. with SynManagerMainWidget.hoc.hoc: insertBlock, insertGlobalItem, insertNotGlobalItem, insertItemCore and editMechVarsHandler
+    // !! a lot of code dupl. with SynManagerMainWidget.hoc: insertBlock, insertGlobalItem, insertNotGlobalItem, insertItemCore and editMechVarsHandler
     
     func insertBlock() { local compIdx, mechIdx
         strdef label
@@ -163,7 +163,7 @@ begintemplate MechOp1Helper
             // mechStd.panel(header)
             
             // New editor
-            varsEditorSubWidget = new VarsEditorWidget(0, compIdx, mechIdx, varType)
+            varsEditorSubWidget = new VarsEditorWidget(0, -1, -1, compIdx, mechIdx, varType)
             varsEditorSubWidget.show()
             
         } else {

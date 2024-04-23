@@ -6,6 +6,7 @@
     "Gap40": null,
     "Gap43": null,
     "Gap45": null,
+    "Gap_neuron": null,
     "GapCa": {
         "ppPtrName": "gapCaP",
         "dmVarNameWithIndex": "cai"

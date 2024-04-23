@@ -7,11 +7,12 @@ objref soma_ref, axon_ref, endFoot_ref
 objref usedNamesForDendrites, nanoBranchesManager, seededDendrites_ref
 { load_file("InterModularPythonUtils.hoc") }
 { load_file("InterModularGeomMath.hoc") }
-{ load_file("InterModularVectorUtils.hoc") }                    // !! not intermodular yet
+{ load_file("InterModularVectorUtils.hoc") }
 { load_file("InterModularListUtils.hoc") }
 { load_file("InterModularSectionUtils.hoc") }
 { load_file("InterModularMechSettings.hoc") }
 { load_file("InterModularCellTypeUtils.hoc") }
+{ load_file("InterModularEnums.hoc") }
 { load_file("Widgets/MessageWarningHelper.hoc") }
 { load_file("InterModularMechsDllUtils.hoc") }
 { load_file("InterModularStringUtils.hoc") }
@@ -20,21 +21,21 @@ iterator findSecArrayOrObjectIterator() { codeContractViolation() }
 { load_file("InterModularUniqueNameUtils.hoc") }
 { load_file("InterModularUniqueListItemUtils.hoc") }
 { load_file("InterModularRNGUtils.hoc") }
-objref smAllComps, gjmAllComps, mmIcrHelper
-proc makeSureGapJuncCompsCreatedOrImported() { codeContractViolation() }
-proc makeSureSynCompsCreatedOrImported() { codeContractViolation() }
+objref mmIcrHelper, gjmAllGapJuncSets, smAllSynSets
+proc makeSureGapJuncSetsCreatedOrImported() { codeContractViolation() }
+proc makeSureSynSetsCreatedOrImported() { codeContractViolation() }
 { load_file("InterModularCompUtils.hoc") }
 { load_file("InterModularUnitsUtils.hoc") }
-{ load_file("InterModularEnumColours.hoc") }
 { load_file("InterModularGraphUtils.hoc") }
 { load_file("InterModularPlotShapeUtils.hoc") }
 { load_file("InterModularWidgetUtils.hoc") }
 { load_file("InterModularOtherUtils.hoc") }
-objref mmcoWidget, gapJuncManagerMainWidget
-{ load_file("../MainUI/PluginsForCompSelectionWidget.hoc") }
+objref mmcoWidget, gapJuncSetsWidget, gapJuncManagerMainWidget
 { load_file("Widgets/FileBrowserHelper.hoc") }
+objref dendrite_ref
+{ load_file("Widgets/PluginsForSectionsSelectorWidget.hoc") }
 { load_file("Widgets/SectionsSelectorWidget.hoc") }
 { load_file("Widgets/GlobalsEditorWidget.hoc") }
 objref seedingDensityWidget
 { load_file("Widgets/SeedingDensityWidget.hoc") }
-objref gjmAllGapJuncs[2], smAllSyns, mainUiLocker
+objref sdsWidget, spmAllSpineSets, spineSeedingMainWidget, enumSynPpRoles, mainUiLocker

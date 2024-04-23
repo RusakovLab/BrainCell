@@ -45,7 +45,6 @@ begintemplate OneExtracellularSourceWidget
     y_soma = -1
     z_soma = -1
     
-    viewDirIdx = -1
     whatToShowIdx = -1
     
     oldSrcIdxOrMinus1 = -1
@@ -53,6 +52,8 @@ begintemplate OneExtracellularSourceWidget
     // !! create test_sec[1]
     
     slotIdx4GraphUtils = -1
+    
+    objref ecssShowHelper
     
     
     proc init() { local numSpcCats, inf
@@ -76,7 +77,8 @@ begintemplate OneExtracellularSourceWidget
         srcDynamicsList.append(new String("On-Off"))
         srcDynamicsList.append(new String("Spike"))
         
-        viewDirIdx = 0
+        ecssShowHelper = new ECSsShowHelper()
+        
         whatToShowIdx = 0
         
         unitsStr = units("L")
@@ -97,7 +99,7 @@ begintemplate OneExtracellularSourceWidget
         units(&delta_o, "mM")
         
         inf = math.inf
-        variable_domain(&radius, float_epsilon, inf)    // !! keep the lower bound in sync with func capRadius
+        variable_domain(&radius, float_epsilon, inf)    // !! keep the lower bound in sync with func ECSsShowHelper.capRadius
         variable_domain(&offsetTime, 0, inf)
         variable_domain(&duration, float_epsilon, inf)
         variable_domain(&ss, 0, inf)
@@ -432,9 +434,9 @@ begintemplate OneExtracellularSourceWidget
                     hBox2.intercept(1)
                     {
                         xpanel("")
-                        xradiobutton("XY projection", "viewDirectionChangedHandler(0)", viewDirIdx == 0)
-                        xradiobutton("ZY projection", "viewDirectionChangedHandler(1)", viewDirIdx == 1)
-                        xradiobutton("XZ projection", "viewDirectionChangedHandler(2)", viewDirIdx == 2)
+                        xradiobutton("XY projection", "viewDirectionChangedHandler(0)", ecssShowHelper.viewDirIdx == 0)
+                        xradiobutton("ZY projection", "viewDirectionChangedHandler(1)", ecssShowHelper.viewDirIdx == 1)
+                        xradiobutton("XZ projection", "viewDirectionChangedHandler(2)", ecssShowHelper.viewDirIdx == 2)
                         xpanel()
                         xpanel("")
                         xradiobutton("Show only this src for this species", "whatToShowChangedHandler(0)", whatToShowIdx == 0)
@@ -445,6 +447,7 @@ begintemplate OneExtracellularSourceWidget
                     hBox2.intercept(0)
                     hBox2.map()
                     plotShape = new PlotShape()
+                    ecssShowHelper.setShape(plotShape)
                     // !! plotShape.exec_menu("Shape Plot")     // this affects performance while positioning the source
                     
                     // plotShape.menu_remove("3D Rotate")       // !! error here: menu_remove not a public member of PlotShape
@@ -496,7 +499,7 @@ begintemplate OneExtracellularSourceWidget
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
         makeSelectionsInLists(spcCatIdx, speciesIdx, shapeIdx, enumStaticSwitchSpike)   // !! doing it before mainBox.map to avoid blinking in List-s and Deck-s
-        viewDirectionChangedHandler(viewDirIdx, 1)                                      //
+        viewDirectionChangedHandler(ecssShowHelper.viewDirIdx, 1)                       //
         mainBox.map("One extracellular source", 540, 35, -1, -1)   // !!
         
         // This must be done only after mapping of the mainBox
@@ -533,6 +536,8 @@ begintemplate OneExtracellularSourceWidget
         removeItemFromList(fast_flush_list, plotShape, 1)
         
         // !! graphUtils.unregister(slotIdx4GraphUtils)
+        
+        ecssShowHelper.dismissShape()
         
         mainBox.unmap()
         mainBox = nil
@@ -711,7 +716,7 @@ begintemplate OneExtracellularSourceWidget
     
     proc updatePlotShape() { local x_screen, y_screen
         // !! no need to convert each time user changes species, source shape, sphere radius or whatToShowIdx (just cache it)
-        convertCoordsWorldToScreen(x, y, z, &x_screen, &y_screen)
+        ecssShowHelper.convertCoordsWorldToScreen(x, y, z, &x_screen, &y_screen)
         updateSrcMark(x_screen, y_screen)
     }
     
@@ -785,7 +790,7 @@ begintemplate OneExtracellularSourceWidget
             codeContractViolation()
         }
         
-        viewDirIdx = $1
+        ecssShowHelper.viewDirIdx = $1
         if (numArg == 2) {
             isCalledFromShow = $2
             if (isCalledFromShow != 1) {
@@ -795,7 +800,7 @@ begintemplate OneExtracellularSourceWidget
             isCalledFromShow = 0
         }
         
-        plotShapeUtils.setViewDir(plotShape, viewDirIdx)
+        plotShapeUtils.setViewDir(plotShape, ecssShowHelper.viewDirIdx)
         
         if (!isCalledFromShow) {
             updatePlotShape()
@@ -809,7 +814,7 @@ begintemplate OneExtracellularSourceWidget
     }
     
     proc mouseEventsHandler() { local eventType, x_screen, y_screen, keystate, isMoveOrResize, xc_screen, yc_screen, radius_screen
-        eventType = $1
+        eventType = $1  // Just a placeholder
         x_screen = $2
         y_screen = $3
         keystate = $4
@@ -817,15 +822,15 @@ begintemplate OneExtracellularSourceWidget
         isMoveOrResize = (keystate != 2)    // 2: Shift
         if (isMoveOrResize) {
             updateSrcMark(x_screen, y_screen)
-            convertCoordsScreenToWorld(x_screen, y_screen, &x, &y, &z)
+            ecssShowHelper.convertCoordsScreenToWorld(x_screen, y_screen, &x, &y, &z)
         } else {
             if (enumPointSphere == 0) {
                 return
             }
             
-            convertCoordsWorldToScreen(x, y, z, &xc_screen, &yc_screen)
+            ecssShowHelper.convertCoordsWorldToScreen(x, y, z, &xc_screen, &yc_screen)
             radius_screen = geomMath.dist2D_PtToPt(xc_screen, yc_screen, x_screen, y_screen)
-            radius = convertRadiusScreenToWorld(radius_screen)
+            radius = ecssShowHelper.convertRadiusScreenToWorld(radius_screen)
             
             plotShape.erase()
             updateSphereMark(xc_screen, yc_screen)
@@ -982,17 +987,6 @@ begintemplate OneExtracellularSourceWidget
         // dismissHandler()
     }
     
-    // !! BUG: despite this capper, user can make radius_world exactly equal 0 using "Shift" + mouse
-    func capRadius() { local radius_world
-        radius_world = $1
-        
-        if (radius_world < float_epsilon) {     // !! keep the lower bound in sync with proc init
-            radius_world = float_epsilon
-        }
-        
-        return radius_world
-    }
-    
     // This proc can be implemented in different ways depending on what we consider to be the "soma coordinates".
     // In alternative implementations, we can:
     //  * analyze all the points in soma_ref.o(0).sec
@@ -1076,7 +1070,7 @@ begintemplate OneExtracellularSourceWidget
         createAllOtherMarks()
         
         // !!
-        radius_screen = convertRadiusWorldToScreen(radius)  // !! no need to do this on each mouseEventsHandler
+        radius_screen = ecssShowHelper.convertRadiusWorldToScreen(radius)   // !! no need to do this on each mouseEventsHandler
         
         numPts = 200    // !! hardcode, maybe make it linear to radius_screen
         delta_angle = 2 * PI / numPts
@@ -1119,99 +1113,9 @@ begintemplate OneExtracellularSourceWidget
             if (ecsIdx == oldSrcIdxOrMinus1 || (isOnlyOneSpecies && !stringsEqual(species, otherECS.species))) {
                 continue
             }
-            showThisSrc(otherECS.species, otherECS.spatialInfo)
+            ecssShowHelper.showThisSrc(otherECS.species, otherECS.spatialInfo)
         }
     }
-    
-    
-    
-    
-    
-    // !! vvvvvvvvvv just a quick prototype to start with
-    
-    // !! think about making all next proc-s members of "ExtracellularSource" or "ExtracellularSourcesLibrary"
-    //    (I will have to store one "ExtracellularSource" inside "OneExtracellularSourceWidget")
-    
-    // !! similar to updatePlotShape
-    proc showThisSrc() { local x_screen, y_screen localobj otherSpatialInfo
-        strdef otherSpecies
-        
-        otherSpecies = $s1
-        otherSpatialInfo = $o2
-        
-        // !! no need to convert each time user changes species, source shape, sphere radius or whatToShowIdx (just cache it)
-        convertCoordsWorldToScreen(otherSpatialInfo.x, otherSpatialInfo.y, otherSpatialInfo.z, &x_screen, &y_screen)
-        updateSrcMark2(otherSpecies, otherSpatialInfo, x_screen, y_screen)
-    }
-    
-    // !! similar to updateSrcMark
-    proc updateSrcMark2() { local x_screen, y_screen localobj otherSpatialInfo
-        strdef otherSpecies
-        
-        otherSpecies = $s1
-        otherSpatialInfo = $o2
-        x_screen = $3
-        y_screen = $4
-        
-        if (otherSpatialInfo.enumPointSphere == 0) {
-            updatePointMark2(otherSpecies, x_screen, y_screen)
-        } else if (otherSpatialInfo.enumPointSphere == 1) {
-            updateSphereMark2(otherSpecies, otherSpatialInfo, x_screen, y_screen)
-        } else {
-            codeContractViolation()
-        }
-    }
-    
-    // !! similar to updatePointMark
-    proc updatePointMark2() { local x_screen, y_screen, marker_size
-        strdef otherSpecies
-        
-        otherSpecies = $s1
-        x_screen = $2
-        y_screen = $3
-        
-        marker_size = 8     // !! hardcode
-        plotShape.mark(x_screen, y_screen, "O", marker_size, getColourIdx2(otherSpecies), 0)
-    }
-    
-    // !! similar to updateSphereMark
-    proc updateSphereMark2() { local x_screen, y_screen, radius_screen, colourIdx localobj otherSpatialInfo
-        strdef otherSpecies
-        
-        otherSpecies = $s1
-        otherSpatialInfo = $o2
-        x_screen = $3
-        y_screen = $4
-        
-        // !!
-        radius_screen = convertRadiusWorldToScreen(otherSpatialInfo.radiusOrMinus1)     // !! no need to do this on each mouseEventsHandler
-        
-        colourIdx = getColourIdx2(otherSpecies)
-        plotShapeUtils.addCircleMarker(plotShape, x_screen, y_screen, radius_screen, colourIdx)
-    }
-    
-    // !! BUG: for colourIdx > 9, we have 2 bad colours and then repetition: 10 - white, 11 - black, 12 - red etc.
-    //    but we can install more colours (up to 100):
-    //    https://www.neuron.yale.edu/neuron/static/new_doc/visualization/graph.html#Graph.color
-    // !! similar to getColourIdx
-    func getColourIdx2() { local otherSpeciesIdx
-        strdef otherSpecies
-        otherSpecies = $s1
-        if (1) {
-            // !! other category - same colours
-            otherSpeciesIdx = speciesLibrary.getSpeciesInsideCatIdx(otherSpecies)
-            return enumColours.red + otherSpeciesIdx
-        } else {
-            // !! other category - other colours
-            codeContractViolation()
-        }
-    }
-    
-    // !! ^^^^^^^^^^ just a quick prototype to start with
-    
-    
-    
-    
     
     /* !!
     // !! 3D cross made of temporary sections just to test the 2D circle marker positioning.
@@ -1275,57 +1179,6 @@ begintemplate OneExtracellularSourceWidget
     proc getSelectedSpeciesName() { local speciesIdx
         speciesIdx = spcNamesList.selected()
         $s1 = spcNamesList.o(speciesIdx).s
-    }
-    
-    // !! maybe move the next 4 converters to other place
-    
-    func convertRadiusWorldToScreen() { local radius_world
-        radius_world = $1
-        return radius_world
-    }
-    
-    func convertRadiusScreenToWorld() { local radius_screen, radius_world
-        radius_screen = $1
-        radius_world = radius_screen
-        radius_world = capRadius(radius_world)  // !!
-        return radius_world
-    }
-    
-    proc convertCoordsWorldToScreen() { local x_world, y_world, z_world
-        x_world = $1
-        y_world = $2
-        z_world = $3
-        
-        if (viewDirIdx == 0) {
-            $&4 = x_world
-            $&5 = y_world
-        } else if (viewDirIdx == 1) {
-            $&4 = z_world
-            $&5 = y_world
-        } else if (viewDirIdx == 2) {
-            $&4 = x_world
-            $&5 = z_world
-        } else {
-            codeContractViolation()
-        }
-    }
-    
-    proc convertCoordsScreenToWorld() { local x_screen, y_screen
-        x_screen = $1
-        y_screen = $2
-        
-        if (viewDirIdx == 0) {
-            $&3 = x_screen
-            $&4 = y_screen
-        } else if (viewDirIdx == 1) {
-            $&4 = y_screen
-            $&5 = x_screen
-        } else if (viewDirIdx == 2) {
-            $&3 = x_screen
-            $&5 = y_screen
-        } else {
-            codeContractViolation()
-        }
     }
     
     proc dismissChilds() {

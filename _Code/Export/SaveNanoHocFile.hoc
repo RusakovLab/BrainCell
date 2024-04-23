@@ -1,12 +1,22 @@
 
 // Save nanogeometry HOC file
 // Returns: 0/1 flag indicating that the save operation was canceled by user
-func saveNanoHocFile() { local isCancel, cond localobj bulletedList
-    strdef outHocFilePathName, line1, str1, str2
+func saveNanoHocFile() { local isCancel localobj bulletedList
+    strdef outHocFilePathName, outZipFilePathName, outFolderRelPathName, line1, str1, str2
     
-    isCancel = fbh.showSaveFileDialog(pyEnumOutFileTypes.nanoGeometryHoc, outHocFilePathName)
+    if (!exportOptions.isCreateNsgDataZipFile) {
+        isCancel = fbh.showSaveFileDialog(pyEnumOutFileTypes.nanoGeometryHoc, outHocFilePathName)
+    } else {
+        isCancel = fbh.showSaveFileDialog(pyEnumOutFileTypes.nsgDataZip, outZipFilePathName)
+    }
     if (isCancel) {
         return 1
+    }
+    
+    if (exportOptions.isCreateNsgDataZipFile) {
+        outFolderRelPathName = "_Code/Export/temp_folder"
+        pyObj.TempFolderUtils.createOrCleanUpTempFolder(outFolderRelPathName)
+        sprint(outHocFilePathName, "%s%s/%s", getcwd(), outFolderRelPathName, "init.hoc")
     }
     
     // Letting NEURON change "dt" now rather than on start of the simulation,
@@ -19,18 +29,22 @@ func saveNanoHocFile() { local isCancel, cond localobj bulletedList
     }
     mwh.hidePleaseWaitBox()
     
+    if (exportOptions.isCreateNsgDataZipFile) {
+        pyObj.NsgZipUtils.createNsgDataZipFile(outFolderRelPathName, outZipFilePathName)
+        pyObj.TempFolderUtils.deleteTempFolder(outFolderRelPathName)
+    }
+    
     line1 = "Here is what we don't export at the moment (the list is incomplete):"
     
     bulletedList = new List()
-    bulletedList.append(new String("\"secondorder\" variable"))
-    str1 = "GLOBAL vars of biophys mechs%s"
-    str2 = "custom PPs/ACs%s (if you add them), but APCount-s are exported"
+    str1 = "GLOBAL vars from biophys mechs%s"
+    str2 = "custom PPs/ACs (if you add them); we export only %s as well as APCount-s"
     if (isAstrocyteOrNeuron) {
-        sprint(str1, str1, "")
-        sprint(str2, str2, " and gap junctions")    // !!!
+        sprint(str1, str1, " and gap junc PPs")
+        sprint(str2, str2, "PPs from gap juncs")
     } else {
-        sprint(str1, str1, " and synaptic PPs/ACs")
-        sprint(str2, str2, " outside synapses")
+        sprint(str1, str1, ", gap junc PPs and synaptic PPs/ACs")
+        sprint(str2, str2, "the ones from gap juncs and syns")
     }
     bulletedList.append(new String(str1))
     bulletedList.append(new String(str2))
@@ -39,13 +53,8 @@ func saveNanoHocFile() { local isCancel, cond localobj bulletedList
         bulletedList.append(new String("overrides for other standard proc-s (e.g. \"init\" and \"run\") that may be imported from external HOC file"))
     }
     bulletedList.append(new String("the distance centre location (if you change it)"))
-    cond = exportOptions.isExportAnyStochFuncs()    // !! false positive here when user disables export of ASSIGNED and STATE vars
-    if (!isAstrocyteOrNeuron) {
-        cond = (cond || smEnumSynLoc == 2)  // smEnumSynLoc is not defined for Astrocyte
-    }
-    if (cond) {
-        bulletedList.append(new String("states of RNGs"))
-    }
+    bulletedList.append(new String("states of RNGs"))
+    bulletedList.append(new String("\"secondorder\" variable"))
     bulletedList.append(new String("if creating \"runner.hoc\", the results cannot be saved to BIN files (only TXT files are supported)"))
     bulletedList.append(new String("a new file \"nrnmech.dll\" is not built (only the old one is copied)"))
     

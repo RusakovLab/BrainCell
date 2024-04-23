@@ -37,10 +37,20 @@ begintemplate AltRunControlWidget
         isSimPlugged = 0
         none = "NONE"
         updateIntegratedWithVarLabel(none)
+        
+        // In contrast to RunControl, the AltRunControl is a template, and this results in an unwanted effect
+        // that the next 7 external vars lose their units and domains when exposed with "xpvalue";
+        // so we have to specify them here again (just copied from "%NEURONHOME%\lib\hoc\stdrun.hoc")
+        units(&v_init, "mV")
+        variable_domain(&runStopAt, 0, 1e9) units(&runStopAt, "ms")
+        variable_domain(&runStopIn, 0, 1e6) units(&runStopIn, "ms")
+        variable_domain(&tstop, 0, 1e9) units(&tstop, "ms")
+        variable_domain(&steps_per_ms, 1e-6, 1e6)
+        variable_domain(&screen_update_invl, .01, 1e9) units(&screen_update_invl, "s")
+        units(&realtime, "s")
     }
     
     proc show() { localobj nil
-        strdef label
         
         if (mainBox != nil) {           // Do not replace with one IF
             if (mainBox.ismapped()) {   //
@@ -57,53 +67,19 @@ begintemplate AltRunControlWidget
             
             // Making this widget look alike the standard one as close as possible
             // see "%NEURONHOME%\lib\hoc\stdrun.hoc" -> proc nrncontrolmenu()
-            
-            // !! the units are not added for 6 params below automatically (maybe because we are inside a template here in contrast to RunControl), so have to use some workaround
-            
             xpanel("")
-            
-            // xpvalue("Init", &v_init, 1, "initHandler()", 1)  // No units
-            label = "Init (%s)"
-            addUnitsFrom(label, "v_init")
-            xpvalue(label, &v_init, 1, "initHandler()", 1)
-            
+            xpvalue("Init", &v_init, 1, "initHandler()", 1)
             xbutton("Init & Run", "initAndRunHandler()")
-            
             xbutton("Stop", "stoprun = 1")
-            
-            // xpvalue("Continue til", &runStopAt, 1, "continueTilHandler()", 1)    // No units
-            label = "Continue til (%s)"
-            addUnitsFrom(label, "runStopAt")
-            xpvalue(label, &runStopAt, 1, "{ continueTilHandler() stoprun = 1 }", 1)
-            
-            // xpvalue("Continue for", &runStopIn, 1, "continueForHandler()", 1)    // No units
-            label = "Continue for (%s)"
-            addUnitsFrom(label, "runStopIn")
-            xpvalue(label, &runStopIn, 1, "{ continueForHandler() stoprun = 1 }", 1)
-            
+            xpvalue("Continue til", &runStopAt, 1, "{ continueTilHandler() stoprun = 1 }", 1)
+            xpvalue("Continue for", &runStopIn, 1, "{ continueForHandler() stoprun = 1 }", 1)
             xbutton("Single Step", "singleStepHandler()")
-            
             xpvalue("t", &t)
-            
-            // xpvalue("Tstop", &tstop, 1, "tstop_changed()")   // No units
-            label = "Tstop (%s)"
-            addUnitsFrom(label, "tstop")
-            xpvalue(label, &tstop, 1, "tstop_changed()")
-            
+            xpvalue("Tstop", &tstop, 1, "tstop_changed()")
             xpvalue("dt", &dt, 1, "setdt()")
-            
             xpvalue("Points plotted/ms", &steps_per_ms, 1, "setdt()")
-            
-            // xpvalue("Scrn update invl", &screen_update_invl, 1)  // No units
-            label = "Scrn update invl (%s)"
-            addUnitsFrom(label, "screen_update_invl")
-            xpvalue(label, &screen_update_invl, 1)
-            
-            // xpvalue("Real Time", &realtime)  // No units
-            label = "Real Time (%s)"
-            addUnitsFrom(label, "realtime")
-            xpvalue(label, &realtime)
-            
+            xpvalue("Scrn update invl", &screen_update_invl, 1)
+            xpvalue("Real Time", &realtime)
             xpanel()
             
             xpanel("")
@@ -325,10 +301,6 @@ begintemplate AltRunControlWidget
         if (cvode.active() && inhomAndStochLibrary.isAnyStochVars()) {
             printNotImplementedMsgAndRaiseError("Cannot run simulation with stoch models and variable time step \"dt\".")
         }
-    }
-    
-    proc addUnitsFrom() {
-        sprint($s1, $s1, units($s2))
     }
     
     proc updateIntegratedWithVarLabel() {

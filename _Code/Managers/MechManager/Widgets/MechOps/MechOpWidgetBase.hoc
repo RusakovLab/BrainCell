@@ -5,6 +5,7 @@ begintemplate MechOpWidgetBase
     external mmAllComps
     external mwh, mth, mcu, mechsDllUtils
     external stringEmpty, addEmptyLabels
+    external mechManagerMainWidget
     external eachItemInList
     
     public isDirty, lastMechOpIdx
@@ -187,7 +188,7 @@ begintemplate MechOpWidgetBase
             xlabel(headerLine1)
             isRequireApply = mechOpHelper.isRequireApply
             if (isRequireApply) {
-                mcu.createApplyReminder(1, 1)
+                mcu.createApplyReminder(1, -1, 1)
             }
             if (!stringEmpty(headerLine3)) {
                 xlabel(headerLine3)
@@ -505,19 +506,27 @@ begintemplate MechOpWidgetBase
         mwh.endIntercepting()
     }
     
-    proc applyCore() { localobj comp
+    proc applyCore() { local wasAnyMorphologyDirty, wasThisMorphologyDirty localobj comp
     
         // Actually, this is required only when lastMechOpIdx == 1 to have VarsEditorWidget.bufferToMechStd called
         mechOpHelpers[lastMechOpIdx].dismissChilds()
+        
+        wasAnyMorphologyDirty = 0
         
         // Applying the changes
         for eachItemInList(comp, mmAllComps) {
             if (!comp.isCompDirty) {
                 continue
             }
-            comp.applyHomogenChangesToDirtyMechs()
+            wasThisMorphologyDirty = comp.applyHomogenChangesToDirtyMechs()
+            wasAnyMorphologyDirty = wasAnyMorphologyDirty || wasThisMorphologyDirty
         }
         isDirty = 0
+        
+        if (wasAnyMorphologyDirty) {
+            // A workaround for the blacked sections problem
+            mechManagerMainWidget.showAllComps()
+        }
         
         // !! maybe it makes sense to list all the affected compartments in this message (or mechs)
         mwh.showMessageBox("All the changes were applied to sections biophysics.", "Applied")

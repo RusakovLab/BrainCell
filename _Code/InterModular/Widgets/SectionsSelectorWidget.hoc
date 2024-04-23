@@ -6,34 +6,33 @@ begintemplate SectionsSelectorWidget
     
     external addThisAndFilteredChildSecRefsToTheList, removeAllDupSecRefsFromTheList
     external mwh
-    external concatenateTwoLists, codeContractViolation
+    external concatenateTwoLists, stringEmpty, unmapIfNotNil, codeContractViolation
     external eachSecInList
-    external enumColours
+    external enumMouseEvents, enumColours
     
     objref in_plugin
-    objref in_compOrNil     // For pluginType == 1 only
     
     isSelectWholeSubtree = -1
     
-    selectableColor = -1
-    notSelectableColor = -1
-    selectedColor = -1
+    selectableColour = -1
+    notSelectableColour = -1
+    selectedColour = -1
     
     strdef numSelectedSectsHint
     
-    objref mainBox, plotShape
+    objref mainBox, shape
     
     objref selected_ref
     
     
-    proc init() { local numArg, pluginType localobj oldSelected_ref, nil
-        
-        numArg = numarg()
-        if (numArg != 2) {
-            codeContractViolation()
-        }
+    proc init() { local pluginType, numArg localobj oldSelected_ref, parentWidget, comp, nil
         
         pluginType = $1
+        
+        numArg = numarg()
+        if ((pluginType != 1 && numArg != 2) || (pluginType == 1 && numArg != 3)) {
+            codeContractViolation()
+        }
         
         if (pluginType == 0) {
             // !! not used at the moment
@@ -42,9 +41,13 @@ begintemplate SectionsSelectorWidget
             oldSelected_ref = $o2
             in_plugin = new PluginForSSW_FromNBM()
         } else if (pluginType == 1) {
-            in_compOrNil = $o2
-            in_plugin = new PluginForSSW_FromBM(in_compOrNil.list_ref)
+            oldSelected_ref = $o2
+            parentWidget = $o3
+            in_plugin = new PluginForSSW_FromSSM(parentWidget)
         } else if (pluginType == 2) {
+            comp = $o2
+            in_plugin = new PluginForSSW_FromBM(comp)
+        } else if (pluginType == 3) {
             oldSelected_ref = $o2
             in_plugin = new PluginForSSW_FromGJM()
         } else {
@@ -53,9 +56,9 @@ begintemplate SectionsSelectorWidget
         
         isSelectWholeSubtree = 1
         
-        selectableColor = enumColours.blue
-        notSelectableColor = enumColours.black
-        selectedColor = enumColours.red
+        selectableColour = enumColours.blue
+        notSelectableColour = enumColours.black
+        selectedColour = enumColours.red
         
         selected_ref = new List()
         if (oldSelected_ref != nil) {
@@ -63,32 +66,40 @@ begintemplate SectionsSelectorWidget
         }
     }
     
-    proc show() { localobj nil
-        strdef text
+    proc show() { local numArg, x, y
+        strdef middleHintOrEmpty, title
+        
+        numArg = numarg()
+        if (numArg == 2) {
+            x = $1
+            y = $2
+        } else if (numArg != 0) {
+            codeContractViolation()
+        }
         
         mainBox = new VBox()
         mainBox.intercept(1)
         {
             xpanel("")
-            in_plugin.getTopHint(text)
-            xlabel(text)
+            xlabel(in_plugin.topHint)
             xlabel("")
             xradiobutton("Select individual sections", "isSelectWholeSubtree = 0", !isSelectWholeSubtree)
             xradiobutton("Select whole subtrees", "isSelectWholeSubtree = 1", isSelectWholeSubtree)
             xlabel("")
             // Usage of "Ctrl" is more natural for multiselect than "Shift", but for some reason, mouseEventsHandler is not called at all when "Ctrl" is pressed
             xlabel("Hold \"Shift\" when clicking on sections to keep the previous selection.")
-            if (in_compOrNil != nil) {
-                xlabel("The sections shown in black are not in the base compartment, and so cannot be selected.")
+            middleHintOrEmpty = in_plugin.middleHintOrEmpty
+            if (!stringEmpty(middleHintOrEmpty)) {
+                xlabel(middleHintOrEmpty)
             }
             xpanel()
-            // !! think about showing only selectable sections (call "new PlotShape" with the SectionList arg)
+            // !! think about showing only selectable sections (call "new Shape" with the SectionList arg)
             //    OR propose user a choice: showing all in black and blue OR blue only (radiobuttons)
-            plotShape = new PlotShape()
-            colorizeCompartments()
+            shape = new Shape()
+            colourizeCompartments()
             selectSections()
-            plotShape.menu_tool("Selected Section(s)", "mouseEventsHandler")
-            plotShape.exec_menu("Selected Section(s)")
+            shape.menu_tool("Selected Section(s)", "mouseEventsHandler")
+            shape.exec_menu("Selected Section(s)")
             xpanel("")
             xvarlabel(numSelectedSectsHint)
             xbutton("Done", "doneHandler()")
@@ -96,26 +107,33 @@ begintemplate SectionsSelectorWidget
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Sections selector")
-        plotShape.exec_menu("View = plot")
+        title = in_plugin.title
+        if (numArg == 2) {
+            mainBox.map(title, x, y, -1, -1)
+        } else {
+            mainBox.map(title)
+        }
+        
+        shape.exec_menu("View = plot")
     }
     
     proc dismissHandler() {
-        mainBox.unmap()
+        unmapIfNotNil(mainBox)
         in_plugin.dismissHandler()
     }
     
     // All next staff is private
     
     
-    proc colorizeCompartments() { localobj nil
-        if (in_compOrNil != nil) {
-            plotShape.color_all(notSelectableColor)
-            for eachSecInList(in_compOrNil.list_ref) {
-                plotShape.color(selectableColor)
+    proc colourizeCompartments() { localobj selectable_refOrNil, nil
+        selectable_refOrNil = in_plugin.selectable_refOrNil
+        if (selectable_refOrNil != nil) {
+            shape.color_all(notSelectableColour)
+            for eachSecInList(selectable_refOrNil) {
+                shape.color(selectableColour)
             }
         } else {
-            plotShape.color_all(selectableColor)
+            shape.color_all(selectableColour)
         }
     }
     
@@ -137,19 +155,19 @@ begintemplate SectionsSelectorWidget
         y = $3
         keystate = $4
         
-        if (eventType != 2) {   // LMB press
+        if (eventType != enumMouseEvents.press) {
             return
         }
         
-        isMultiselect = (keystate == 2) // Shift
+        isMultiselect = (keystate == 2)     // 2: Shift
         if (!isMultiselect) {
             selected_ref.remove_all()
-            colorizeCompartments()
+            colourizeCompartments()
         }
         
         // Make the nearest section currently accessed
-        plotShape.nearest(x, y)
-        plotShape.push_selected()
+        shape.nearest(x, y)
+        shape.push_selected()
         
         // Check if the current section belongs to the selectable subset
         isSectSelectable = in_plugin.isCurrentSectSelectable()
@@ -176,17 +194,16 @@ begintemplate SectionsSelectorWidget
     
     proc showSelectedSectsAndUpdateHint() {
         for eachSecInList(selected_ref) {
-            plotShape.color(selectedColor)
+            shape.color(selectedColour)
         }
         
         updateNumSelectedSectsHint()
     }
     
     proc updateNumSelectedSectsHint() {
-        in_plugin.updateNumSelectedSectsHint(numSelectedSectsHint, selected_ref.count(), in_compOrNil)
+        sprint(numSelectedSectsHint, in_plugin.bottomHintTempl, selected_ref.count())
     }
     
-    // The handler of "Done" button
     proc doneHandler() {
         if (selected_ref.count() == 0) {
             mwh.showMessageBox("Please select at least 1 section.", "Nothing selected")
@@ -203,7 +220,7 @@ endtemplate SectionsSelectorWidget
 /* !!
 // Handler of "Reseed" button from the main UI
 // Input: isAllOrSomeDendritesSeeded (taken from the top level)
-proc seededDendritesChangedHandler() {
+proc reseedStalksHandler() {
     if (isAllOrSomeDendritesSeeded) {
         seededDendrites_ref = dendrites_ref
         nanoBranchesManager.reseedBranchesWithLastUsedArgs()

@@ -1,12 +1,14 @@
 
 objref vBoxSEClampPPGM
 
+{ load_file("Sims/Common/Utils/CellBoundingBoxUtils.hoc") }
+
 if (isAstrocyteOrNeuron) {
     load_file("Sims/Astrocyte/SimCalciumDynamics.hoc")
 } else {
     load_file("Sims/Neuron/SimVoltageCA1Neuron.hoc")
-    load_file("Sims/Neuron/SimGABADiffusionBasketCell.hoc")
 }
+{ load_file("Sims/Common/SimExtracellularDiffusion.hoc") }
 { load_file("Sims/Common/SimFrapInCircleGeometry.hoc") }
 { load_file("Sims/Common/SimFrapLine.hoc") }
 { load_file("Sims/Common/SimSpatialVoltageDistributions.hoc") }

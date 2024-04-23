@@ -160,8 +160,8 @@ proc initMainProgram() {
         mechsDllUtils.loadDefaultMechsDllDependingOnCellType()
     }
     
+    load_file("_Code/Prologue/CreateDefaultGapJuncs.hoc")
     load_file("_Code/Prologue/CommonPrologue.hoc")
-    load_file("_Code/Prologue/Astrocyte/CreateDefaultGapJuncs.hoc")
     
     // Astrocyte simulation prologue complete
     prologueCompleteHandler()

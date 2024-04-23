@@ -66,6 +66,9 @@ begintemplate RoadmapWidget
                     xlabel("Option 2: BrainCell Export")
                     xlabel("If you have an HOC file previously exported by the BrainCell program,")
                     xlabel("use this option to load it.")
+                    xlabel("")
+                    xlabel("Warning: The load may fail if the export was done by an earlier version")
+                    xlabel("                of BrainCell.")
                     xpanel()
                     xpanel("")
                     xlabel("Option 3: Advanced HOC File")
@@ -116,7 +119,7 @@ begintemplate RoadmapWidget
         // !! don't forget to create this helper PS1-script
         line2 = "   this DLL file should be placed in the same folder with the simulation entry point HOC file."
         line3 = "* We expect that the external simulation doesn't start immediately, but rather waits for a button like \"Run\"."
-        line4 = "* After the import, we seed the nanobranches and gap junctions or synapses (depending on the cell type)%s"
+        line4 = "* After the import, we seed the nanobranches, the gap junctions and (for neuron cell type) the synapses%s"
         if (!_isExternalSimStart) {
             sprint(line4, line4, ",")
         } else {

@@ -7,19 +7,30 @@ begintemplate SeedingDensityWidget
     public show, dismissHandler
     
     external veryMinSeedingDistance
-    external unmapIfNotNil
+    external unmapIfNotNil, codeContractViolation
     
     objref mainBox, deck, textEditor
     
     objref seedingDensityHelper
     
     
-    proc show() { local cardIdx localobj vBox
-        strdef str1, str2, str3, str4, text, hint
+    proc show() { local numArg, x, y, cardIdx localobj vBox
+        strdef str1, str2, str3, text, hint
         
+        numArg = numarg()
+        if (numArg != 1 && numArg != 3) {
+            codeContractViolation()
+        }
         seedingDensityHelper = $o1
+        if (numArg == 3) {
+            x = $2
+            y = $3
+        } else {
+            x = 250
+            y = 245
+        }
         
-        seedingDensityHelper.onShowInSeedingDensityWidget(str1, str2, str3, str4)
+        seedingDensityHelper.onShowInSeedingDensityWidget(str1, str2, str3)
         
         mainBox = new VBox()
         mainBox.intercept(1)
@@ -58,16 +69,16 @@ begintemplate SeedingDensityWidget
             // deck.flip_to(*)  // Will be done below in isUniformChangedHandler
             deck.map()
             xpanel("")
-            sprint(hint, "Hints: The lower value, the higher density of %s;", str3)
+            sprint(hint, "Hints: The lower value, the higher density of %s;", str1)
             xlabel(hint)
             sprint(hint, "           the value is capped from below at %g (%s).", veryMinSeedingDistance, units("L"))
             xlabel(hint)
-            xbutton(str4, "doneHandler()")
+            xbutton(str3, "doneHandler()")
             xpanel()
         }
         mainBox.intercept(0)
         mainBox.dismiss_action("dismissHandler()")
-        mainBox.map("Min distribution over branches", 250, 250, 380, 210)
+        mainBox.map("Min distribution over branches", x, y, 380, 210)
         
         isUniformChangedHandler(seedingDensityHelper.isUniform)
     }
@@ -97,12 +108,27 @@ begintemplate SeedingDensityWidget
 endtemplate SeedingDensityWidget
 
 
-proc showSeedingDensityWidget() { localobj seedingDensityHelper, nil
+proc showSeedingDensityWidget() { local numArg, x, y localobj seedingDensityHelper, nil
+    
+    numArg = numarg()
+    if (numArg != 1 && numArg != 3) {
+        codeContractViolation()
+    }
     seedingDensityHelper = $o1
+    if (numArg == 3) {
+        x = $2
+        y = $3
+    }
+    
     if (seedingDensityWidget == nil) {
         seedingDensityWidget = new SeedingDensityWidget()
     } else {
         seedingDensityWidget.dismissHandler()
     }
-    seedingDensityWidget.show(seedingDensityHelper)
+    
+    if (numArg == 3) {
+        seedingDensityWidget.show(seedingDensityHelper, x, y)
+    } else {
+        seedingDensityWidget.show(seedingDensityHelper)
+    }
 }

@@ -2,6 +2,7 @@
 import os, shutil
 from tkinter.messagebox import askyesno
 from neuron import h, nrn
+from GeneratorsForMainHocFile.MetaGensForTaps import MetaGensForTaps
 from GeneratorsForMainHocFile.GeneratorsForMainHocFile import GeneratorsForMainHocFile
 from GeneratorsForAuxHocFiles.GenForParamsHoc import GenForParamsHoc
 from GeneratorsForAuxHocFiles.GensForRunnerHoc import GensForRunnerHoc
@@ -9,9 +10,10 @@ from Utils.OtherUtils import *
 
 
 _genStartMarker = 'py:'
+_metaGenMarker = '@'
 _genEndMarker = ')'
-_parStartMarker = '//////////////////// Start of '
-_parEndMarker = '//////////////////// End of '
+_parStartMarker = parHdrStart + ' Start of '
+_parEndMarker = parHdrStart + ' End of '
 _emptyParMarker = emptyParagraphHint()
 
 
@@ -61,18 +63,21 @@ def _exportSkeletonBasedHocFile(inSkeletonFileName, gens, outHocFilePathName):
     with open(inSkeletonFileRelPathName, 'r') as inFile:
         lines = inFile.readlines()      # Preserving all newline characters here
         
-    lineIdxToGenInfoDict = _findAllGenerators(lines)
+    lines, lineIdxToGenInfoDict = _unwrapTapSetsAndFindGenerators(lines)
     
-    # Iterating in reverse order to keep the line indexes intact
-    lineIdxs = list(lineIdxToGenInfoDict.keys())
-    for lineIdx in reversed(lineIdxs):
-        genInfo = lineIdxToGenInfoDict[lineIdx]
+    # Iterating in reverse order would simplify the loop below making trgLineIdx equal to srcLineIdx,
+    # but CleanupHelper requires the direct order
+    delta = 0
+    for srcLineIdx in lineIdxToGenInfoDict.keys():
+        genInfo = lineIdxToGenInfoDict[srcLineIdx]
         genRes = eval('gens.' + genInfo.pyCall)
+        trgLineIdx = srcLineIdx + delta
         tp = type(genRes)
         if tp == str:
-            _insertSubstring(lines, lineIdx, genInfo.startIdx, genInfo.endIdx, genRes)
+            _insertSubstring(lines, trgLineIdx, genInfo.startIdx, genInfo.endIdx, genRes)
         elif tp == list:
-            _insertLines(lines, lineIdx, genRes)
+            _insertLines(lines, trgLineIdx, genRes)
+            delta += len(genRes) - 1
         else:
             codeContractViolation()
             
@@ -102,12 +107,14 @@ def _copyMechsDllFile(outDirPath, loadedDllDirPath):
         if isTryAgain:
             _copyMechsDllFile(outDirPath, loadedDllDirPath)
             
-def _findAllGenerators(lines):
+def _unwrapTapSetsAndFindGenerators(lines):
     lineIdxToGenInfoDict = {}
-    for lineIdx in range(len(lines)):
+    lineIdx = 0
+    while (lineIdx != len(lines)):
         line = lines[lineIdx]
         startIdx = line.find(_genStartMarker)
         if startIdx == -1:
+            lineIdx += 1
             continue
         pyCallIdx = startIdx + len(_genStartMarker)
         endIdx = line.find(_genEndMarker, pyCallIdx)
@@ -118,8 +125,23 @@ def _findAllGenerators(lines):
         if testIdx != -1:
             # More than 1 generator in the same line: Not implemented
             codeContractViolation()
-        lineIdxToGenInfoDict[lineIdx] = _GenInfo(startIdx, endIdx, line[pyCallIdx : endIdx])
-    return lineIdxToGenInfoDict
+        pyCall = line[pyCallIdx : endIdx]
+        if pyCall.startswith(_metaGenMarker):
+            metaPyCall = pyCall[len(_metaGenMarker) :]
+            newLines = eval('MetaGensForTaps.' + metaPyCall)
+            if len(newLines) != 0:
+                if newLines[0] != '\n':
+                    codeContractViolation()
+                lines[lineIdx : lineIdx + 1] = newLines[1 :]
+            else:
+                if lines[lineIdx + 1] != '\n':
+                    codeContractViolation()
+                lines[lineIdx : lineIdx + 2] = []
+        else:
+            lineIdxToGenInfoDict[lineIdx] = _GenInfo(startIdx, endIdx, pyCall)
+            lineIdx += 1
+            
+    return lines, lineIdxToGenInfoDict
     
 def _removeEmptyParagraphs(lines):
     lineIdx = len(lines) - 1
@@ -153,14 +175,16 @@ def _prependTableOfContents(lines):
         return
     numToCLines = numHeaders + 5
     genLines = []
-    genLines.append('//////////////////// Table of contents ///////////////////////////////////')
+    line = parHdrStart + ' Table of contents '
+    line = line + '/' * (parHdrTotalLen - len(line))
+    genLines.append(line)
     genLines.append('/*')
     for lineIdx, header in lineIdxToHeaderDict.items():
         linePtr = '    Line {}: '.format(lineIdx + numToCLines)
         spacer = ' ' * (24 - len(linePtr))
         genLines.append('{}{}{}'.format(linePtr, spacer, header))
     genLines.append('*/')
-    genLines.append('//////////////////////////////////////////////////////////////////////////')
+    genLines.append('/' * parHdrTotalLen)
     lines[: 0] = _addNewLineChars(genLines)
     
 def _insertSubstring(lines, lineIdx, startIdx, endIdx, genSubstring):

@@ -7,6 +7,7 @@ begintemplate MessageWarningHelper
     
     external getNotImplementedLines, codeContractViolation
     external eachItemInList
+    external enumArgTypes
     
     objref msgWarnBox, waitBox
     
@@ -49,9 +50,9 @@ begintemplate MessageWarningHelper
             // !! keep in sync with similar cycle below
             for i = 1, numArg - 1 {
                 argType = argtype(i)
-                if (argType == 2) {         // 2: strdef
+                if (argType == enumArgTypes.strdef_) {
                     intMsgLines.append(new String($si))
-                } else if (argType == 1) {  // 1: objref
+                } else if (argType == enumArgTypes.objref_) {
                     appendBulletedList(intMsgLines, $oi)
                 } else {
                     codeContractViolation()
@@ -71,9 +72,9 @@ begintemplate MessageWarningHelper
             // !! keep in sync with similar cycle above
             for i = 1, numArg - 1 {
                 argType = argtype(i)
-                if (argType == 2) {         // 2: strdef
+                if (argType == enumArgTypes.strdef_) {
                     xlabel($si)
-                } else if (argType == 1) {  // 1: objref
+                } else if (argType == enumArgTypes.objref_) {
                     showBulletedList($oi)
                 } else {
                     codeContractViolation()
@@ -102,9 +103,9 @@ begintemplate MessageWarningHelper
             // !! keep in sync with similar cycle below
             for i = 1, numArg {
                 argType = argtype(i)
-                if (argType == 2) {         // 2: strdef
+                if (argType == enumArgTypes.strdef_) {
                     intWarnLines.append(new String($si))
-                } else if (argType == 1) {  // 1: objref
+                } else if (argType == enumArgTypes.objref_) {
                     appendBulletedList(intWarnLines, $oi)
                 } else {
                     codeContractViolation()
@@ -123,9 +124,9 @@ begintemplate MessageWarningHelper
             // !! keep in sync with similar cycle above
             for i = 1, numArg {
                 argType = argtype(i)
-                if (argType == 2) {         // 2: strdef
+                if (argType == enumArgTypes.strdef_) {
                     xlabel($si)
-                } else if (argType == 1) {  // 1: objref
+                } else if (argType == enumArgTypes.objref_) {
                     showBulletedList($oi)
                 } else {
                     codeContractViolation()

@@ -1,5 +1,5 @@
 
-// !! some code dupl. with ExtracellularManagerMainWidget
+// !! some code dupl. with ExtracellularManagerMainWidget, SpineSeedingMainWidget, SynSetsWidget and GapJuncSetsWidget
 begintemplate CreateListOfInputVarsWidget
 
     public show, onVarAddHandler, onVarCorrectHandler, onDefineVarGridOkHandler, dismissHandler
@@ -24,7 +24,7 @@ begintemplate CreateListOfInputVarsWidget
     proc init() { local aoivWidIdx
         isExposedOrSwept = $1
         
-        numAoivWidgets = 2
+        numAoivWidgets = 3
         
         objref aoivWidgets[numAoivWidgets]
         for aoivWidIdx = 0, numAoivWidgets - 1 {
@@ -47,7 +47,7 @@ begintemplate CreateListOfInputVarsWidget
     }
     
     proc show() { local numSpacers localobj hBox, deck
-        strdef label, title, field, text
+        strdef label, title, field
         
         if (isExposedOrSwept) {
             label = "Vars to expose in the params file:"
@@ -82,21 +82,21 @@ begintemplate CreateListOfInputVarsWidget
                 deck = openDeck()
                 {
                     xpanel("")
-                    xbutton("Add biophys var", "addBiophysVarHandler()")
-                    if (isAstrocyteOrNeuron) {
-                        text = "Add gap junc var"
-                    } else {
-                        text = "Add synapse var"
+                    xbutton("Add biophys var", "addBioGjOrSynVar(0)")
+                    xbutton("Add gap junc var", "addBioGjOrSynVar(1)")
+                    if (!isAstrocyteOrNeuron) {
+                        xbutton("Add synapse var", "addBioGjOrSynVar(2)")
                     }
-                    xbutton(text, "addTapVarHandler()")
                     xbutton("Add custom var", "addCustomVarHandler()")
                     xlabel("")
                     xbutton("Correct var", "correctVarHandler()")
                     if (!isExposedOrSwept) {
-                        xlabel("")
+                        if (isAstrocyteOrNeuron) {
+                            xlabel("")
+                        }
                         xbutton("Define var grid", "defineVarGridHandler()")
                     }
-                    numSpacers = 1 + 2 * isExposedOrSwept
+                    numSpacers = isAstrocyteOrNeuron + 2 * isExposedOrSwept
                     addEmptyLabels(numSpacers)
                     xbutton("Delete var", "deleteVarHandler()")
                     xpanel()
@@ -114,7 +114,7 @@ begintemplate CreateListOfInputVarsWidget
         mainBox.map(title, 110, 150, -1, -1)
     }
     
-    func onVarAddHandler() { local numVars localobj newItem
+    func onVarAddHandler() { localobj newItem
         newItem = $o1
         
         if (!isVarExprUnique(newItem.s, exprsList)) {
@@ -122,8 +122,6 @@ begintemplate CreateListOfInputVarsWidget
         }
         
         exprsList.append(newItem)
-        numVars = exprsList.count()
-        exprsList.select(numVars - 1)
         
         return 1
     }
@@ -161,25 +159,13 @@ begintemplate CreateListOfInputVarsWidget
     // All next staff is private
     
     
-    proc addBiophysVarHandler() {
-        dismissChilds()
-        aoivWidgets[0].show()   // --> onVarAddHandler
-    }
-    
-    proc addTapVarHandler() {
-        dismissChilds()
-        aoivWidgets[1].show()   // --> onVarAddHandler
-    }
-    
-    proc correctBiophysOrTapVar() { local aoivWidIdx, selVarIdx localobj listItem
+    proc addBioGjOrSynVar() { local aoivWidIdx
         aoivWidIdx = $1
-        listItem = $o2
-        selVarIdx = $3
         dismissChilds()
-        aoivWidgets[aoivWidIdx].show(listItem, selVarIdx)   // --> onVarCorrectHandler
+        aoivWidgets[aoivWidIdx].show()      // --> onVarAddHandler
     }
     
-    proc addCustomVarHandler() { local isOK, numVars
+    proc addCustomVarHandler() { local isOK localobj newItem
         strdef expr
         
         dismissChilds()
@@ -190,13 +176,11 @@ begintemplate CreateListOfInputVarsWidget
             return
         }
         
-        exprsList.append(new ExposedOrSweptInputVar(isExposedOrSwept, expr))
-        
-        numVars = exprsList.count()
-        exprsList.select(numVars - 1)
+        newItem = new ExposedOrSweptInputVar(isExposedOrSwept, expr)
+        exprsList.append(newItem)
     }
     
-    proc correctVarHandler() { local selVarIdx, enumDmTpCeSt, aoivWidIdx, isOK localobj oldItem, newItem
+    proc correctVarHandler() { local selVarIdx, enumBioGjSynCeSt, aoivWidIdx, isOK localobj oldItem, newItem
         strdef expr
         
         dismissChilds()
@@ -208,11 +192,11 @@ begintemplate CreateListOfInputVarsWidget
         }
         
         oldItem = exprsList.o(selVarIdx)
-        enumDmTpCeSt = oldItem.enumDmTpCeSt
-        if (enumDmTpCeSt < 2) {
-            aoivWidIdx = enumDmTpCeSt
+        enumBioGjSynCeSt = oldItem.enumBioGjSynCeSt
+        if (enumBioGjSynCeSt < 3) {
+            aoivWidIdx = enumBioGjSynCeSt
             correctBiophysOrTapVar(aoivWidIdx, oldItem, selVarIdx)
-        } else if (enumDmTpCeSt == 2) {
+        } else if (enumBioGjSynCeSt == 3) {
             expr = oldItem.customExpr
             isOK = enterVarExpression(expr, exprsList)
             if (!isOK) {
@@ -237,6 +221,14 @@ begintemplate CreateListOfInputVarsWidget
         gridInfoOrNil = exprsList.o(selVarIdx).gridInfoOrNil
         sweptVar = exprsList.o(selVarIdx)
         dg4ivWidget.show(gridInfoOrNil, selVarIdx, sweptVar)    // --> onDefineVarGridOkHandler
+    }
+    
+    proc correctBiophysOrTapVar() { local aoivWidIdx, selVarIdx localobj listItem
+        aoivWidIdx = $1
+        listItem = $o2
+        selVarIdx = $3
+        dismissChilds()
+        aoivWidgets[aoivWidIdx].show(listItem, selVarIdx)   // --> onVarCorrectHandler
     }
     
     proc deleteVarHandler() {

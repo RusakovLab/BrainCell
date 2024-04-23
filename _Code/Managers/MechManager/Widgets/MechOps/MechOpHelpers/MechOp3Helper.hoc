@@ -56,7 +56,7 @@ begintemplate MechOp3Helper
             for varIdx = 0, numVars - 1 {
                 arraySize = mth.getVarNameAndArraySize(0, mechIdx, varType, varIdx, varName)
                 for arrayIndex = 0, arraySize - 1 {
-                    varLibId = new VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+                    varLibId = new VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
                     isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
                     if (isStoch) {
                         mth.getVarNameWithIndexAndUnits(0, mechIdx, varName, arraySize, arrayIndex, varNameWithIndexAndUnits)
@@ -92,7 +92,7 @@ begintemplate MechOp3Helper
         
         dismissChilds()
         
-        defineStochFuncSubWidget = mcu.defineStochFuncHandler(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        defineStochFuncSubWidget = mcu.defineStochFuncHandler(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
 endtemplate MechOp3Helper

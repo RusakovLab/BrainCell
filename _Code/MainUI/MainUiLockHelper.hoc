@@ -1,14 +1,16 @@
 
 begintemplate MainUiLockHelper
 
-    public makeSureNanoReseedingLocked, makeSureNanoUpdateLocked, ifNanoCompThenMakeSureNanoUpdateLocked
+    public makeSureNanoReseedingLocked, makeSureNanoReseedingWidgetsClosed, makeSureNanoUpdateLocked, ifNanoCompThenMakeSureNanoUpdateLocked
     public deckNanoReseeding, deckNanoGeomAndBiophys
     
-    external isBaseOrNanoStart
+    external isAstrocyteOrNeuron, isBaseOrNanoStart
     external findItemInListByString, dismissIfNotNil, codeContractViolation
-    external mmAllComps
+    external mmAllComps, spmAllSpineSets
     external compUtils
-    external seedingDensityWidget
+    external sdsWidget, seedingDensityWidget, spineSeedingMainWidget
+    external eachItemInList
+    external enumArgTypes
     
     objref deckNanoReseeding, deckNanoGeomAndBiophys
     
@@ -27,10 +29,22 @@ begintemplate MainUiLockHelper
     
     func makeSureNanoReseedingLocked() { local isCancel
         isCancel = makeSureUiLocked(&isNanoReseedingLocked, deckNanoReseeding, "reseed the nanostructures")
-        if (isBaseOrNanoStart && !isCancel) {
-            dismissIfNotNil(seedingDensityWidget)
+        if (!isCancel) {
+            makeSureNanoReseedingWidgetsClosed()
         }
         return isCancel
+    }
+    
+    proc makeSureNanoReseedingWidgetsClosed() {
+        if (!isBaseOrNanoStart) {
+            return
+        }
+        if (isAstrocyteOrNeuron) {
+            dismissIfNotNil(sdsWidget, 0)
+            dismissIfNotNil(seedingDensityWidget)
+        } else {
+            dismissIfNotNil(spineSeedingMainWidget, 0)
+        }
     }
     
     func makeSureNanoUpdateLocked() {
@@ -41,13 +55,13 @@ begintemplate MainUiLockHelper
         strdef compName
         
         argType = argtype(1)
-        if (argType == 2) {         // 2: strdef
+        if (argType == enumArgTypes.strdef_) {
             compName = $s1
             idxOrMinus1 = findItemInListByString(reservedNanoCompNames, compName)
             if (idxOrMinus1 == -1) {
                 return 0
             }
-        } else if (argType == 1) {  // 1: objref
+        } else if (argType == enumArgTypes.objref_) {
             isCheckedVec = $o1
             isSelected = checkIfNanoCompSelected(isCheckedVec)
             if (!isSelected) {

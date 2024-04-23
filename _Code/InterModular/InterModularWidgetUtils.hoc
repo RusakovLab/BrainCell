@@ -5,6 +5,10 @@ proc getGlobalVarsHint() {
     sprint($s2, "The only exception is for GLOBAL variables. Any changes to them are %s immediately.", verb)
 }
 
+proc getIfYouModifyGeomHint() {
+    $s1 = "If you modify the cell geometry or move it in 3D space, change \"nseg\" somewhere or add new sections,"
+}
+
 proc oneZeroToYesNo() { local oneOrZero
     oneOrZero = $1
     if (oneOrZero) {
@@ -21,6 +25,15 @@ proc oneZeroToEnabledDisabled() { local oneOrZero
         $s2 = "ENABLED"
     } else {
         $s2 = "DISABLED"
+    }
+}
+
+proc getEmptyOrS() { local numItems
+    numItems = $1
+    if (numItems != 1) {
+        $s2 = "s"
+    } else {
+        $s2 = ""
     }
 }
 
@@ -99,10 +112,24 @@ proc createExtracellularGeneratorHintsPanel() {
     xpanel()
 }
 
-proc dismissIfNotNil() { localobj widget, nil
+proc dismissIfNotNil() { local numArg, isSkipReseeding localobj widget, nil
+    
+    numArg = numarg()
+    if (numArg < 1 || numArg > 2) {
+        codeContractViolation()
+    }
+    
     widget = $o1
-    if (widget != nil) {
+    
+    if (widget == nil) {
+        return
+    }
+    
+    if (numArg == 1) {
         widget.dismissHandler()
+    } else {
+        isSkipReseeding = $2
+        widget.dismissHandler(isSkipReseeding)
     }
 }
 

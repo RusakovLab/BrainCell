@@ -1,0 +1,352 @@
+
+// !!!!! think about deploying a grid of temp artificial cells rather than temp sections
+
+begintemplate GridRegion
+
+    public is3dOr2dGrid, twoDimGridPlaneIdx, nx, ny, nz
+    public showEdgesAndAnchorPoints, onMousePress, onMouseDrag
+    public deployGrid, destroyGrid
+    
+    external gridOfSections
+    external cbbUtils, geomMath, math, mwh
+    external codeContractViolation
+    external enumAnchorPointTypes, enumAnchorPointLocations, enumColours
+    
+    is3dOr2dGrid = -1
+    twoDimGridPlaneIdx = -1     // 0: XY, 1: ZY, 2: XZ
+    nx = -1     // !!!!! would it make sense to use double[3] instead of these 3?
+    ny = -1     //
+    nz = -1     //
+    
+    objref xyzCentre, xyzRange
+    objref apsList
+    
+    objref viewDirIdx_to_xScreenIdx, viewDirIdx_to_yScreenIdx, gridPlaneAndViewDir_to_branchIdx
+    
+    edgeColourIdx = -1
+    edgeBrushIdx = -1
+    
+    apColourIdx = -1
+    strdef apMarker
+    apSize = -1
+    apBrushIdx = -1
+    
+    
+    proc init() { local xMin, yMin, zMin, xMax, yMax, zMax, Dx, Dy, Dz, D, n, inf
+        
+        // Defaults (part 1)
+        is3dOr2dGrid = 0
+        twoDimGridPlaneIdx = 0      // 0: XY
+        // (nx, ny and nz will be set below)
+        
+        // !!!!! maybe take ECSs into account
+        D = cbbUtils.analyzeCellBoundingBox(&xMin, &yMin, &zMin, &xMax, &yMax, &zMax, &Dx, &Dy, &Dz)
+        
+        xyzCentre = new Vector(3)
+        xyzCentre.x[0] = (xMin + xMax) / 2
+        xyzCentre.x[1] = (yMin + yMax) / 2
+        xyzCentre.x[2] = (zMin + zMax) / 2
+        
+        // !!!!! maybe use some margin (e.g. 150%)
+        xyzRange = new Vector(3)
+        xyzRange.x[0] = xMax - xMin
+        xyzRange.x[1] = yMax - yMin
+        xyzRange.x[2] = zMax - zMin
+        
+        viewDirIdx_to_xScreenIdx = new Vector(3)
+        viewDirIdx_to_xScreenIdx.x[0] = 0   // XY
+        viewDirIdx_to_xScreenIdx.x[1] = 2   // ZY
+        viewDirIdx_to_xScreenIdx.x[2] = 0   // XZ
+        
+        viewDirIdx_to_yScreenIdx = new Vector(3)
+        viewDirIdx_to_yScreenIdx.x[0] = 1   // XY
+        viewDirIdx_to_yScreenIdx.x[1] = 1   // ZY
+        viewDirIdx_to_yScreenIdx.x[2] = 2   // XZ
+        
+        gridPlaneAndViewDir_to_branchIdx = new Matrix(3, 3)
+        gridPlaneAndViewDir_to_branchIdx.x[0][0] = 0
+        gridPlaneAndViewDir_to_branchIdx.x[1][1] = 0
+        gridPlaneAndViewDir_to_branchIdx.x[2][2] = 0
+        gridPlaneAndViewDir_to_branchIdx.x[0][2] = 1
+        gridPlaneAndViewDir_to_branchIdx.x[2][0] = 1
+        gridPlaneAndViewDir_to_branchIdx.x[0][1] = 2
+        gridPlaneAndViewDir_to_branchIdx.x[1][0] = 2
+        gridPlaneAndViewDir_to_branchIdx.x[1][2] = 2
+        gridPlaneAndViewDir_to_branchIdx.x[2][1] = 1
+        
+        apsList = new List()
+        
+        // Visual style for Edges
+        edgeColourIdx = enumColours.blue
+        edgeBrushIdx = 0
+        
+        // Visual style for Anchor points
+        apColourIdx = enumColours.red
+        apMarker = "s"
+        apSize = 5
+        apBrushIdx = 0
+        
+        // Defaults (part 2)
+        // !!!!! just some heuristic to avoid denser grids along thinner cell dimensions
+        n = 10      // The idea is to have "n" for the cube / square
+        nx = math.max(1, int(0.5 + n * Dx / D))     // int(0.5 + *) rounds to the nearest integer
+        ny = math.max(1, int(0.5 + n * Dy / D))
+        nz = math.max(1, int(0.5 + n * Dz / D))
+        
+        inf = math.inf
+        variable_domain(&nx, 2, inf)
+        variable_domain(&ny, 2, inf)
+        variable_domain(&nz, 2, inf)
+    }
+    
+    objref _shape
+    
+    proc showEdgesAndAnchorPoints() { local viewDirIdx, xCnt_sc, yCnt_sc, xMin_sc, xMax_sc, yMin_sc, yMax_sc, branchIdx localobj enum1, enum2, nil
+        
+        _shape = $o1
+        viewDirIdx = $2
+        
+        worldToScreenTransform(viewDirIdx, &xCnt_sc, &yCnt_sc, &xMin_sc, &xMax_sc, &yMin_sc, &yMax_sc)
+        
+        if (is3dOr2dGrid) {
+            branchIdx = 0
+        } else {
+            branchIdx = gridPlaneAndViewDir_to_branchIdx.x[twoDimGridPlaneIdx][viewDirIdx]
+        }
+        
+        _shape.beginline("Grid Region", edgeColourIdx, edgeBrushIdx)
+        
+        apsList.remove_all()
+        
+        enum1 = enumAnchorPointTypes
+        enum2 = enumAnchorPointLocations
+        
+        if (branchIdx == 0) {
+            // Edges and Anchor points: Vertices
+            addEdgeAndAnchorPoint(xMin_sc, yMin_sc, enum1.vertex, enum2.min, enum2.min)
+            addEdgeAndAnchorPoint(xMin_sc, yMax_sc, enum1.vertex, enum2.min, enum2.max)
+            addEdgeAndAnchorPoint(xMax_sc, yMax_sc, enum1.vertex, enum2.max, enum2.max)
+            addEdgeAndAnchorPoint(xMax_sc, yMin_sc, enum1.vertex, enum2.max, enum2.min)
+            _shape.line(xMin_sc, yMin_sc)
+            
+            // Anchor points: Edge centres
+            addAnchorPoint(xMin_sc, yCnt_sc, enum1.edgeCentre, enum2.min, enum2.cnt)
+            addAnchorPoint(xCnt_sc, yMax_sc, enum1.edgeCentre, enum2.cnt, enum2.max)
+            addAnchorPoint(xMax_sc, yCnt_sc, enum1.edgeCentre, enum2.max, enum2.cnt)
+            addAnchorPoint(xCnt_sc, yMin_sc, enum1.edgeCentre, enum2.cnt, enum2.min)
+            
+            // Anchor points: Rectangle centre
+            addAnchorPoint(xCnt_sc, yCnt_sc, enum1.rectCentre, enum2.cnt, enum2.cnt)
+            
+        } else if (branchIdx == 1) {
+            // Edge and Anchor points: Vertices
+            addEdgeAndAnchorPoint(xMin_sc, yCnt_sc, enum1.vertex, enum2.min, enum2.cnt)
+            addEdgeAndAnchorPoint(xMax_sc, yCnt_sc, enum1.vertex, enum2.max, enum2.cnt)
+            
+            // Anchor point: Edge centre
+            addAnchorPoint(xCnt_sc, yCnt_sc, enum1.edgeCentre, enum2.cnt, enum2.cnt)
+            
+        } else if (branchIdx == 2) {
+            // Edge and Anchor points: Vertices
+            addEdgeAndAnchorPoint(xCnt_sc, yMin_sc, enum1.vertex, enum2.cnt, enum2.min)
+            addEdgeAndAnchorPoint(xCnt_sc, yMax_sc, enum1.vertex, enum2.cnt, enum2.max)
+            
+            // Anchor point: Edge centre
+            addAnchorPoint(xCnt_sc, yCnt_sc, enum1.edgeCentre, enum2.cnt, enum2.cnt)
+            
+        } else {
+            codeContractViolation()
+        }
+        
+        _shape = nil
+    }
+    
+    _selApIdx = -1
+    
+    proc onMousePress() { local x_sc, y_sc, numPts, apIdx, distSq localobj distSqVec, anchorPoint
+        x_sc = $1
+        y_sc = $2
+        
+        numPts = apsList.count()
+        
+        distSqVec = new Vector(numPts)
+        for apIdx = 0, numPts - 1 {
+            anchorPoint = apsList.o(apIdx)
+            distSq = geomMath.dist2D_PtToPt_squared(x_sc, y_sc, anchorPoint.x_sc, anchorPoint.y_sc)
+            distSqVec.x[apIdx] = distSq
+        }
+        
+        _selApIdx = cbbUtils.getNearestAnchorPointIdxOrMinus1(distSqVec)
+    }
+    
+    func onMouseDrag() { local x_sc, y_sc, viewDirIdx, apType, xLoc, yLoc, xCnt_sc, yCnt_sc, xMin_sc, xMax_sc, yMin_sc, yMax_sc localobj anchorPoint, enum1, enum2
+        
+        x_sc = $1
+        y_sc = $2
+        viewDirIdx = $3
+        
+        if (_selApIdx == -1) {
+            return 0
+        }
+        
+        anchorPoint = apsList.o(_selApIdx)
+        apType = anchorPoint.apType
+        xLoc = anchorPoint.xLoc
+        yLoc = anchorPoint.yLoc
+        
+        enum1 = enumAnchorPointTypes
+        enum2 = enumAnchorPointLocations
+        
+        worldToScreenTransform(viewDirIdx, &xCnt_sc, &yCnt_sc, &xMin_sc, &xMax_sc, &yMin_sc, &yMax_sc)
+        
+        if (apType == enum1.vertex) {
+            if (xLoc == enum2.min) {
+                xMin_sc = x_sc
+            } else if (xLoc == enum2.max) {
+                xMax_sc = x_sc
+            }
+            if (yLoc == enum2.min) {
+                yMin_sc = y_sc
+            } else if (yLoc == enum2.max) {
+                yMax_sc = y_sc
+            }
+            xCnt_sc = (xMin_sc + xMax_sc) / 2
+            yCnt_sc = (yMin_sc + yMax_sc) / 2
+        } else if (apType == enum1.edgeCentre) {
+            if (xLoc == enum2.cnt) {
+                if (yLoc == enum2.min) {
+                    yMin_sc = y_sc
+                    yCnt_sc = (yMin_sc + yMax_sc) / 2
+                } else if (yLoc == enum2.cnt) {
+                    yCnt_sc = y_sc
+                    // We don't update yMin_sc and yMax_sc here because only their difference will be used
+                    // in screenToWorldTransform, but the difference is unchanged
+                } else if (yLoc == enum2.max) {
+                    yMax_sc = y_sc
+                    yCnt_sc = (yMin_sc + yMax_sc) / 2
+                } else {
+                    codeContractViolation()
+                }
+            }
+            if (yLoc == enum2.cnt) {
+                if (xLoc == enum2.min) {
+                    xMin_sc = x_sc
+                    xCnt_sc = (xMin_sc + xMax_sc) / 2
+                } else if (xLoc == enum2.cnt) {
+                    xCnt_sc = x_sc
+                    // We don't update xMin_sc and xMax_sc here because only their difference will be used
+                    // in screenToWorldTransform, but the difference is unchanged
+                } else if (xLoc == enum2.max) {
+                    xMax_sc = x_sc
+                    xCnt_sc = (xMin_sc + xMax_sc) / 2
+                } else {
+                    codeContractViolation()
+                }
+            }
+        } else if (apType == enum1.rectCentre) {
+            if (xLoc == enum2.cnt && yLoc == enum2.cnt) {
+                xCnt_sc = x_sc
+                yCnt_sc = y_sc
+            } else {
+                codeContractViolation()
+            }
+            // We don't update xMin_sc and xMax_sc here because only their difference will be used
+            // in screenToWorldTransform, but the difference is unchanged;
+            // The same comment for yMin_sc and yMax_sc
+        } else {
+            codeContractViolation()
+        }
+        
+        screenToWorldTransform(viewDirIdx, xCnt_sc, yCnt_sc, xMin_sc, xMax_sc, yMin_sc, yMax_sc)
+        
+        return 1
+    }
+    
+    proc deployGrid() { localobj nil
+        if (gridOfSections != nil) {
+            destroyGrid()
+        }
+        
+        mwh.showPleaseWaitBox("Deploying the grid.")
+        {
+            gridOfSections = new GridOfSections(is3dOr2dGrid, twoDimGridPlaneIdx, xyzCentre, xyzRange, nx, ny, nz)
+        }
+        mwh.hidePleaseWaitBox()
+    }
+    
+    proc destroyGrid() { localobj nil
+        mwh.showPleaseWaitBox("Destroying the grid.")
+        {
+            gridOfSections = nil
+        }
+        mwh.hidePleaseWaitBox()
+    }
+    
+    // All next staff is private
+    
+    
+    proc worldToScreenTransform() { local viewDirIdx, xScrIdx, yScrIdx, xCnt_sc, yCnt_sc
+        
+        viewDirIdx = $1
+        
+        xScrIdx = viewDirIdx_to_xScreenIdx.x[viewDirIdx]
+        yScrIdx = viewDirIdx_to_yScreenIdx.x[viewDirIdx]
+        
+        xCnt_sc = xyzCentre.x[xScrIdx]
+        yCnt_sc = xyzCentre.x[yScrIdx]
+        
+        $&2 = xCnt_sc                               // xCnt_sc
+        $&3 = yCnt_sc                               // yCnt_sc
+        $&4 = xCnt_sc - xyzRange.x[xScrIdx] / 2     // xMin_sc
+        $&5 = xCnt_sc + xyzRange.x[xScrIdx] / 2     // xMax_sc
+        $&6 = yCnt_sc - xyzRange.x[yScrIdx] / 2     // yMin_sc
+        $&7 = yCnt_sc + xyzRange.x[yScrIdx] / 2     // yMax_sc
+    }
+    
+    proc screenToWorldTransform() { local viewDirIdx, xCnt_sc, yCnt_sc, xMin_sc, xMax_sc, yMin_sc, yMax_sc, xScrIdx, yScrIdx
+        
+        viewDirIdx = $1
+        xCnt_sc = $2
+        yCnt_sc = $3
+        xMin_sc = $4
+        xMax_sc = $5
+        yMin_sc = $6
+        yMax_sc = $7
+        
+        xScrIdx = viewDirIdx_to_xScreenIdx.x[viewDirIdx]
+        yScrIdx = viewDirIdx_to_yScreenIdx.x[viewDirIdx]
+        
+        xyzCentre.x[xScrIdx] = xCnt_sc
+        xyzCentre.x[yScrIdx] = yCnt_sc
+        xyzRange.x[xScrIdx] = xMax_sc - xMin_sc
+        xyzRange.x[yScrIdx] = yMax_sc - yMin_sc
+    }
+    
+    proc addEdgeAndAnchorPoint() { local x_sc, y_sc, apType, xLoc, yLoc
+        x_sc = $1
+        y_sc = $2
+        apType = $3
+        xLoc = $4
+        yLoc = $5
+        
+        _shape.line(x_sc, y_sc)
+        
+        addAnchorPoint(x_sc, y_sc, apType, xLoc, yLoc)
+    }
+    
+    proc addAnchorPoint() { local x_sc, y_sc, apType, xLoc, yLoc
+        x_sc = $1
+        y_sc = $2
+        apType = $3
+        xLoc = $4
+        yLoc = $5
+        
+        _shape.mark(x_sc, y_sc, apMarker, apSize, apColourIdx, apBrushIdx)
+        
+        apsList.append(new AnchorPoint(x_sc, y_sc, apType, xLoc, yLoc))
+    }
+    
+endtemplate GridRegion
+
+
+objref gridRegion

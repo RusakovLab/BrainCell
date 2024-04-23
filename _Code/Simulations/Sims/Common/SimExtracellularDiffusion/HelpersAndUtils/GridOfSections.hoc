@@ -1,0 +1,122 @@
+
+// !!!!! some ideas:
+// * try to decrease the number of grid sections creating the ones with nseg > 1;
+// * try not to destroy the old grid sections, but reuse them for the new grid
+
+begintemplate GridOfSections
+
+    public gridSecDiam
+    public applyNewGridSecDiam
+    
+    external math
+    external codeContractViolation
+    
+    nx = -1     // !!!!! would it make sense to use double[3] instead of these 3?
+    ny = -1     //
+    nz = -1     //
+    
+    create theGrid[1][1][1]
+    gridSecDiam = -1        // um
+    
+    
+    proc init() { local is3dOr2dGrid, twoDimGridPlaneIdx, xMin, xMax, yMin, yMax, zMin, zMax, dx, dy, dz, dxHalf, dyHalf, dzHalf, i, x, j, y, k, z, inf localobj xyzCentre, xyzRange
+        
+        is3dOr2dGrid = $1
+        twoDimGridPlaneIdx = $2
+        xyzCentre = $o3
+        xyzRange = $o4
+        nx = $5
+        ny = $6
+        nz = $7
+        
+        xMin = xyzCentre.x[0] - xyzRange.x[0] / 2
+        xMax = xyzCentre.x[0] + xyzRange.x[0] / 2
+        yMin = xyzCentre.x[1] - xyzRange.x[1] / 2
+        yMax = xyzCentre.x[1] + xyzRange.x[1] / 2
+        zMin = xyzCentre.x[2] - xyzRange.x[2] / 2
+        zMax = xyzCentre.x[2] + xyzRange.x[2] / 2
+        if (!is3dOr2dGrid) {
+            if (twoDimGridPlaneIdx == 0) {          // 0: XY
+                nz = 1
+                zMin = xyzCentre.x[2]
+                zMax = zMin
+            } else if (twoDimGridPlaneIdx == 1) {   // 1: ZY
+                nx = 1
+                xMin = xyzCentre.x[0]
+                xMax = xMin
+            } else if (twoDimGridPlaneIdx == 2) {   // 2: XZ
+                ny = 1
+                yMin = xyzCentre.x[1]
+                yMax = yMin
+            } else {
+                codeContractViolation()
+            }
+        }
+        
+        create theGrid[nx][ny][nz]
+        
+        dx = getStepOrMinus1(xMin, xMax, nx)
+        dy = getStepOrMinus1(yMin, yMax, ny)
+        dz = getStepOrMinus1(zMin, zMax, nz)
+        dxHalf = dx / 2
+        dyHalf = dy / 2
+        dzHalf = dz / 2
+        
+        gridSecDiam = float_epsilon     // um
+        
+        for i = 0, nx - 1 {
+            x = xMin + i * dx
+            for j = 0, ny - 1 {
+                y = yMin + j * dy
+                for k = 0, nz - 1 {
+                    z = zMin + k * dz
+                    theGrid[i][j][k] {
+                        // nseg = 1     // !! already 1
+                        pt3dclear()
+                        // The idea is to make the grid sec visible in any projection
+                        pt3dadd(x - dxHalf, y - dyHalf, z - dzHalf, gridSecDiam)
+                        pt3dadd(x + dxHalf, y + dyHalf, z + dzHalf, gridSecDiam)
+                    }
+                }
+            }
+        }
+        
+        // !!!!! review this
+        gridSecDiam = math.max(dx, math.max(dy, dz))
+        
+        inf = math.inf
+        variable_domain(&gridSecDiam, float_epsilon, inf)
+        
+        units(&gridSecDiam, units("L"))
+    }
+    
+    proc applyNewGridSecDiam() { local i, j, k
+        for i = 0, nx - 1 {
+            for j = 0, ny - 1 {
+                for k = 0, nz - 1 {
+                    theGrid[i][j][k] {
+                        diam = gridSecDiam
+                    }
+                }
+            }
+        }
+    }
+    
+    // All next staff is private
+    
+    
+    func getStepOrMinus1() { local uMin, uMax, nu
+        uMin = $1
+        uMax = $2
+        nu = $3
+        if (nu != 1) {
+            return (uMax - uMin) / (nu - 1)
+        } else {
+            return -1
+        }
+    }
+    
+endtemplate GridOfSections
+
+
+objref gridOfSections

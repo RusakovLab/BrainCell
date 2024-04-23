@@ -125,7 +125,7 @@ begintemplate MechManagerCompOpWidget
             }
         } else {
             // Ask user to select the sections that will be moved into the new compartment
-            ssSubWidget = new SectionsSelectorWidget(1, mmAllComps.o(splitCompIdx))
+            ssSubWidget = new SectionsSelectorWidget(2, mmAllComps.o(splitCompIdx))
             ssSubWidget.show()
             
             // All next operations are performed in splitHandler_layer2 (see below) once user is done with UI

@@ -1,6 +1,6 @@
 
-objref manageAndRunWidget, mechManagerMainWidget, synManagerMainWidget, varsEditorSubWidget
-objref mth, mmmowb, mcu, mcu4t, gapJuncGroups[2], synGroup
+objref manageAndRunWidget, mechManagerMainWidget, synSetsWidget, synManagerMainWidget, varsEditorSubWidget
+objref mth, mmmowb, mcu, mcu4t
 
 if (makeSureDeclared("inhomAndStochLibrary") && isBaseOrNanoStart) {
     codeContractViolation()
@@ -12,33 +12,14 @@ if (makeSureDeclared("ecsLibrary") && isBaseOrNanoStart) {
 }
 
 if (isAstrocyteOrNeuron) {
-    objref enumSynCompIdxs, seh
-} else {
-    objref enumGapJuncCompIdxs
+    objref enumSynCompIdxs
 }
 
-proc loadIfNotDeclared() { local numArg, isSkipCodeContractCheck
-    strdef templName, hocFileRelPathName
-    
-    numArg = numarg()
-    if (numArg < 2 || numArg > 3) {
-        codeContractViolation()
-    }
-    
-    templName = $s1
-    hocFileRelPathName = $s2
-    
-    if (numArg == 3) {
-        isSkipCodeContractCheck = $3
-    } else {
-        isSkipCodeContractCheck = 0
-    }
-    
-    if (!name_declared(templName)) {
-        load_file(hocFileRelPathName)
-    } else if (isBaseOrNanoStart && !isSkipCodeContractCheck) {
-        codeContractViolation()
-    }
+loadIfNotDeclared("UtilsForFakeMechanismForExtValue", "GapJuncManager/FakesForExtValue/Exported/UtilsForFakeMechanismForExtValue.hoc")
+if (isAstrocyteOrNeuron) {
+    objref utils4FakeMech4SynNetCon
+} else {
+    loadIfNotDeclared("UtilsForFakeMechanismForNetCon", "SynManager/FakesForNetCon/Exported/UtilsForFakeMechanismForNetCon.hoc")
 }
 
 { load_file("FakeMechanismType.hoc") }
@@ -62,4 +43,4 @@ loadIfNotDeclared("BoundingHelper", "Widgets/Stochasticity/Exported/BoundingHelp
 { load_file("ManagersCommonUtils.hoc") }
 { load_file("ManagersCommonUtilsForTaps.hoc") }
 
-{ load_file("TapGroup.hoc") }
+{ load_file("TapSet.hoc") }

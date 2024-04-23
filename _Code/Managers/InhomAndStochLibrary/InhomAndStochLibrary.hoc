@@ -1,4 +1,6 @@
 
+// !!!!! check that we call each public func somewere
+
 // !!
 // BUGs:
 //  callers are commented for:
@@ -16,8 +18,8 @@
 begintemplate InhomAndStochLibrary
     
     public isInhomEnabledFor, isStochEnabledFor, onInhomApply, onStochApply, getInhomModelDataFor, getStochModelDataFor, onMakingVarHomogen, onStochDisable, onNanoReseedOrUpdate
-    public isAnyNonVerbatimInhomVarsForDistMechs, getNumInhomVarsForDistMechs, getNumStochVarsForDistMechs, onMechInsert, onMechUninsert, onCompSplit, onCompMerge, onJustBeforeCompInhomStochBiophysImport, getBiophysVerbatimDistFuncHelperOrNil
-    public getNumInhomVarsForTaps, getNumStochVarsForTaps, isAnyStochVarsForSyns, isAnyStochVars, onTapLocChange, onGapJuncStrucChange, onSynStrucChange, restoreToActiveIfWasMadeInactiveOnTapStrucChange
+    public isAnyNonVerbatimInhomVarsForDistMechs, getNumInhomVarsForDistMechs, getNumStochVarsForDistMechs, onMechInsert, onMechUninsert, onCompSplit, onCompMerge, onGapJuncSetDelete, onJustBeforeCompInhomStochBiophysImport, getBiophysVerbatimDistFuncHelperOrNil
+    public getNumInhomVarsForTaps, getNumStochVarsForTaps, isAnyInhomFakeCompModelsForTaps, isAnyStochVarsForSynsInTheSet, isAnyStochVars, onTapLocChange, onGapJuncStrucChange, onSynStrucChange, restoreToActiveIfWasMadeInactiveOnTapStrucChange
     public doesDistMechHaveAnyStochVars, doesThisVarHaveVerbatimOrNonVerbatimInhomModel, doesAnyInhomVarRequirePython, doesAnyStochVarRequirePython
     public findActiveSpecVar
     
@@ -275,6 +277,13 @@ begintemplate InhomAndStochLibrary
         // !! mwh.showNotImplementedWarning()
     }
     
+    // in: gapJuncSetIdx
+    proc onGapJuncSetDelete() { local gapJuncSetIdx
+        gapJuncSetIdx = $1
+        onGapJuncSetDeleteCore(activeSpecVars, gapJuncSetIdx)
+        onGapJuncSetDeleteCore(inactiveSpecVars, gapJuncSetIdx)
+    }
+    
     // in: compIdx
     proc onJustBeforeCompInhomStochBiophysImport() { local actSpecVarIdx, cond localobj actSpecVar
         for (actSpecVarIdx = activeSpecVars.count() - 1; actSpecVarIdx >= 0; actSpecVarIdx -= 1) {
@@ -298,7 +307,7 @@ begintemplate InhomAndStochLibrary
     
     // in: compIdx, mechIdx, varType, varIdx, arrayIndex
     obfunc getBiophysVerbatimDistFuncHelperOrNil() { local distFuncCatIdx, distFuncIdx localobj varLibId, actSpecVar, segmentationHelper, distFuncHelper, nil
-        varLibId = new VarLibId(0, $1, $2, $3, $4, $5)
+        varLibId = new VarLibId(0, -1, -1, $1, $2, $3, $4, $5)
         actSpecVar = findActiveSpecVar(varLibId)
         if (actSpecVar == nil) {
             // Not found
@@ -329,26 +338,49 @@ begintemplate InhomAndStochLibrary
     }
     
     func getNumInhomVarsForDistMechs() {
-        return getNumInhomOrStochVars(1, 1)
+        return getNumInhomOrStochVars(1, -1, -1, 1)
     }
     
     func getNumStochVarsForDistMechs() {
-        return getNumInhomOrStochVars(1, 0)
+        return getNumInhomOrStochVars(1, -1, -1, 0)
     }
     
-    func getNumInhomVarsForTaps() {
-        return getNumInhomOrStochVars(0, 1)
+    func getNumInhomVarsForTaps() { local isGapJuncOrSyn, tapSetIdxOrMinus1
+        isGapJuncOrSyn = $1
+        tapSetIdxOrMinus1 = $2  // "-1" means all tap sets
+        return getNumInhomOrStochVars(0, isGapJuncOrSyn, tapSetIdxOrMinus1, 1)
     }
     
-    func getNumStochVarsForTaps() {
-        return getNumInhomOrStochVars(0, 0)
+    func getNumStochVarsForTaps() { local isGapJuncOrSyn, tapSetIdxOrMinus1
+        isGapJuncOrSyn = $1
+        tapSetIdxOrMinus1 = $2  // "-1" means all tap sets
+        return getNumInhomOrStochVars(0, isGapJuncOrSyn, tapSetIdxOrMinus1, 0)
     }
     
-    func isAnyStochVarsForSyns() { local isFound localobj actSpecVar
+    func isAnyInhomFakeCompModelsForTaps() { local isGapJuncOrSyn, compIdx, isFound localobj actSpecVar
+        isGapJuncOrSyn = $1
+        if (isGapJuncOrSyn) {
+            compIdx = enumGapJuncCompIdxs.extGjExtValue
+        } else {
+            compIdx = enumSynCompIdxs.netCon
+        }
         isFound = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrTapPart) {
-                continue
+            if (actSpecVar.isInhom && !actSpecVar.isDmOrTapPart && actSpecVar.isGapJuncOrSyn == isGapJuncOrSyn && actSpecVar.varLibId.compIdx == compIdx) {
+                // Don't replace with "return 1" because iterators cannot return a value (Segmentation violation)
+                isFound = 1
+                break
+            }
+        }
+        return isFound
+    }
+    
+    func isAnyStochVarsForSynsInTheSet() { local isFound localobj seh, actSpecVar
+        seh = $o1
+        isFound = 0
+        for eachItemInList(actSpecVar, activeSpecVars) {
+            if (actSpecVar.seh != seh) {
+                continue    // Bio, gap junc, syn (different set)
             }
             if (actSpecVar.isStoch) {
                 // Don't replace with "return 1" because iterators cannot return a value (Segmentation violation)
@@ -368,62 +400,74 @@ begintemplate InhomAndStochLibrary
         return 0
     }
     
-    proc onTapLocChange() { localobj actSpecVar
+    proc onTapLocChange() { local isGapJuncOrSyn, tapSetIdx localobj actSpecVar
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrTapPart || !actSpecVar.isInhom) {
+            if (actSpecVar.isDmOrTapPart || actSpecVar.isGapJuncOrSyn != isGapJuncOrSyn || actSpecVar.tapSetIdx != tapSetIdx || !actSpecVar.isInhom) {
                 continue
             }
             actSpecVar.restoreInhomogeneity()
         }
     }
     
-    proc onGapJuncStrucChange() { local isCreateSomeGapJuncs, isExtOrInt, extOrIntCompIdx, doesNewGapJuncHavePtr, actCompIdx, isSkip, inactCompIdx localobj newInactSpecVars, newActSpecVars
-        strdef mechNameOrEmpty_old, mechNameOrEmpty_new, inactMechName
+    proc onGapJuncStrucChange() { local gapJuncSetIdx, isExtOrInt_old, isExtOrInt_new, isExtOrIntUnchanged, isExtNameUnchanged, isIntNameUnchanged, isExtValPresent_old, isExtValPresent_new, isExtValPresenceUnchanged, actCompIdx, isSkip, inactCompIdx localobj newInactSpecVars, newActSpecVars
+        strdef extMechNameOrEmpty_old, intMechNameOrEmpty_old, extMechNameOrEmpty_new, intMechNameOrEmpty_new, inactMechName
         
-        isCreateSomeGapJuncs = $1
-        isExtOrInt = $2
-        mechNameOrEmpty_old = $s3
-        mechNameOrEmpty_new = $s4
+        gapJuncSetIdx = $1
+        isExtOrInt_old = $2
+        extMechNameOrEmpty_old = $s3
+        intMechNameOrEmpty_old = $s4
+        isExtOrInt_new = $5
+        extMechNameOrEmpty_new = $s6
+        intMechNameOrEmpty_new = $s7
         
-        if (isExtOrInt) {
-            extOrIntCompIdx = enumGapJuncCompIdxs.extGjPp
-            doesNewGapJuncHavePtr = pyObj.ms_doesGapJuncHavePtr(mechNameOrEmpty_new)
-        } else {
-            extOrIntCompIdx = enumGapJuncCompIdxs.intGjPp
-            doesNewGapJuncHavePtr = -1
-        }
+        isExtOrIntUnchanged = (isExtOrInt_old == isExtOrInt_new)
+        isExtNameUnchanged = stringsEqual(extMechNameOrEmpty_old, extMechNameOrEmpty_new)
+        isIntNameUnchanged = stringsEqual(intMechNameOrEmpty_old, intMechNameOrEmpty_new)
+        isExtValPresent_old = !stringEmpty(extMechNameOrEmpty_old) && pyObj.ms_doesGapJuncHavePtr(extMechNameOrEmpty_old)
+        isExtValPresent_new = !stringEmpty(extMechNameOrEmpty_new) && pyObj.ms_doesGapJuncHavePtr(extMechNameOrEmpty_new)
+        isExtValPresenceUnchanged = (isExtValPresent_old == isExtValPresent_new)
         
-        // For each removed gap junc part (PP or ExtValue), move all inhom and stoch models to the storage
+        // For each removed gap junc part (PP or ExtVal), move all inhom and stoch models to the storage
         newInactSpecVars = new List()
-        for eachActTapVarMakeInactIfNeeded(&actCompIdx, &isSkip, newInactSpecVars) {
-            if (actCompIdx == extOrIntCompIdx) {
-                if (isCreateSomeGapJuncs && stringsEqual(mechNameOrEmpty_old, mechNameOrEmpty_new)) {
+        for eachActTapVarMakeInactIfNeeded(1, gapJuncSetIdx, &actCompIdx, &isSkip, newInactSpecVars) {
+            if (actCompIdx == enumGapJuncCompIdxs.extGjPp) {
+                if (isExtOrIntUnchanged && isExtNameUnchanged) {
                     continue
                 }
-            } else if (isExtOrInt && actCompIdx == enumGapJuncCompIdxs.extGjExtValue) {
-                if (isCreateSomeGapJuncs && doesNewGapJuncHavePtr) {
+            } else if (actCompIdx == enumGapJuncCompIdxs.intGjPp) {
+                if (isExtOrIntUnchanged && isIntNameUnchanged) {
+                    continue
+                }
+            } else if (actCompIdx == enumGapJuncCompIdxs.extGjExtValue) {
+                if (isExtOrInt_new && isExtValPresenceUnchanged) {
                     continue
                 }
             } else {
-                continue
+                codeContractViolation()
             }
             
             isSkip = 0
         }
         
-        // For each new gap junc part (PP or ExtValue), try to retrieve the old inhom and stoch models from the storage
+        // For each new gap junc part (PP or ExtVal), try to retrieve the old inhom and stoch models from the storage
         newActSpecVars = new List()
-        for eachInactTapVarMakeActIfNeeded(&inactCompIdx, inactMechName, &isSkip, newActSpecVars) {
-            if (inactCompIdx == extOrIntCompIdx) {
-                if (!stringsEqual(inactMechName, mechNameOrEmpty_new)) {
+        for eachInactTapVarMakeActIfNeeded(1, gapJuncSetIdx, &inactCompIdx, inactMechName, &isSkip, newActSpecVars) {
+            if (inactCompIdx == enumGapJuncCompIdxs.extGjPp) {
+                if (!stringsEqual(inactMechName, extMechNameOrEmpty_new)) {
                     continue
                 }
-            } else if (isExtOrInt && inactCompIdx == enumGapJuncCompIdxs.extGjExtValue) {
-                if (!doesNewGapJuncHavePtr) {
+            } else if (inactCompIdx == enumGapJuncCompIdxs.intGjPp) {
+                if (!stringsEqual(inactMechName, intMechNameOrEmpty_new)) {
+                    continue
+                }
+            } else if (inactCompIdx == enumGapJuncCompIdxs.extGjExtValue) {
+                if (!isExtValPresent_new) {
                     continue
                 }
             } else {
-                continue
+                codeContractViolation()
             }
             
             isSkip = 0
@@ -432,15 +476,16 @@ begintemplate InhomAndStochLibrary
         applyAllRetrievedInhomModelsAndCommitAllChangesToLibrary(newActSpecVars, newInactSpecVars)
     }
     
-    proc onSynStrucChange() { local isSrcNameUnchanged, isTrgNameUnchanged, isSngNameUnchanged, isNetConPresent_new, isNetConPresenceUnchanged, actCompIdx, isSkip, inactCompIdx localobj newInactSpecVars, newActSpecVars
+    proc onSynStrucChange() { local synSetIdx, isSrcNameUnchanged, isTrgNameUnchanged, isSngNameUnchanged, isNetConPresent_new, isNetConPresenceUnchanged, actCompIdx, isSkip, inactCompIdx localobj newInactSpecVars, newActSpecVars
         strdef srcMechNameOrEmpty_old, trgMechNameOrEmpty_old, sngMechNameOrEmpty_old, srcMechNameOrEmpty_new, trgMechNameOrEmpty_new, sngMechNameOrEmpty_new, inactMechName
         
-        srcMechNameOrEmpty_old = $s1
-        trgMechNameOrEmpty_old = $s2
-        sngMechNameOrEmpty_old = $s3
-        srcMechNameOrEmpty_new = $s4
-        trgMechNameOrEmpty_new = $s5
-        sngMechNameOrEmpty_new = $s6
+        synSetIdx = $1
+        srcMechNameOrEmpty_old = $s2
+        trgMechNameOrEmpty_old = $s3
+        sngMechNameOrEmpty_old = $s4
+        srcMechNameOrEmpty_new = $s5
+        trgMechNameOrEmpty_new = $s6
+        sngMechNameOrEmpty_new = $s7
         
         isSrcNameUnchanged = stringsEqual(srcMechNameOrEmpty_old, srcMechNameOrEmpty_new)
         isTrgNameUnchanged = stringsEqual(trgMechNameOrEmpty_old, trgMechNameOrEmpty_new)
@@ -450,7 +495,7 @@ begintemplate InhomAndStochLibrary
         
         // For each removed syn part (PP or NetCon), move all inhom and stoch models to the storage
         newInactSpecVars = new List()
-        for eachActTapVarMakeInactIfNeeded(&actCompIdx, &isSkip, newInactSpecVars) {
+        for eachActTapVarMakeInactIfNeeded(0, synSetIdx, &actCompIdx, &isSkip, newInactSpecVars) {
             if (actCompIdx == enumSynCompIdxs.srcPp) {
                 if (isSrcNameUnchanged) {
                     continue
@@ -476,7 +521,7 @@ begintemplate InhomAndStochLibrary
         
         // For each new syn part (PP or NetCon), try to retrieve the old inhom and stoch models from the storage
         newActSpecVars = new List()
-        for eachInactTapVarMakeActIfNeeded(&inactCompIdx, inactMechName, &isSkip, newActSpecVars) {
+        for eachInactTapVarMakeActIfNeeded(0, synSetIdx, &inactCompIdx, inactMechName, &isSkip, newActSpecVars) {
             if (inactCompIdx == enumSynCompIdxs.srcPp) {
                 if (!stringsEqual(inactMechName, srcMechNameOrEmpty_new)) {
                     continue
@@ -549,14 +594,15 @@ begintemplate InhomAndStochLibrary
         }
     }
     
-    func doesAnyInhomVarRequirePython() { local isDmOrTapPart, isExportAssignedAndState, isFound localobj actSpecVar
+    func doesAnyInhomVarRequirePython() { local isDmOrTapPart, isGapJuncOrSyn, isExportAssignedAndState, isFound localobj actSpecVar
         isDmOrTapPart = $1
-        isExportAssignedAndState = $2
+        isGapJuncOrSyn = $2
+        isExportAssignedAndState = $3
         isFound = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
             // 1: "PARAMETER"
-            if (actSpecVar.isInhom && actSpecVar.isDmOrTapPart == isDmOrTapPart && (actSpecVar.varLibId.varType == 1 || isExportAssignedAndState)) {    //
-                if (dfc.doesDistFuncRequirePython(actSpecVar.distFuncIdx)) {                                                                            // Do not replace with one IF
+            if (actSpecVar.isInhom && actSpecVar.isDmOrTapPart == isDmOrTapPart && actSpecVar.isGapJuncOrSyn == isGapJuncOrSyn && (actSpecVar.varLibId.varType == 1 || isExportAssignedAndState)) {     //
+                if (dfc.doesDistFuncRequirePython(actSpecVar.distFuncIdx)) {                                                                                                                            // Do not replace with one IF
                     // Don't replace with "return 1"
                     isFound = 1
                     break
@@ -566,14 +612,15 @@ begintemplate InhomAndStochLibrary
         return isFound
     }
     
-    func doesAnyStochVarRequirePython() { local isDmOrTapPart, isExportAssignedAndState, isFound localobj actSpecVar
+    func doesAnyStochVarRequirePython() { local isDmOrTapPart, isGapJuncOrSyn, isExportAssignedAndState, isFound localobj actSpecVar
         isDmOrTapPart = $1
-        isExportAssignedAndState = $2
+        isGapJuncOrSyn = $2
+        isExportAssignedAndState = $3
         isFound = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
             // 1: "PARAMETER"
-            if (actSpecVar.isStoch && actSpecVar.isDmOrTapPart == isDmOrTapPart && (actSpecVar.varLibId.varType == 1 || isExportAssignedAndState)) {    //
-                if (sfc.doesStochFuncRequirePython(actSpecVar.stochFuncIdx)) {                                                                          // Do not replace with one IF
+            if (actSpecVar.isStoch && actSpecVar.isDmOrTapPart == isDmOrTapPart && actSpecVar.isGapJuncOrSyn == isGapJuncOrSyn && (actSpecVar.varLibId.varType == 1 || isExportAssignedAndState)) {     //
+                if (sfc.doesStochFuncRequirePython(actSpecVar.stochFuncIdx)) {                                                                                                                          // Do not replace with one IF
                     // Don't replace with "return 1"
                     isFound = 1
                     break
@@ -637,13 +684,22 @@ begintemplate InhomAndStochLibrary
         return actSpecVar
     }
     
-    // in: isDmOrTapPart, isInhomOrStoch
-    func getNumInhomOrStochVars() { local isDmOrTapPart, isInhomOrStoch, numVars localobj actSpecVar
+    // in: isDmOrTapPart, isGapJuncOrSynOrMinus1, tapSetIdxOrMinus1, isInhomOrStoch
+    func getNumInhomOrStochVars() { local isDmOrTapPart, isGapJuncOrSynOrMinus1, tapSetIdxOrMinus1, isInhomOrStoch, isSkipTapIdxCheck, numVars, cond localobj actSpecVar
         isDmOrTapPart = $1
-        isInhomOrStoch = $2
+        isGapJuncOrSynOrMinus1 = $2
+        tapSetIdxOrMinus1 = $3
+        isInhomOrStoch = $4
+        
+        isSkipTapIdxCheck = (!isDmOrTapPart && tapSetIdxOrMinus1 == -1)
+        
         numVars = 0
         for eachItemInList(actSpecVar, activeSpecVars) {
-            if (actSpecVar.isDmOrTapPart != isDmOrTapPart) {
+            cond = (actSpecVar.isDmOrTapPart != isDmOrTapPart || actSpecVar.isGapJuncOrSyn != isGapJuncOrSynOrMinus1)
+            if (!isSkipTapIdxCheck) {
+                cond = cond || (actSpecVar.tapSetIdx != tapSetIdxOrMinus1)
+            }
+            if (cond) {
                 continue
             }
             if (isInhomOrStoch) {
@@ -700,6 +756,24 @@ begintemplate InhomAndStochLibrary
         }
     }
     
+    proc onGapJuncSetDeleteCore() { local gapJuncSetIdx, specVarIdx localobj specVars, specVar
+        specVars = $o1
+        gapJuncSetIdx = $2
+        for (specVarIdx = specVars.count() - 1; specVarIdx >= 0; specVarIdx -= 1) {
+            specVar = specVars.o(specVarIdx)
+            if (specVar.isGapJuncOrSyn != 1) {  // Threestate var
+                continue
+            }
+            if (specVar.tapSetIdx < gapJuncSetIdx) {
+                continue
+            } else if (specVar.tapSetIdx == gapJuncSetIdx) {
+                specVars.remove(specVarIdx)
+            } else {
+                specVar.tapSetIdx -= 1
+            }
+        }
+    }
+    
     proc applyAllRetrievedInhomModelsAndCommitAllChangesToLibrary() { localobj newActSpecVars, newInactSpecVars, newActSpecVar
         newActSpecVars = $o1
         newInactSpecVars = $o2
@@ -716,20 +790,22 @@ begintemplate InhomAndStochLibrary
         concatenateTwoLists(inactiveSpecVars, newInactSpecVars)
     }
     
-    iterator eachActTapVarMakeInactIfNeeded() { local actSpecVarIdx localobj newInactSpecVars, actSpecVar
-        newInactSpecVars = $o3
+    iterator eachActTapVarMakeInactIfNeeded() { local isGapJuncOrSyn, tapSetIdx, actSpecVarIdx localobj newInactSpecVars, actSpecVar
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
+        newInactSpecVars = $o5
         
         for (actSpecVarIdx = activeSpecVars.count() - 1; actSpecVarIdx >= 0; actSpecVarIdx -= 1) {
             actSpecVar = activeSpecVars.o(actSpecVarIdx)
-            if (actSpecVar.isDmOrTapPart) {
+            if (actSpecVar.isDmOrTapPart || actSpecVar.isGapJuncOrSyn != isGapJuncOrSyn || actSpecVar.tapSetIdx != tapSetIdx) {
                 continue
             }
             
-            $&1 = actSpecVar.varLibId.compIdx
+            $&3 = actSpecVar.varLibId.compIdx
             
-            $&2 = 1
+            $&4 = 1
             iterator_statement
-            if ($&2) {
+            if ($&4) {
                 continue
             }
             
@@ -738,21 +814,23 @@ begintemplate InhomAndStochLibrary
         }
     }
     
-    iterator eachInactTapVarMakeActIfNeeded() { local inactSpecVarIdx localobj newActSpecVars, inactSpecVar
-        newActSpecVars = $o4
+    iterator eachInactTapVarMakeActIfNeeded() { local isGapJuncOrSyn, tapSetIdx, inactSpecVarIdx localobj newActSpecVars, inactSpecVar
+        isGapJuncOrSyn = $1
+        tapSetIdx = $2
+        newActSpecVars = $o6
         
         for (inactSpecVarIdx = inactiveSpecVars.count() - 1; inactSpecVarIdx >= 0; inactSpecVarIdx -= 1) {
             inactSpecVar = inactiveSpecVars.o(inactSpecVarIdx)
-            if (inactSpecVar.isDmOrTapPart) {
+            if (inactSpecVar.isDmOrTapPart || inactSpecVar.isGapJuncOrSyn != isGapJuncOrSyn || inactSpecVar.tapSetIdx != tapSetIdx) {
                 continue
             }
             
-            $&1 = inactSpecVar.varLibId.compIdx
-            $s2 = inactSpecVar.mechName
+            $&3 = inactSpecVar.varLibId.compIdx
+            $s4 = inactSpecVar.mechName
             
-            $&3 = 1
+            $&5 = 1
             iterator_statement
-            if ($&3) {
+            if ($&5) {
                 continue
             }
             

@@ -16,7 +16,7 @@ NEURON {
 }
 
 PARAMETER {
-	gk = .1	(S/cm2)	<0,1e9>
+	gk = 0.001	(mS/cm2)	<0,1e9>
 	:ki = 120 (mM)   <0,1e9>
 	
 }

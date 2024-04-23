@@ -4,6 +4,9 @@ begintemplate SimFrequencyElectricalSimulation
     public preShowCheck, show, preRun, preContinue, postRun, dismissHandler
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
+    // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
+    public stimdel, stimdur, stimamp, stimfreqency
+    
     external altRunControlWidget
     external tstop
     external unmapIfNotNil
@@ -96,12 +99,12 @@ begintemplate SimFrequencyElectricalSimulation
         {
             xpanel("")
             xlabel("Sinusoidal current parameters ")
-            xvalue("Delay of current (ms)","stimdel", 1,"", 0, 1)
-            xvalue("Duration of current (ms)","stimdur", 1,"", 0, 1)
-            xvalue("Amplitude of current (nA)","stimamp", 1,"", 0, 1)
-            xvalue("Frequency of Sinusoid (Hz)","stimfreqency", 1,"", 0, 1)
+            xpvalue("Delay of current (ms)", &stimdel, 1)
+            xpvalue("Duration of current (ms)", &stimdur, 1)
+            xpvalue("Amplitude of current (nA)", &stimamp, 1)
+            xpvalue("Frequency of Sinusoid (Hz)", &stimfreqency, 1)
             xlabel("---------------------------------------------------------------------------------------------------------")
-            xvalue("Simulation time (ms)","tstop", 1,"", 0, 1  )
+            xpvalue("Simulation time (ms)", &tstop, 1)
             xbutton("Run simulation", "altRunControlWidget.initAndRunHandler()")
             xpanel()
         }

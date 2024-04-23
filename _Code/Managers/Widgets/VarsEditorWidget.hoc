@@ -7,15 +7,16 @@ begintemplate VarsEditorWidget
     public show, onApplyInInhomEditor, onApplyOrDisableInStochEditor, dismissHandler
     public compIdx
     
-    external isAstrocyteOrNeuron
-    external mwh, math, mth, mcu, compUtils, mechSettings, inhomAndStochLibrary, seh
+    external mwh, math, mth, mcu, compUtils, mechSettings, inhomAndStochLibrary
     external createElasticSpacer, createEmptyPanel, createMetaVarHint, dismissIfNotNil, codeContractViolation
+    external smAllSynSets
     
     objref mainBox
     objref mechStd, buffer, isMechVarInhom, isMechVarStoch
     
     enumDmPpFk = -1
-    isBioOrTapEditor = -1
+    isGapJuncOrSyn = -1     // For taps only
+    tapSetIdx = -1          //
     compIdx = -1
     objref comp
     mechIdx = -1
@@ -23,18 +24,22 @@ begintemplate VarsEditorWidget
     varType = -1
     varTypeIdx = -1
     
+    objref seh              // For synapses only
+    
     slotHeight = -1
     
     objref subWidget
     
     
-    proc init() { local numMechVars, varIdx, arraySize, arrayIndex, isInhom, isStoch localobj inhomFlagsVec, stochFlagsVec, varLibId
+    proc init() { local isBioOrTapEditor, numMechVars, varIdx, arraySize, arrayIndex, isInhom, isStoch localobj inhomFlagsVec, stochFlagsVec, varLibId
         strdef varName
         
         enumDmPpFk = $1
-        compIdx = $2
-        mechIdx = $3
-        varType = $4
+        isGapJuncOrSyn = $2     // For taps only
+        tapSetIdx = $3          //
+        compIdx = $4
+        mechIdx = $5
+        varType = $6
         
         if (varType == -1) {    // GLOBAL
             codeContractViolation()
@@ -43,7 +48,12 @@ begintemplate VarsEditorWidget
         mth.getMechName(enumDmPpFk, mechIdx, mechName)
         
         isBioOrTapEditor = (enumDmPpFk == 0)
-        comp = compUtils.getComp(isBioOrTapEditor, compIdx)
+        
+        if (!isBioOrTapEditor && !isGapJuncOrSyn) {
+            seh = smAllSynSets.o(tapSetIdx).seh
+        }
+        
+        comp = compUtils.getComp(isBioOrTapEditor, isGapJuncOrSyn, tapSetIdx, compIdx)
         
         varTypeIdx = mth.convertVarTypeToVarTypeIdx(varType)
         
@@ -61,7 +71,7 @@ begintemplate VarsEditorWidget
             for arrayIndex = 0, arraySize - 1 {
                 isInhom = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
                 inhomFlagsVec.x(arrayIndex) = isInhom
-                varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+                varLibId = new VarLibId(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
                 isStoch = inhomAndStochLibrary.isStochEnabledFor(varLibId)
                 stochFlagsVec.x(arrayIndex) = isStoch
             }
@@ -196,12 +206,15 @@ begintemplate VarsEditorWidget
                 mainBox.unmap()
             }
         }
+        
+        comp = nil
+        seh = nil
     }
     
     // All next staff is private
     
     
-    proc editHomogenVarHandler() { local varIdx, arrayIndex, value localobj varLibId
+    proc editHomogenVarHandler() { local varIdx, arrayIndex, value localobj varLibId, nil
         strdef varName
         
         // !! BUG: If user enters the editbox with "nan" and just leaves it without changing anything,
@@ -218,10 +231,10 @@ begintemplate VarsEditorWidget
             
             // !! it would be better to do this later when user clicks "Apply",
             //    but then it would be difficult to figure out what exactly inhom vars become homogen
-            varLibId = new VarLibId(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+            varLibId = new VarLibId(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
             inhomAndStochLibrary.onMakingVarHomogen(varLibId)
             
-            if (!isAstrocyteOrNeuron && !isBioOrTapEditor) {
+            if (seh != nil) {
                 mth.getVarNameAndArraySize(enumDmPpFk, mechIdx, varType, varIdx, varName)
                 seh.ifMetaVarThenUpdateStatus(varName, value)
             }
@@ -235,14 +248,14 @@ begintemplate VarsEditorWidget
         varIdx = $1
         arrayIndex = $2
         defineSmthCommonHandler(isMechVarInhom, varIdx, arrayIndex)
-        subWidget = mcu.defineDistFuncHandler(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        subWidget = mcu.defineDistFuncHandler(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
     proc defineStochFuncHandler() { local varIdx, arrayIndex
         varIdx = $1
         arrayIndex = $2
         defineSmthCommonHandler(isMechVarStoch, varIdx, arrayIndex)
-        subWidget = mcu.defineStochFuncHandler(enumDmPpFk, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        subWidget = mcu.defineStochFuncHandler(enumDmPpFk, isGapJuncOrSyn, tapSetIdx, compIdx, mechIdx, varType, varIdx, arrayIndex)
     }
     
     proc defineSmthCommonHandler() { local varIdx, arrayIndex localobj isMechVarSmth

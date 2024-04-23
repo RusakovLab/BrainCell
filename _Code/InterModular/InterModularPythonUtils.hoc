@@ -83,3 +83,5 @@ func checkIfFileMissing() {
     sprint(pyCommand, "(exec('import os'), not os.path.exists('%s'))[1]", filePathName)
     return pyObj.ev(pyCommand)
 }
+
+sourcePythonCode("\\PythonCode", "from TempFolderUtils import TempFolderUtils", "InterModularPythonUtils")

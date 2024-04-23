@@ -5,8 +5,6 @@
 // !! add coloured markers on pathPlotShape indicating the observation points
 // !! add vertical coloured lines on rangeGraph indicating the observation points
 
-// !! maybe move this file to "Neuron" subfolder?
-
 // !! keeping it on the top level to be accessible from "execute"-ed HOC command
 objref _rangeVarPlot
 

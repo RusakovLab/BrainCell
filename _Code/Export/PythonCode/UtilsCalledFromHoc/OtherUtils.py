@@ -4,6 +4,9 @@ from OtherInterModularUtils import hocObj
 
 
 def checkForNotImplementedExportScenario():
+    if hocObj.gridOfSections is not None:
+        hocObj.mwh.showNotImplementedWarning('Cannot export the cell with the sections grid deployed.')
+        return 1
     secNames = getAllSectionNamesExceptNanogeometry()
     isNotImpl = any('.' in secName.s for secName in secNames)
     if isNotImpl:

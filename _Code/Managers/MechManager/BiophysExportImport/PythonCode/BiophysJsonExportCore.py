@@ -110,7 +110,7 @@ class BiophysJsonExportCore:
         varName = h.ref('')
         mth.getVarNameAndArraySize(0, mechIdx, varType, varIdx, varName)
         
-        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         
         isInhom1 = inhomAndStochLibrary.isInhomEnabledFor(varLibId)
         isInhom2 = comp.isMechVarInhom(mechIdx, varType, varName, arrayIndex)
@@ -161,7 +161,7 @@ class BiophysJsonExportCore:
         #    (does user prefer to have "keep as is" segmentation mode by default on import?)
         # !! be careful importing VerbatimDistFuncHelper
         
-        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(varLibId)
         
         cond = (getTemplateName(actSpecVar.distFuncHelper) == 'VerbatimDistFuncHelper' and
@@ -212,7 +212,7 @@ class BiophysJsonExportCore:
         
     def _prepareStochModelInfoDict(self, compIdx, mechIdx, varType, varIdx, arrayIndex):
         
-        varLibId = h.VarLibId(0, compIdx, mechIdx, varType, varIdx, arrayIndex)
+        varLibId = h.VarLibId(0, -1, -1, compIdx, mechIdx, varType, varIdx, arrayIndex)
         actSpecVar = hocObj.inhomAndStochLibrary.findActiveSpecVar(varLibId)
         
         boundingHelper = actSpecVar.boundingHelper
