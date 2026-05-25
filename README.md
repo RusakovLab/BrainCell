@@ -82,7 +82,7 @@ The agents themselves are provided as two Python scripts in the repository root:
 |---|---|
 | Community Forum | [forum.neuroalgebra.net](https://forum.neuroalgebra.net) |
 | Documentation PDFs | Available through the Forum downloads area |
-| GitHub repository | *To be published — see Forum for current link* |
+| GitHub repository | [github.com/RusakovLab/BRAINCELL](https://github.com/RusakovLab/BRAINCELL) |
 | NEURON simulator | [neuron.yale.edu](https://neuron.yale.edu) |
 
 ---
