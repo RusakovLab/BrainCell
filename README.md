@@ -104,6 +104,12 @@ BRAINCELL is organized into clearly separated layers. Contributors should respec
 
 ---
 
+## Contributing / Claude Code
+
+A `CLAUDE.md` file in the repository root provides architecture guidance and common commands for [Claude Code](https://claude.ai/code). If you use Claude Code to work in this repository, it will be loaded automatically.
+
+---
+
 ## License
 
 BRAINCELL is distributed under the **3-clause BSD license**. See `LICENSE` for the full text.
