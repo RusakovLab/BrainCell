@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What This Project Is
 
 **BRAINCELL** is a computational neuroscience simulation platform developed by the Savtchenko/Rusakov Lab at UCL. It combines:
-- **NEURON 8.2.2** — the core electrophysiology simulator
+- **NEURON 8.2.2 / 9.0.1** — the core electrophysiology simulator (both versions supported)
 - **HOC** — NEURON's native scripting language (355 `.hoc` files)
 - **MOD files** — NEURON mechanism definitions for ion channels, transporters, gap junctions (137 files across `Mechanisms/Astrocyte/`, `Mechanisms/Neuron/`, `Mechanisms/Common/`)
 - **Python 3.11+** — export framework, AI agents, utilities (82 `.py` files)
@@ -22,7 +22,7 @@ docker compose run --rm braincell-headless   # batch simulation (set BRAINCELL_S
 
 ### Local (macOS / Linux)
 ```bash
-pip install neuron==8.2.2
+pip install neuron==8.2.2   # or neuron==9.0.1
 # Compile MOD files in each mechanisms directory:
 cd Mechanisms/Astrocyte/MOD_files && nrnivmodl
 cd Mechanisms/Neuron/MOD_files    && nrnivmodl
