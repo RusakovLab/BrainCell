@@ -144,6 +144,6 @@ def ms_getNumSpeciesInMOD(intMechName):
     # Clean up: uninsert mechanism and delete section
     tmpSec.uninsert(intMechName)
     tmpSec = None
-    h.pop_section()
+    # h.pop_section()  # h.Section() in Python doesn't push to the section stack, so this is a no-op at best or pops an unrelated section at worst
     return result
     

@@ -31,6 +31,36 @@ cd Mechanisms/Common/MOD_files    && nrnivmodl
 nrngui init.hoc
 ```
 
+### Windows — NEURON 8.2.2 + Anaconda 2023.09
+1. Install **Anaconda 2023.09** (x64) — enable **"Add Anaconda to PATH"** during installation
+2. Restart Windows
+3. Install **NEURON 8.2.2** (mingw, Python 3.7–3.11 compatible)
+4. Compile MOD files (run in each `MOD_files` directory):
+   ```
+   nrnivmodl
+   ```
+5. Launch: `nrngui init.hoc`
+
+### Windows — NEURON 9.0.1 + Anaconda (latest)
+1. Install **Anaconda** from https://www.anaconda.com/download — use default settings (**do NOT** add to PATH during install)
+2. Install **NEURON 9.0.1** (`nrn-9.0.1.w64-mingw-py-39-310-311-312-313-314-setup.exe`) to a path with no spaces (e.g. `C:\nrn`)
+3. Manually add Anaconda to the **system** PATH — open Anaconda PowerShell Prompt and run:
+   ```powershell
+   # Find your Python folder:
+   python -c "import sys; print(sys.executable)"
+   # Add that folder (e.g. C:\Users\YourName\anaconda3) to system PATH:
+   [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Users\YourName\anaconda3", "Machine")
+   ```
+   Close and reopen any command prompts afterwards.
+4. Verify NEURON finds Python:
+   ```
+   python -c "from neuron import h; print(h.nrnversion())"
+   ```
+   Expected output: `NEURON -- VERSION 9.0.1 ...`
+5. NEURON 9 compatibility is already patched in the codebase — no manual HOC edits needed.
+   (The fix delegates mechanism introspection to Python in `_Code/InterModular/UtilsAndHelpers/InterModularMechSettings.hoc`)
+6. Compile MOD files and launch: `nrngui init.hoc`
+
 ### After adding/removing files
 ```bash
 python braincell_mapper.py   # regenerates braincell_map.json (used by AI agents)
