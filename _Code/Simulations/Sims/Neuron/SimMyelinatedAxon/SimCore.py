@@ -47,6 +47,8 @@ from Helpers.ProcAdvanceHelper import ProcAdvanceHelper
 import MsgWarnHelperWrappers as mwhw
 from OtherInterModularUtils import getAllUninsertableBiophysMechNamesList, codeContractViolation
 
+from KoDataSaver import KoDataSaver
+
 
 class SimMyelinatedAxonCore:
     
@@ -101,7 +103,10 @@ class SimMyelinatedAxonCore:
         self._userHasEditedBiophys = False
         
         self._allUninsertableMechNames = getAllUninsertableBiophysMechNamesList()
-        
+
+        self._koDataSaver = KoDataSaver(outputDir='ko_output', recordInterval=0.1)
+        self.isSaveKoData = True
+
     # ----- Start of base axon geometry -----
     
     def createBaseGeomAxon(self, enumAxonGeometry):
@@ -563,6 +568,8 @@ class SimMyelinatedAxonCore:
                 schwannKoShellIdx = totalNumShells - 1
                 self._params.schwannKoShell = schwannKoOffset
             
+            self._schwannKoShellIdx = schwannKoShellIdx  # stored for lazy re-startRecording on subsequent runs
+
             outerMostShellIdx = totalNumShells - 1   # index into shells[] for the outermost shell at Rmax
             
             for sec_ax in self.axonTrunkSecsExceptTerms:
@@ -603,7 +610,19 @@ class SimMyelinatedAxonCore:
             self._shells = shells
             self._k = k
             self._diffusions = diffusions
-            
+
+            if self.isSaveKoData:
+                self._koDataSaver.startRecording(
+                    shells,
+                    k,
+                    self.axonTrunkSecsExceptTerms,
+                    self.axonUnderSchwannSecsList,
+                    self.axonNodeOfRanvierSecsList,
+                    self.axonAfterLastSchwannSecOrNone,
+                    numInnerShells=numInnerShells,
+                    schwannKoShellIdx=schwannKoShellIdx
+                )
+
     # ----- End of RxD staff -----
     
     
@@ -640,7 +659,24 @@ class SimMyelinatedAxonCore:
             self._params.Dt,
             self._diam_axon / 2, self._params.Rmax, totalNumShells,
             self.enumMyelSheath, self.isUseRealBiophysOrTestSines)
-        
+
+        if hasattr(self, '_koDataSaver'):
+            self._koDataSaver.clear()
+            if (self.isSaveKoData and not self._koDataSaver.isRecording
+                    and hasattr(self, '_shells') and self._shells is not None
+                    and hasattr(self, '_numInnerShells')
+                    and hasattr(self, '_schwannKoShellIdx')):
+                self._koDataSaver.startRecording(
+                    self._shells,
+                    self._k,
+                    self.axonTrunkSecsExceptTerms,
+                    self.axonUnderSchwannSecsList,
+                    self.axonNodeOfRanvierSecsList,
+                    self.axonAfterLastSchwannSecOrNone,
+                    numInnerShells=self._numInnerShells,
+                    schwannKoShellIdx=self._schwannKoShellIdx
+                )
+
     def makeGraphsIfNeeded(self):
         
         if hasattr(self, '_graphs'):
@@ -881,7 +917,11 @@ class SimMyelinatedAxonCore:
             
     # !! use "del obj" ?
     def cleanup(self, isCleanUpRxd, isDeleteAllModifGeomAxonSecs):
-        
+
+        if hasattr(self, '_koDataSaver'):
+            self._koDataSaver.stopRecording()  # Save data before cleanup
+            self._koDataSaver.clear()
+
         if hasattr(self, '_plotShape'):
             self._plotShape.unmap()
             del self._plotShape

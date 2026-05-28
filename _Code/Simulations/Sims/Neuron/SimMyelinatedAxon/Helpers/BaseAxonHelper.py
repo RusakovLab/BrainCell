@@ -68,7 +68,9 @@ class BaseAxonHelper:
             
         for sec_ref in reversed(h.axon_ref):
             h.delete_section(sec=sec_ref.sec)
-            
+        # Reset accessed section after deleting axon sections
+        h('soma { }')
+
         if isImportedOrDrawnByHand:
             self._axonBiophysCompsHelper.onAxonDeleted()
         else:

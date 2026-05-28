@@ -78,12 +78,24 @@ class GeneratorsForMainHocFile:
             newLines = self._initCustOrStdExposedOrSweptVars(concExposedVarsList, getExposedVarName, False)
             lines.extend(newLines)
         else:
+            import sys as _sys
+            _isMyelExport = _sys.modules.get('_braincell_myelaxon_active')
             for stdExposedVar in h.exportOptions.stdExposedVarsList:
-                value = stdExposedVar.getValue()
-                if stdExposedVar.isInteger:
-                    value = int(value)
-                unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForExposedOrSweptVar2(stdExposedVar)
-                lines.append(f'{stdExposedVar.customExpr} = {value}{unitsCommentOrEmpty}')
+                if _isMyelExport:
+                    # For myelinated exports both getValue() and getUnitsCommentOrEmpty()
+                    # internally use HOC execute(), which crashes with "Section was deleted"
+                    # because BaseAxonHelper deleted the original axon sections leaving
+                    # NEURON's accessed-section pointer stale. Read values directly instead.
+                    value = getattr(h, stdExposedVar.customExpr)
+                    if stdExposedVar.isInteger:
+                        value = int(value)
+                    lines.append('{} = {}'.format(stdExposedVar.customExpr, value))
+                else:
+                    value = stdExposedVar.getValue()
+                    if stdExposedVar.isInteger:
+                        value = int(value)
+                    unitsCommentOrEmpty = UnitsUtils.getUnitsCommentOrEmptyForExposedOrSweptVar2(stdExposedVar)
+                    lines.append(f'{stdExposedVar.customExpr} = {value}{unitsCommentOrEmpty}')
                 
         if h.exportOptions.isAnySweptVars():
             newLines = self._initCustOrStdExposedOrSweptVars(h.exportOptions.sweptVarsList, getSweptVarName, True)
@@ -162,15 +174,15 @@ class GeneratorsForMainHocFile:
         
     def getAllCreateStatementsExceptNanogeometry(self):
         # output: a string like 'create name1, name2[123], name3[456][7], ...'
-        
+
         secNames = getAllSectionNamesExceptNanogeometry()
-        
+
         createdNames = []
         for secName in secNames:
             createdName = secName.s
             if re.match(r'^(_pysec\.)?EXTRA_CELL_\d+\.', createdName):
                 continue    # Extra cell sections are created by createExtraCells(), not by HOC "create"
-            
+
             secObj = self._getHocVar(createdName)
             while True:
                 isSecObjOrArray = self._isSecObjOrArray(secObj)
@@ -179,12 +191,114 @@ class GeneratorsForMainHocFile:
                 else:
                     createdName += '[{}]'.format(len(secObj))
                     secObj = secObj[0]
-                    
+
             createdNames.append(createdName)
-            
+
         resStr = 'create ' + ', '.join(createdNames)
 
         return resStr
+
+    # Regex matching section names created by AxonTransformationHelper (SimMyelinatedAxon).
+    # These must be excluded from myelinated-cell exports because they are regenerated from
+    # config vars when SimMyelinatedAxon is re-opened after re-import.
+    _myelinatedSecRe = _re.compile(
+        r'^(AISPs|AISDs|axonBeforeFirstSchwann|axonAfterLastSchwann'
+        r'|axonUnderSchwann\[|axonNodeOfRanvier\[|schwann\[|insulator\[)'
+    )
+
+    def getSomaAndDendriteCreateStatements(self):
+        """Emit 'create ...' for soma and dendrite sections only (used by myelinated skeleton)."""
+        createdNames = []
+        for listName in ['usedNamesForSoma', 'usedNamesForDendrites']:
+            for strObj in self._getHocVar(listName):
+                createdName = strObj.s
+                secObj = self._getHocVar(createdName)
+                while True:
+                    isSecObjOrArray = self._isSecObjOrArray(secObj)
+                    if isSecObjOrArray:
+                        break
+                    else:
+                        createdName += '[{}]'.format(len(secObj))
+                        secObj = secObj[0]
+                createdNames.append(createdName)
+        return 'create ' + ', '.join(createdNames)
+
+    def getMyelinatedConfig(self):
+        """Emit HOC scalar vars encoding myelination config for round-trip import."""
+        import sys
+        cfg = sys.modules.get('_braincell_myelaxon_config', {})
+        lines = ['isMyelinatedCell = 1']
+        lines.append('myelAxonGeometry = {}'.format(cfg.get('axonGeometry', 0)))
+        lines.append('myelSheathMode   = {}'.format(cfg.get('sheathMode', 0)))
+        lines.append('myelRegionMode   = {}'.format(cfg.get('regionMode', 0)))
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell']:
+            lines.append('myelParam_{} = {}'.format(attr, cfg.get(attr, 0)))
+        return lines
+
+    def getMyelinatedAxonTrunk(self):
+        """Emit create + pt3dadd + connect HOC for the base trunk section."""
+        import sys
+        trunk = sys.modules.get('_braincell_myelaxon_trunk')
+        if trunk is None:
+            return []
+        lines = ['create axon_trunk', 'axon_trunk {', '    pt3dclear()']
+        for x, y, z, d in trunk['pts']:
+            lines.append('    pt3dadd({}, {}, {}, {})'.format(x, y, z, d))
+        lines.append('    nseg = {}'.format(trunk['nseg']))
+        lines.append('}')
+        lines.append('connect axon_trunk(0), soma(0.5)')
+        return lines
+
+    def getMyelinatedAxonSectionRef(self):
+        """Emit axon_ref population for the myelinated trunk section."""
+        lines = ['axon_ref = new List()']
+        lines.append('axon_trunk { axon_ref.append(new SectionRef()) }')
+        return lines
+
+    def initTopologyForMyelinatedExport(self):
+        """Emit topology (connect statements) for soma, dendrites, and nanogeometry only."""
+        lines = []
+        for sec in h.allsec():
+            if self._myelinatedSecRe.match(sec.name()):
+                continue    # myelinated sections are regenerated on re-import
+            if sec.name() == 'axon_trunk':
+                continue    # axon_trunk connectivity is emitted by getMyelinatedAxonTrunk()
+            if re.match(r'^EXTRA_CELL_\d+\.', sec.name()):
+                continue
+            secRef = h.SectionRef(sec)
+            if not secRef.has_parent():
+                continue
+            line = '{} connect {}({}), {}'.format(
+                secRef.parent.name(), sec.name(),
+                h.section_orientation(sec=sec), h.parent_connection(sec=sec))
+            lines.append(line)
+        return lines
+
+    def initGeometryForMyelinatedExport(self):
+        """Emit geometry (pt3dadd) for soma, dendrites, and nanogeometry only."""
+        lines = []
+        for sec in h.allsec():
+            if self._myelinatedSecRe.match(sec.name()):
+                continue    # myelinated sections are regenerated on re-import
+            if sec.name() == 'axon_trunk':
+                continue    # axon_trunk geometry is emitted by getMyelinatedAxonTrunk()
+            if re.match(r'^EXTRA_CELL_\d+\.', sec.name()):
+                continue
+            lines.append('{} {{'.format(sec.name()))
+            lines.append('    pt3dclear()')
+            for ptIdx in range(sec.n3d()):
+                lines.append('    pt3dadd({}, {}, {}, {})'.format(
+                    sec.x3d(ptIdx), sec.y3d(ptIdx), sec.z3d(ptIdx), sec.diam3d(ptIdx)))
+            if sec.nseg != self._defaultNseg:
+                lines.append('    nseg = {}'.format(sec.nseg))
+            if sec.Ra != self._defaultRa:
+                lines.append('    Ra = {}'.format(sec.Ra))
+            lines.append('}')
+        return lines
         
     def createListOfSectionRef(self, usedNamesHocListName, secRefHocListName):
         allLines = []

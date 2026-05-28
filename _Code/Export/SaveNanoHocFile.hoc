@@ -27,15 +27,18 @@ func saveNanoHocFile() { local isCancel localobj bulletedList
     {
         callPythonExportCore(outHocFilePathName)
     }
+    print "POST-EXPORT: hidePleaseWaitBox"
     mwh.hidePleaseWaitBox()
-    
+
+    print "POST-EXPORT: checking isCreateNsgDataZipFile"
     if (exportOptions.isCreateNsgDataZipFile) {
         pyObj.NsgZipUtils.createNsgDataZipFile(outFolderRelPathName, outZipFilePathName)
         pyObj.TempFolderUtils.deleteTempFolder(outFolderRelPathName)
     }
-    
+
+    print "POST-EXPORT: building warning strings"
     line1 = "Here is what we don't export at the moment (the list is incomplete):"
-    
+
     bulletedList = new List()
     str1 = "GLOBAL vars from biophys mechs%s"
     str2 = "custom PPs/ACs (if you add them); we export only %s as well as APCount-s"
@@ -58,15 +61,20 @@ func saveNanoHocFile() { local isCancel localobj bulletedList
     bulletedList.append(new String("\"secondorder\" variable"))
     bulletedList.append(new String("if creating \"runner.hoc\", the results cannot be saved to BIN files (only TXT files are supported)"))
     bulletedList.append(new String("a new file \"nrnmech.dll\" is not built (only the old one is copied)"))
-    
+
     getNotImplementedLines(str1, str2)
-    
+
+    print "POST-EXPORT: startIntercepting"
     mwh.startIntercepting()
+    print "POST-EXPORT: showWarningBox"
     {
         mwh.showWarningBox(line1, bulletedList, "", str1, str2)
+        print "POST-EXPORT: showMessageBox"
         mwh.showMessageBox("Export complete successfully", "Complete")
     }
+    print "POST-EXPORT: endIntercepting"
     mwh.endIntercepting()
+    print "POST-EXPORT: done"
     
     return 0
 }

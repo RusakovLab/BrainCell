@@ -80,6 +80,7 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
     _isUseRealBiophysOrTestSines = True
     _isInsertIClamp = True
     _isInsertSEClamp = False
+    _isSaveKoData = True
     
     # We'll select it even when "self._enumMyelSheath == EnumMyelSheath.remove" or "self._myelRegionHelper.enumMyelRegion != EnumMyelRegion.drawnByHand"
     # just because the default menu tool "Section" allows selection and highlights the segms in red unnecessarily
@@ -105,49 +106,61 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
     
     
     def __init__(self):
-        
+
         # !! maybe we can move some calls of the ctors below to the class level
-        
+
         self._presParams = PresentationParams()
-        
+
         self._dirtyStatesHelper = DirtyStatesHelper()
-        
+
         self._paramsHelper = h.SimMyelinatedAxonParamsHelper(self, self._dirtyStatesHelper)
-        
+
         self._axonBiophysCompsHelper = AxonBiophysCompsHelper()
-        
+
         self._baseAxonHelper = BaseAxonHelper(self._paramsHelper, self._axonBiophysCompsHelper)
-        
+
         self._myelRegionHelper = MyelRegionHelper(self._paramsHelper, self._baseAxonHelper)
-        
+
         self._cellBuildHelper = CellBuildHelper(self._baseAxonHelper, self)
-        
+
         self._animSavePrintHelper = AnimSavePrintHelper(self._presParams, self._baseAxonHelper)
-        
+
         self._core = SimMyelinatedAxonCore(self._paramsHelper, self._enumMyelSheath, self._isUseRealBiophysOrTestSines, self._baseAxonHelper, self._myelRegionHelper, self._axonBiophysCompsHelper, self._presParams, self._animSavePrintHelper, self.onMyelStatusChanged)
-        
+
         self._presParams.setSaveTxtFileCheckBoxHandler(self._animSavePrintHelper.saveTxtFileCheckBoxHandler)
-        
+
         self._biophysExportHelper = BiophysExportHelper(self._paramsHelper, self._presParams)
         self._presParams.setExportBiophysCheckBoxHandler(self._biophysExportHelper.exportCheckBoxHandler)
-        
+
         self._axonBiophysCompsHelper.setSecContainers(self._baseAxonHelper, self._core)
         self._animSavePrintHelper.setModifAxonSecContainer(self._core)
-        
+
         self._dirtyStatesHelper.onParamChange(EnumParamCats.modifGeom)
+
+        # Restore myelination config if this sim is being created after re-importing
+        # a previously exported myelinated-cell HOC (which embeds isMyelinatedCell = 1)
+        if int(getattr(h, 'isMyelinatedCell', 0)):
+            self._pendingImportConfig = self._readMyelinatedCellConfig()
+        else:
+            self._pendingImportConfig = None
         
     def preShowCheck(self):
         
         return False
         
     def show(self, isFirstShow, isCalledFromSelf=False):
-        
+
         if isFirstShow:
+            # Restore config from a previous myelinated-cell export before doing anything else
+            if self._pendingImportConfig is not None:
+                self._restoreFromImportedConfig(self._pendingImportConfig)
+                self._pendingImportConfig = None
+
             if self._enumAxonGeometry != EnumAxonGeometry.imported:
                 codeContractViolation()
             self._isImportedAxonInvalid = self._baseAxonHelper.consumeImportedAxonOrAxonDrawnByHand(True)
             self._ifAxonInvalidThenWarnAndSwitchToPredefAxon(False)     # --> self._enumAxonGeometry
-            
+
             self._removeElectrodeAndSetUpDefaultClampParams()
             
         elif self._enumAxonGeometry == EnumAxonGeometry.drawnByHand and self._isAxonDrawnByHandInvalid:
@@ -195,6 +208,7 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
                     with bc.HBox():
                         with bc.Panel():
                             h.xbutton('Start simulation', self._startSimButtonHandler)
+                            h.xcheckbox('Save Ko data', (self, '_isSaveKoData'), self._saveKoDataCheckboxHandler)
                             self._updateGuiOnMyelStatusChanged(self._core.isTransformed)    # !! calling it here just to reserve enough horizontal space for the panel
                             # self._myelinStatusStr = '********'
                             h.xvarlabel(self._myelinStatusStr)
@@ -265,6 +279,10 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
                     with bc.VBox():
                         self._presParams.populatePresParamsPart2Panel()
                         
+            with bc.Panel():
+                h.xbutton('Save myelination config', self._saveConfigButtonHandler)
+                h.xbutton('Load myelination config', self._loadConfigButtonHandler)
+
             self._mainBox.dismiss_action(self._dismissHandler)
             
         isEnumMyelSheathInDeployScalp = self._isEnumMyelSheathInDeployScalp()
@@ -281,6 +299,10 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
         if isFirstShow:
             h.tstop = self._def_tstop
             h.dt = self._def_dt
+            # Expose state so Framework.py selects the myelinated skeleton on export
+            import sys
+            sys.modules['_braincell_myelaxon_active'] = True
+            self._updateMyelinatedExportVars()
         else:
             self._flipDecksDepOnIsUseRealBiophysOrTestSines()
             self._flipDecksDepOnEnumMyelSheath()
@@ -391,7 +413,10 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
             self._core.procAdvanceHelper.onAdvance()
             
         self._animSavePrintHelper.onAdvance()
-        
+
+        if hasattr(self._core, '_koDataSaver') and self._core.isSaveKoData and self._core._koDataSaver.isRecording:
+            self._core._koDataSaver.recordTimePoint()
+
     def postRun(self):
         
         self._core.dismissMechManagerAndScheduleRescan()
@@ -464,9 +489,15 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
         self._axonGeomRadioButtonHandlerEpilogue()
         
     def simDismissHandler(self):
-        
+
+        # Clear export flags so standard neuron skeleton is used if cell is re-exported
+        import sys
+        sys.modules.pop('_braincell_myelaxon_active', None)
+        sys.modules.pop('_braincell_myelaxon_config', None)
+        sys.modules.pop('_braincell_myelaxon_trunk', None)
+
         wasCellBuildHelperShown = self._isCellBuildHelperShown
-        
+
         self._dismissHandler()
         
         if not wasCellBuildHelperShown:
@@ -484,8 +515,59 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
         self._myelRegionHelper.destroyPPMs()
         
     # All next staff is private
-    
-    
+
+
+    def _readMyelinatedCellConfig(self):
+        """Read myelParam_* HOC vars (written by a previous export) into a dict."""
+        config = {
+            'axonGeometry': int(h.myelAxonGeometry),
+            'sheathMode':   int(h.myelSheathMode),
+            'regionMode':   int(h.myelRegionMode),
+        }
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell']:
+            config[attr] = float(getattr(h, 'myelParam_{}'.format(attr)))
+        return config
+
+    def _restoreFromImportedConfig(self, config):
+        """Apply all params from a saved config dict (called before show() proceeds)."""
+        p = self._paramsHelper
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell']:
+            setattr(p, attr, config[attr])
+        # axon_trunk was loaded as axon_ref by the import; keep imported mode
+        self._enumAxonGeometry = EnumAxonGeometry.imported
+        self._enumMyelSheath   = EnumMyelSheath(config['sheathMode'])
+        self._myelRegionHelper.enumMyelRegion = EnumMyelRegion(config['regionMode'])
+
+    def _updateMyelinatedExportVars(self):
+        """Publish current state via sys.modules for Framework.py generators."""
+        import sys
+        p = self._paramsHelper
+        config = {
+            'axonGeometry': self._enumAxonGeometry.value,
+            'sheathMode':   self._enumMyelSheath.value,
+            'regionMode':   self._myelRegionHelper.enumMyelRegion.value,
+        }
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell']:
+            config[attr] = float(getattr(p, attr))
+        sys.modules['_braincell_myelaxon_config'] = config
+        trunk = getattr(self._baseAxonHelper, 'axon', None)
+        if trunk is not None:
+            pts = [(trunk.x3d(i), trunk.y3d(i), trunk.z3d(i), trunk.diam3d(i))
+                   for i in range(trunk.n3d())]
+            sys.modules['_braincell_myelaxon_trunk'] = {'pts': pts, 'nseg': trunk.nseg}
+
     def _mouseEventsHandler(self, eventType, x, y, keystate):
         
         if not self._myelRegionHelper.enumMyelRegion == EnumMyelRegion.drawnByHand:
@@ -719,7 +801,97 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
         
     def _startSimButtonHandler(self):
         h.altRunControlWidget.initAndRunHandler()
-        
+
+    def _saveKoDataCheckboxHandler(self):
+        # xcheckbox already updated self._isSaveKoData via HOC
+        # read the actual current value directly
+        currentVal = bool(self._isSaveKoData)
+        if hasattr(self, '_core') and self._core is not None:
+            self._core.isSaveKoData = currentVal
+        print(f'Save Ko data: {currentVal}')
+
+    @staticmethod
+    def _getMyelConfigInitialDir():
+        import os
+        nanoDir = os.path.join(os.getcwd(), 'Nanogeometry')
+        return (nanoDir if os.path.isdir(nanoDir) else os.getcwd()).replace('\\', '/')
+
+    def _saveConfigButtonHandler(self):
+        import os
+        nameRef = h.ref('')
+        if not h.string_dialog('Enter config filename (without .hoc):', nameRef):
+            return
+        name = nameRef[0].strip()
+        if not name:
+            return
+        path = os.path.join(self._getMyelConfigInitialDir(), name + '.hoc')
+        self._onSaveFileChosen(path)
+
+    def _onSaveFileChosen(self, path):
+        p = self._paramsHelper
+        lines = ['// Myelinated axon config saved by BrainCell']
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell',
+                     'ik0', 'A', 'Xfactor_axon', 'Tfactor_axon', 'Xfactor_schwann', 'Tfactor_schwann']:
+            lines.append('myelParam_{} = {}'.format(attr, getattr(p, attr)))
+        lines.append('myelParam_enumAxonGeometry = {}'.format(self._enumAxonGeometry.value))
+        lines.append('myelParam_enumMyelSheath = {}'.format(self._enumMyelSheath.value))
+        lines.append('myelParam_enumMyelRegion = {}'.format(self._myelRegionHelper.enumMyelRegion.value))
+        lines.append('myelParam_isUseRealBiophysOrTestSines = {}'.format(int(self._isUseRealBiophysOrTestSines)))
+        lines.append('myelParam_isInsertIClamp = {}'.format(int(self._isInsertIClamp)))
+        lines.append('myelParam_isInsertSEClamp = {}'.format(int(self._isInsertSEClamp)))
+        with open(path, 'w') as f:
+            f.write('\n'.join(lines) + '\n')
+        print(f'Myelination config saved to: {path}')
+
+    def _loadConfigButtonHandler(self):
+        import os
+        nameRef = h.ref('')
+        if not h.string_dialog('Enter config filename (without .hoc):', nameRef):
+            return
+        name = nameRef[0].strip()
+        if not name:
+            return
+        path = os.path.join(self._getMyelConfigInitialDir(), name + '.hoc')
+        if not os.path.exists(path):
+            h.mwh.showWarningBox('Config file not found:\n' + path)
+            return
+        self._onLoadFileChosen(path)
+
+    def _onLoadFileChosen(self, path):
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('//'):
+                    h(line)
+        p = self._paramsHelper
+        for attr in ['diam_axon', 'diam_sheath', 'L_axon', 'nseg_axon',
+                     'schwann1_start', 'schwann1_end', 'schwann2_start',
+                     'maxNumSchwannCells', 'numShells', 'numExtShells',
+                     'Dt', 'Diff_k', 'ko0', 'ki0', 'veryMinOuterConc',
+                     'Rmax', 'alpha', 'schwannKoShell',
+                     'ik0', 'A', 'Xfactor_axon', 'Tfactor_axon', 'Xfactor_schwann', 'Tfactor_schwann']:
+            if h.name_declared('myelParam_' + attr):
+                setattr(p, attr, float(getattr(h, 'myelParam_' + attr)))
+        if h.name_declared('myelParam_enumAxonGeometry'):
+            self._enumAxonGeometry = EnumAxonGeometry(int(h.myelParam_enumAxonGeometry))
+        if h.name_declared('myelParam_enumMyelSheath'):
+            self._enumMyelSheath = EnumMyelSheath(int(h.myelParam_enumMyelSheath))
+            self._core.enumMyelSheath = self._enumMyelSheath
+        if h.name_declared('myelParam_enumMyelRegion'):
+            self._myelRegionHelper.enumMyelRegion = EnumMyelRegion(int(h.myelParam_enumMyelRegion))
+        if h.name_declared('myelParam_isUseRealBiophysOrTestSines'):
+            self._isUseRealBiophysOrTestSines = bool(int(h.myelParam_isUseRealBiophysOrTestSines))
+            self._core.isUseRealBiophysOrTestSines = self._isUseRealBiophysOrTestSines
+        if h.name_declared('myelParam_isInsertIClamp'):
+            self._isInsertIClamp = bool(int(h.myelParam_isInsertIClamp))
+        if h.name_declared('myelParam_isInsertSEClamp'):
+            self._isInsertSEClamp = bool(int(h.myelParam_isInsertSEClamp))
+        h.doNotify()
+
     def _deleteModifGeomAxonAndCreateBaseGeomAxon(self, isCalledFromSheathRadioButtonHandler):
         
         self._core.cleanup(True, True)

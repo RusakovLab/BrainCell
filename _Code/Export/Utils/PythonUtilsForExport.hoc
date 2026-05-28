@@ -5,11 +5,11 @@ proc sourcePythonCodeForExport() {
 
 proc callPythonExportCore() { local status
     strdef outHocFilePathName, pyCommand
-    
+
     outHocFilePathName = $s1
-    
+
     sprint(pyCommand, "exportCore('%s')", outHocFilePathName)
-    
+
     status = nrnpython(pyCommand)
     if (!status) {
         printPythonErrMsgAndStop("callPythonExportCore")

@@ -28,15 +28,18 @@ class _GenInfo:
         
         
 def exportCore(outMainHocFilePathName):
-    
+
+    import sys
     isAstrocyteOrNeuron = h.isAstrocyteOrNeuron
     if isAstrocyteOrNeuron:
         inSkeletonFileName = 'MainHocFileSkeletonForAstrocyte.txt'
+    elif sys.modules.get('_braincell_myelaxon_active'):
+        inSkeletonFileName = 'MainHocFileSkeletonForMyelinatedNeuron.txt'
     else:
         inSkeletonFileName = 'MainHocFileSkeletonForNeuron.txt'
     gens = GeneratorsForMainHocFile(outMainHocFilePathName)
     _exportSkeletonBasedHocFile(inSkeletonFileName, gens, outMainHocFilePathName)
-    
+
     outDirPath = os.path.dirname(outMainHocFilePathName)
     
     if h.exportOptions.isCreateParamsHoc:
