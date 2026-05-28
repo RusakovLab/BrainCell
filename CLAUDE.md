@@ -120,3 +120,9 @@ Each subdirectory under `Mechanisms/` compiles independently with `nrnivmodl`, p
 - Geometry files (`.hoc`, `.swc`, `.asc`) go in `Geometry/` (base) or `Nanogeometry/` (with procedural nano-structures from `_Code/NanoSeeding/`).
 - Biophysics JSON changes must remain backward-compatible; the manager reads these at runtime.
 - After any structural code change, re-run `braincell_mapper.py` so the AI agents stay in sync.
+
+## Recent Features Added
+
+- **Save/Load myelination config**: two buttons in the `SimMyelinatedAxon` GUI allow saving and loading all myelination parameters to/from `.hoc` files in the `Nanogeometry/` folder. Uses `h.string_dialog()` for filename input and direct HOC line execution via Python `open()` + `h(line)` (not `h.load_file()`) to avoid NEURON's file-caching behaviour. Implemented in `_Code/Simulations/Sims/Neuron/SimMyelinatedAxon/SimMyelinatedAxon.py`.
+
+- **Ko data recording toggle**: an `xcheckbox` "Save Ko data" in the `SimMyelinatedAxon` panel controls whether extracellular K⁺ concentration data is recorded to the `ko_output/` folder during simulation. `KoDataSaver.py` handles recording at `recordInterval=0.1 ms`, saving per-shell MATLAB-compatible matrix files and mid-node-of-Ranvier voltage/ion traces. The toggle syncs to `SimCore.isSaveKoData` and persists across runs within a session. Implemented across `SimMyelinatedAxon.py`, `SimCore.py`, and `KoDataSaver.py`.
