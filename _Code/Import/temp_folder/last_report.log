@@ -1,0 +1,168 @@
+####################################################
+NLMorphologyConverter Report:
+####################################################
+
+
+----------------------------------------------------
+Neuron Converter Log:
+----------------------------------------------------
+Determined Input File Format: SWC
+Importing neuron data file: D:/GitHubRusakovLab/BrainCell/Geometry/Neuron/Axonated/100312n5-A.CNG.swc....
+...successfully completed import.
+Applying modifiers...
+	none
+
+
+----------------------------------------------------
+Neuron Warnings (original, unmodified neuron):
+----------------------------------------------------
+Warnings: 0
+
+
+----------------------------------------------------
+Neuron Statistics (original, unmodified neuron):
+----------------------------------------------------
+Number of Axons:          1
+Number of Dends:          6
+Number of Somas:          1
+Number of Global Spines:  0
+Number of Global Markers: 0
+Tree Statistics Global:
+	Sample Points:                        1323
+	Branch Segments:                      63
+	BranchPoints:                         28
+	Branching Order:                      7
+	Terminals:                            35
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     834.323914
+	Max. Terminal Physical Distance (um): 625.724609
+	Min. Diameter (um):                   0.100000
+	Max. Diameter (um):                   10.240000
+	Total Tree Length (um):               2937.580322
+	Volume (um^3):                        1859.397095
+	Surface Area: (um^2)                  6941.174805
+Tree Statistics for AXON TREE #1
+	Sample Points:                        137
+	Branch Segments:                      5
+	BranchPoints:                         2
+	Branching Order:                      2
+	Terminals:                            3
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     237.734009
+	Max. Terminal Physical Distance (um): 188.642700
+	Min. Diameter (um):                   0.470000
+	Max. Diameter (um):                   1.140000
+	Total Tree Length (um):               284.666260
+	Volume (um^3):                        199.471054
+	Surface Area: (um^2)                  834.521240
+Tree Statistics for DEND TREE #2
+	Sample Points:                        14
+	Branch Segments:                      3
+	BranchPoints:                         1
+	Branching Order:                      1
+	Terminals:                            2
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     34.069160
+	Max. Terminal Physical Distance (um): 28.240131
+	Min. Diameter (um):                   0.780000
+	Max. Diameter (um):                   1.090000
+	Total Tree Length (um):               37.002026
+	Volume (um^3):                        24.551022
+	Surface Area: (um^2)                  106.266914
+Tree Statistics for DEND TREE #3
+	Sample Points:                        18
+	Branch Segments:                      1
+	BranchPoints:                         0
+	Branching Order:                      0
+	Terminals:                            1
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     50.742428
+	Max. Terminal Physical Distance (um): 39.727406
+	Min. Diameter (um):                   0.470000
+	Max. Diameter (um):                   0.780000
+	Total Tree Length (um):               50.742428
+	Volume (um^3):                        18.465076
+	Surface Area: (um^2)                  106.106277
+Tree Statistics for DEND TREE #4
+	Sample Points:                        431
+	Branch Segments:                      21
+	BranchPoints:                         10
+	Branching Order:                      6
+	Terminals:                            11
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     330.772644
+	Max. Terminal Physical Distance (um): 281.107361
+	Min. Diameter (um):                   0.360000
+	Max. Diameter (um):                   10.240000
+	Total Tree Length (um):               955.830200
+	Volume (um^3):                        894.252136
+	Surface Area: (um^2)                  2413.508301
+Tree Statistics for DEND TREE #5
+	Sample Points:                        134
+	Branch Segments:                      7
+	BranchPoints:                         3
+	Branching Order:                      3
+	Terminals:                            4
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     199.037231
+	Max. Terminal Physical Distance (um): 145.307953
+	Min. Diameter (um):                   0.420000
+	Max. Diameter (um):                   3.320000
+	Total Tree Length (um):               252.565491
+	Volume (um^3):                        195.040436
+	Surface Area: (um^2)                  730.609009
+Tree Statistics for DEND TREE #6
+	Sample Points:                        179
+	Branch Segments:                      15
+	BranchPoints:                         7
+	Branching Order:                      7
+	Terminals:                            8
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     251.653381
+	Max. Terminal Physical Distance (um): 223.015152
+	Min. Diameter (um):                   0.520000
+	Max. Diameter (um):                   2.200000
+	Total Tree Length (um):               487.240875
+	Volume (um^3):                        264.293365
+	Surface Area: (um^2)                  1188.586304
+Tree Statistics for DEND TREE #7
+	Sample Points:                        410
+	Branch Segments:                      11
+	BranchPoints:                         5
+	Branching Order:                      5
+	Terminals:                            6
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     834.323914
+	Max. Terminal Physical Distance (um): 625.724609
+	Min. Diameter (um):                   0.100000
+	Max. Diameter (um):                   1.140000
+	Total Tree Length (um):               869.533020
+	Volume (um^3):                        263.324127
+	Surface Area: (um^2)                  1561.576538
+Soma Statistics Global:
+	Sample Points:                        8
+	Spines:                               0
+	Markers:                              0
+	Total Length (um):                    24.607765
+	Min. Diameter (um):                   7.544400
+	Max. Diameter (um):                   21.340000
+Soma Statistics for SOMA #1
+	Sample Points:                        8
+	Spines:                               0
+	Markers:                              0
+	Total Length (um):                    24.607765
+	Min. Diameter (um):                   7.544400
+	Max. Diameter (um):                   21.340000
+
+
+------------------------------------------
+End of Report:
+------------------------------------------
