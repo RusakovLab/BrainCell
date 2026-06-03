@@ -208,6 +208,8 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
                     with bc.HBox():
                         with bc.Panel():
                             h.xbutton('Start simulation', self._startSimButtonHandler)
+                            h.xbutton('Save myelination config', self._saveConfigButtonHandler)
+                            h.xbutton('Load myelination config', self._loadConfigButtonHandler)
                             h.xcheckbox('Save Ko data', (self, '_isSaveKoData'), self._saveKoDataCheckboxHandler)
                             self._updateGuiOnMyelStatusChanged(self._core.isTransformed)    # !! calling it here just to reserve enough horizontal space for the panel
                             # self._myelinStatusStr = '********'
@@ -279,10 +281,6 @@ class SimMyelinatedAxon(RequiresAltRunControl, UsesCustomProcAdvance, Simulation
                     with bc.VBox():
                         self._presParams.populatePresParamsPart2Panel()
                         
-            with bc.Panel():
-                h.xbutton('Save myelination config', self._saveConfigButtonHandler)
-                h.xbutton('Load myelination config', self._loadConfigButtonHandler)
-
             self._mainBox.dismiss_action(self._dismissHandler)
             
         isEnumMyelSheathInDeployScalp = self._isEnumMyelSheathInDeployScalp()
