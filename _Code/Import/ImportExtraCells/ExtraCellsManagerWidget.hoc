@@ -48,7 +48,7 @@
 // !! see also: PointsToWatchWidget (look similar)
 begintemplate ExtraCellsManagerWidget
     
-    public show, isAnyExtraCells, dismissHandler, adoptExtraCell
+    public show, isAnyExtraCells, dismissHandler, adoptExtraCell, getFirstExtraCellWithAxon
     
     external mmAllComps
     external compUtils, fbh, pyEnumInFileTypes, mwh
@@ -353,6 +353,24 @@ begintemplate ExtraCellsManagerWidget
         mmAllComps.append(newBiophysComp)
         
         nextExtraCellIdx += 1
+    }
+
+    // Returns the first extra cell whose axon_list_ref is non-nil and non-empty, or nil if none.
+    // Limitation: only the first qualifying cell is returned; an index-based selector is needed
+    // if multiple interneurons with axon sections are loaded simultaneously.
+    obfunc getFirstExtraCellWithAxon() { local idx localobj listItem, axRef, nil
+        for idx = 0, listOfExtraCellListItems.count() - 1 {
+            listItem = listOfExtraCellListItems.o(idx)
+            if (listItem.pyExtraCell != nil) {
+                axRef = listItem.pyExtraCell.axon_list_ref
+                if (axRef != nil) {
+                    if (axRef.count() > 0) {
+                        return listItem.pyExtraCell
+                    }
+                }
+            }
+        }
+        return nil
     }
 
 endtemplate ExtraCellsManagerWidget

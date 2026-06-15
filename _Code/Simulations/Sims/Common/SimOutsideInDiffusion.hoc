@@ -31,6 +31,7 @@ begintemplate SimOutsideInDiffusion
     external runStopAt, runStopIn, tstop, steps_per_ms
     external pyObj
     external enumBinFileTypes
+    external extraCellsManagerWidget
     
     strdef biophysJsonFileNameOrEmpty
     isCustomProcAdvance = -1
@@ -38,13 +39,15 @@ begintemplate SimOutsideInDiffusion
     
     objref rng
     objref axonCompOrNil
+    objref chosenExtraCellOrNil
     objref mainBox, createOrLoadDeck
     objref gridToWatchWidget, animSettingsWidget, neuronPlayerWidget
     objref gridRegion
     objref record, recorder, player
     
     isBinFileLoaded = -1
-    
+    isUseExtraCell = -1
+
     isCreateOrLoad = -1
     isUseOpacitiesOrColours = -1
     numSrcs = -1
@@ -64,7 +67,8 @@ begintemplate SimOutsideInDiffusion
         rng = rngUtils.getFor_sim_xcDiffusion()
         
         isBinFileLoaded = 0
-        
+        isUseExtraCell = 0
+
         isCreateOrLoad = 1
         isUseOpacitiesOrColours = 1
         numSrcs = 100
@@ -109,11 +113,21 @@ begintemplate SimOutsideInDiffusion
         return 0
     }
     
-    proc show() { local isFirstShow, spcCatIdx, w, h, y localobj hBox, vBox
-        strdef species, title
-        
+    proc show() { local isFirstShow, spcCatIdx, w, h, y localobj hBox, vBox, nil
+        strdef species, title, ecAxonLabel
+
         isFirstShow = $1
-        
+
+        _scanExtraCells()
+        if (!isAstrocyteOrNeuron) {
+            if (isFirstShow) {
+                isUseExtraCell = (chosenExtraCellOrNil != nil)
+            }
+            if (chosenExtraCellOrNil == nil) {
+                isUseExtraCell = 0
+            }
+        }
+
         // !! code dup. with InsideOutDiffManagerMainWidget
         
         steps_per_ms = 0.01
@@ -193,6 +207,17 @@ begintemplate SimOutsideInDiffusion
                     // !! also, specify the range var name and where to watch it
                     xpanel()
                     if (!isAstrocyteOrNeuron) {
+                        xpanel("")
+                        xlabel("Axon target:")
+                        if (chosenExtraCellOrNil == nil) {
+                            xradiobutton("Primary axon (CA1)", "axonTargetChangedHandler(0)", 1)
+                            xlabel("  (No extra cell with axon loaded)")
+                        } else {
+                            sprint(ecAxonLabel, "Extra Cell axon (%d sections)", int(chosenExtraCellOrNil.axon_list_ref.count()))
+                            xradiobutton("Primary axon (CA1)", "axonTargetChangedHandler(0)", !isUseExtraCell)
+                            xradiobutton(ecAxonLabel, "axonTargetChangedHandler(1)", isUseExtraCell)
+                        }
+                        xpanel()
                         xpanel("")
                         xpvalue("Number of sources", &numSrcs, 1)
                         xpvalue("Radius of generation", &radiusGen, 1)
@@ -331,7 +356,7 @@ begintemplate SimOutsideInDiffusion
         }
     }
     
-    proc generateSrcsAlongAxonHandler() { local numECSs, isCancel, numSects, baseEcsRadiusOrMinus1, radiusGenCorr, srcIdx, secIdx, numPts, ptIdx, x_secPt, y_secPt, z_secPt, x_src, y_src, z_src localobj ecsList, baseECS, list_ref, newECS
+    proc generateSrcsAlongAxonHandler() { local numECSs, isCancel, numSects, baseEcsRadiusOrMinus1, radiusGenCorr, srcIdx, secIdx, numPts, ptIdx, x_secPt, y_secPt, z_secPt, x_src, y_src, z_src localobj ecsList, baseECS, list_ref, newECS, nil
         
         ecsList = ecsLibrary.ecsList
         
@@ -352,7 +377,19 @@ begintemplate SimOutsideInDiffusion
         
         ecsList.remove_all()
         
-        list_ref = axonCompOrNil.list_ref
+        if (isUseExtraCell == 0) {
+            list_ref = axonCompOrNil.list_ref
+        } else {
+            if (chosenExtraCellOrNil == nil) {
+                mwh.showWarningBox("No extra cell with axon available. Import a cell or switch to \"Primary axon (CA1)\".")
+                return
+            }
+            list_ref = chosenExtraCellOrNil.axon_list_ref
+            if (list_ref == nil) {
+                mwh.showWarningBox("The selected extra cell has no axon sections.")
+                return
+            }
+        }
         numSects = list_ref.count()
         
         baseEcsRadiusOrMinus1 = baseECS.spatialInfo.radiusOrMinus1
@@ -417,5 +454,20 @@ begintemplate SimOutsideInDiffusion
         dismissIfNotNil(animSettingsWidget)
         dismissIfNotNil(neuronPlayerWidget)
     }
-    
+
+    // Scans loaded extra cells and caches the first one with a non-empty axon_list_ref.
+    // Called on every show() so the cache stays current if cells are added or removed.
+    proc _scanExtraCells() { localobj nil
+        chosenExtraCellOrNil = nil
+        if (extraCellsManagerWidget == nil) { return }
+        if (!extraCellsManagerWidget.isAnyExtraCells()) { return }
+        chosenExtraCellOrNil = extraCellsManagerWidget.getFirstExtraCellWithAxon()
+    }
+
+    // $1 = 0 (primary axon) or 1 (extra cell axon); called by xradiobutton action strings.
+    proc axonTargetChangedHandler() { local isExtra
+        isExtra = $1
+        isUseExtraCell = isExtra
+    }
+
 endtemplate SimOutsideInDiffusion

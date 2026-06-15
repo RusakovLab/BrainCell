@@ -173,7 +173,10 @@ class ExtraCell:
         i3dGui.instantiate(self)                # !! what does 2nd optional arg mean?
         
         self.list_ref = convertPyIterableOfSecsToHocListOfSecRefs(self.all)
-        
+        self.axon_list_ref = convertPyIterableOfSecsToHocListOfSecRefs(self.axon) if hasattr(self, 'axon') and self.axon else None
+        self.dend_list_ref = convertPyIterableOfSecsToHocListOfSecRefs(self.dend) if hasattr(self, 'dend') and self.dend else None
+        self.soma_list_ref = convertPyIterableOfSecsToHocListOfSecRefs(self.soma) if hasattr(self, 'soma') and self.soma else None
+
     def __str__(self):
         # Without this, the new sections won't be accessible via the standard tool:
         #   "Graph -> Plot what?", then "Show -> Python Sections"
