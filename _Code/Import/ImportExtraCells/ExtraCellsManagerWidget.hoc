@@ -139,6 +139,8 @@ begintemplate ExtraCellsManagerWidget
                 xlabel("  2. If soma or axon is missing, we don't create it;")  // !! also, we don't care if soma has only 1 point
                 xlabel("  3. For HOC files, we lose all biophysics")
                 xlabel("      and don't preserve section names.")
+                xlabel("  4. For HOC files, the cell may shift along Y after")
+                xlabel("     export/re-import; use SWC to avoid this.")
                 xlabel("")
                 xbutton("Copy this extra cell", "copyThisExtraCell()")
                 xlabel("")
