@@ -149,35 +149,27 @@
     "Axon \\ Under Schwann": {
         "capacitance": {
             "PARAMETER": {
-                "cm (uF/cm2)": 0.05
-            }
-        },
-        "extracellular": {
-            "PARAMETER": {
-                "xg[0] (S/cm2)": 0.0001,
-                "xg[1] (S/cm2)": 0.0001
+                "cm (uF/cm2)": 0.9
             }
         },
         "pas": {
             "PARAMETER": {
-                "g_pas (S/cm2)": 1e-6
+                "g_pas (S/cm2)": 0.0001,
+                "e_pas (mV)": -82.0
             }
         },
-		"na_ion": {},
+        "na_ion": {},
         "k_ion": {},
-        "hh_axon": {
+        "hh": {
             "PARAMETER": {
-                "gnabar_hh_axon (S/cm2)": 0,
-                "gkbar_hh_axon (S/cm2)": 0.0016
+                "gnabar_hh (S/cm2)": 0.07,
+                "gkbar_hh (S/cm2)": 0.0016
             }
         },
         "ca_ion": {},
+        "na3": {},
         "nadifl": {},
-        "NaKpump": {
-            "PARAMETER": {
-                "INaKmax_NaKpump (mA/cm2)": 0
-            }
-        }
+        "NaKpump": {}
     },
     "Axon \\ Nodes of Ranvier": {
         "capacitance": {
@@ -190,8 +182,7 @@
                 "e_pas (mV)": -82.0
             }
         },
-        "extracellular": {},
-		"na_ion": {},
+        "na_ion": {},
         "k_ion": {},
         "ca_ion": {},
         "nadifl": {},
@@ -200,9 +191,11 @@
                 "Kmnai_NaKpump (mM)": 50.0
             }
         },
-        "node_Oozeer": {
+        "spike": {
             "PARAMETER": {
-                "gnabar_node_Oozeer (S/cm2)": 0.75
+                "gnabar_spike (mho/cm2)": 0.42,
+                "gkbar_spike (mho/cm2)": 0.45,
+                "gabar_spike (mho/cm2)": 0.45
             }
         }
     },
@@ -219,10 +212,10 @@
         },
         "na_ion": {},
         "k_ion": {},
-        "hh_axon": {
+        "hh": {
             "PARAMETER": {
-                "gnabar_hh_axon (S/cm2)": 0.12,
-                "gkbar_hh_axon (S/cm2)": 0.036
+                "gnabar_hh (S/cm2)": 0.36,
+                "gkbar_hh (S/cm2)": 0.008
             }
         },
         "nadifl": {},

@@ -1,0 +1,342 @@
+// ============================================================
+//  TRPA1_KO_DemyelPanel.hoc
+//
+//  Experiment panel: myelination changes in TRPA1 KO mice
+//  Basis: Chow et al. Nat Commun 2026 (SNAP-23 icKO)
+//
+//  Usage (from HOC console after BrainCell loads):
+//    trpa1_show()
+//
+//  Place in _Testing/ folder alongside init_MyelinSim.hoc
+//  Author: Xiaolan / Rusakov Lab UCL 2026
+// ============================================================
+
+// -- Global shadow variables (top-level) --
+
+double _p_diam_axon[1]
+double _p_diam_sheath[1]
+double _p_numShells[1]
+double _p_maxNumSchwannCells[1]
+double _p_schwann1_start[1]
+double _p_schwann1_end[1]
+double _p_schwann2_start[1]
+double _p_Diff_k[1]
+double _p_ko0[1]
+double _p_Rmax[1]
+double _p_alpha[1]
+double _p_paranodal_gL_scale[1]
+
+// -- Graph and recording objrefs -- all at top level so visible in all procs --
+objref _trpa1_gVt
+objref _trpa1_gKot
+objref _trpa1_gPP      // Graph 3: phase portrait dV/dt vs V
+objref _trpa1_vRec     // records V(t) at axonUnderSchwann[0](0.5) -- reset each run by NEURON
+objref _trpa1_tRec     // records t  -- needed for CVode variable-dt central difference
+objref _trpa1_dvdt     // central-difference dV/dt, recomputed on each update
+
+
+// -- CONTROL values --
+
+proc _trpa1_initControlValues() {
+    _p_diam_axon[0]           = 0.73
+    _p_diam_sheath[0]         = 0.924
+    _p_numShells[0]           = 5
+    _p_maxNumSchwannCells[0]  = 7
+    _p_schwann1_start[0]      = 0.03085
+    _p_schwann1_end[0]        = 0.12708
+    _p_schwann2_start[0]      = 0.12776
+    _p_Diff_k[0]              = 0.20
+    _p_ko0[0]                 = 3.0
+    _p_Rmax[0]                = 5.0
+    _p_alpha[0]               = 10.0
+    _p_paranodal_gL_scale[0]  = 1.0
+}
+
+
+// -- Preset: TRPA1-KO MILD --
+
+proc _trpa1_setPresetMild() {
+    _trpa1_initControlValues()
+    _p_diam_sheath[0]        = 0.990
+    _p_paranodal_gL_scale[0] = 1.5
+}
+
+
+// -- Preset: TRPA1-KO SEVERE --
+
+proc _trpa1_setPresetSevere() {
+    _trpa1_initControlValues()
+    _p_diam_sheath[0]        = 1.10
+    _p_maxNumSchwannCells[0] = 4
+    _p_paranodal_gL_scale[0] = 3.0
+    _p_Diff_k[0]             = 0.25
+}
+
+
+// -- Apply: write shadow vars into SimMyelinatedAxonParamsHelper[0] --
+
+proc _trpa1_applyParams() { local gRatio
+    // SimMyelinatedAxonParamsHelper[0] is the HOC template object.
+    // All its members are declared public, so they are writable directly from HOC.
+    SimMyelinatedAxonParamsHelper[0].diam_axon          = _p_diam_axon[0]
+    SimMyelinatedAxonParamsHelper[0].diam_sheath        = _p_diam_sheath[0]
+    SimMyelinatedAxonParamsHelper[0].numShells          = _p_numShells[0]
+    SimMyelinatedAxonParamsHelper[0].maxNumSchwannCells = _p_maxNumSchwannCells[0]
+    SimMyelinatedAxonParamsHelper[0].schwann1_start     = _p_schwann1_start[0]
+    SimMyelinatedAxonParamsHelper[0].schwann1_end       = _p_schwann1_end[0]
+    SimMyelinatedAxonParamsHelper[0].schwann2_start     = _p_schwann2_start[0]
+    SimMyelinatedAxonParamsHelper[0].Diff_k             = _p_Diff_k[0]
+    SimMyelinatedAxonParamsHelper[0].ko0                = _p_ko0[0]
+    SimMyelinatedAxonParamsHelper[0].Rmax               = _p_Rmax[0]
+    SimMyelinatedAxonParamsHelper[0].alpha              = _p_alpha[0]
+
+    if (_p_paranodal_gL_scale[0] != 1.0) {
+        forsec "axonNodeOfRanvier" {
+            if (ismembrane("pas")) {
+                g_pas = 0.1e-3 * _p_paranodal_gL_scale[0]
+            }
+        }
+    }
+
+    gRatio = _p_diam_axon[0] / _p_diam_sheath[0]
+    printf("\n=== TRPA1 Panel: Parameters Applied ===\n")
+    printf("  diam_axon          = %.4f um\n",    _p_diam_axon[0])
+    printf("  diam_sheath        = %.4f um\n",    _p_diam_sheath[0])
+    printf("  g-ratio (approx)   = %.3f\n",       gRatio)
+    printf("  numShells          = %d\n",          int(_p_numShells[0]))
+    printf("  maxNumSchwannCells = %d\n",          int(_p_maxNumSchwannCells[0]))
+    printf("  schwann1_start     = %.5f\n",        _p_schwann1_start[0])
+    printf("  schwann1_end       = %.5f\n",        _p_schwann1_end[0])
+    printf("  schwann2_start     = %.5f\n",        _p_schwann2_start[0])
+    printf("  Diff_k             = %.3f um2/ms\n", _p_Diff_k[0])
+    printf("  ko0                = %.2f mM\n",     _p_ko0[0])
+    printf("  Rmax               = %.2f um\n",     _p_Rmax[0])
+    printf("  alpha              = %.2f\n",        _p_alpha[0])
+    printf("  paranodal_gL_scale = %.2f x\n",     _p_paranodal_gL_scale[0])
+    printf("=======================================\n")
+    printf("  Re-run simulation for changes to take effect.\n\n")
+}
+
+
+// -- Button handlers --
+
+proc _trpa1_btnControl() {
+    _trpa1_initControlValues()
+    _trpa1_applyParams()
+    printf("Preset: CONTROL\n")
+}
+
+proc _trpa1_btnMild() {
+    _trpa1_setPresetMild()
+    _trpa1_applyParams()
+    printf("Preset: TRPA1-KO MILD\n")
+}
+
+proc _trpa1_btnSevere() {
+    _trpa1_setPresetSevere()
+    _trpa1_applyParams()
+    printf("Preset: TRPA1-KO SEVERE\n")
+}
+
+proc _trpa1_btnApply() {
+    _trpa1_applyParams()
+    printf("Manual values applied.\n")
+}
+
+
+// -- V recording setup -- called from _trpa1_createGraphs() and after Clear --
+//
+// forsec enters the section context so &v(0.5) is a valid HOC ref -- no _pysec needed.
+// The done flag stops after the first match; forsec does not support break.
+// vec.record() is CVode-compatible and auto-resets to size 0 on each finitialize().
+
+proc _trpa1_setupRecording() { local _done
+    _trpa1_vRec = new Vector()
+    _trpa1_tRec = new Vector()
+    _done = 0
+    forsec "axonUnderSchwann" {
+        if (!_done) {
+            _trpa1_vRec.record(&v(0.5))
+            _done = 1
+        }
+    }
+    _trpa1_tRec.record(&t)
+}
+
+
+// -- Phase portrait update --
+//
+// Computes central-difference dV/dt = (V[i+1]-V[i-1]) / (t[i+1]-t[i-1])
+// and appends one trajectory to the phase portrait graph via plotvs().
+// Lines accumulate across runs because erase_all() is never called here;
+// only the "Clear" button wipes the graph.
+// Called automatically by the run() and alt_run() overrides below,
+// and also by the manual button in the panel.
+
+proc _trpa1_updatePhasePortrait() { local n, i
+    if (!object_id(_trpa1_gPP))  { return }
+    if (!object_id(_trpa1_vRec)) { return }
+    n = _trpa1_vRec.size()
+    if (n < 3) {
+        printf("TRPA1 phase portrait: need at least 3 points, got %d -- run simulation first.\n", n)
+        return
+    }
+    _trpa1_dvdt = new Vector(n - 2)
+    for i = 1, n-2 {
+        _trpa1_dvdt.x[i-1] = (_trpa1_vRec.x[i+1] - _trpa1_vRec.x[i-1]) / (_trpa1_tRec.x[i+1] - _trpa1_tRec.x[i-1])
+    }
+    _trpa1_gPP.beginline(2, 2)
+    for i = 1, _trpa1_dvdt.size()-1 {
+        _trpa1_gPP.line(_trpa1_vRec.x[i], _trpa1_dvdt.x[i])
+    }
+    _trpa1_gPP.flush()
+    printf("TRPA1 phase portrait: %d-point trajectory added.\n", n - 2)
+}
+
+
+// -- Comparison graphs --
+// Three graphs created once on first "Open comparison graphs" click.
+// Graph 1 and 2 use addexpr -- updated every timestep via graphList[0].
+// Graph 3 (phase portrait) uses plotvs() -- static lines appended after each run.
+// Lines accumulate across runs; "Clear all graph lines" erases and restarts.
+
+proc _trpa1_createGraphs() {
+
+    // Graph 1: V(t) at mid-internode
+    _trpa1_gVt = new Graph(0)
+    _trpa1_gVt.size(0, 500, -80, 60)
+    _trpa1_gVt.label(0.05, 0.95, "V(t) mid-axon internode (mV)")
+    _trpa1_gVt.label(0.05, 0.05, "Each run adds a line. Clear to restart.")
+    _trpa1_gVt.view(0, -80, 500, 140, 700, 50, 500, 270)
+    _trpa1_gVt.addexpr("_pysec.axonUnderSchwann[0].v(.5)", 2, 2)
+    graphList[0].append(_trpa1_gVt)
+
+    // Graph 2: ko(t) at same section
+    _trpa1_gKot = new Graph(0)
+    _trpa1_gKot.size(0, 500, 2.5, 6.0)
+    _trpa1_gKot.label(0.05, 0.95, "ko(t) mid-axon internode (mM)")
+    _trpa1_gKot.label(0.05, 0.05, "Each run adds a line. Clear to restart.")
+    _trpa1_gKot.view(0, 2.5, 500, 3.5, 700, 370, 500, 270)
+    _trpa1_gKot.addexpr("_pysec.axonUnderSchwann[0].ko(.5)", 2, 2)
+    graphList[0].append(_trpa1_gKot)
+
+    // Graph 3: phase portrait dV/dt vs V at axonUnderSchwann[0](0.5)
+    // plotvs() draws a static curve -- lines accumulate across runs until "Clear".
+    // Not in graphList[0] or flush_list: redrawn explicitly by _trpa1_updatePhasePortrait().
+    _trpa1_gPP = new Graph(0)
+    _trpa1_gPP.size(-80, 60, -500, 500)
+    _trpa1_gPP.label(0.05, 0.95, "Phase portrait: dV/dt vs V")
+    _trpa1_gPP.label(0.05, 0.88, "axonUnderSchwann[0](0.5)  -- each run adds a trajectory")
+    _trpa1_gPP.label(0.38, 0.02, "V (mV)")
+    _trpa1_gPP.view(-80, -500, 140, 1000, 700, 690, 500, 270)
+
+    _trpa1_setupRecording()
+
+    printf("TRPA1 graphs created. Run simulation to populate.\n\n")
+}
+
+proc _trpa1_btnOpenGraphs() {
+    if (!object_id(_trpa1_gVt)) {
+        _trpa1_createGraphs()
+    } else {
+        printf("Graphs already open. Use Clear to erase lines.\n")
+    }
+}
+
+proc _trpa1_btnClearGraphs() {
+    if (object_id(_trpa1_gVt)) {
+        _trpa1_gVt.erase_all()
+        _trpa1_gVt.addexpr("_pysec.axonUnderSchwann[0].v(.5)", 2, 2)
+    }
+    if (object_id(_trpa1_gKot)) {
+        _trpa1_gKot.erase_all()
+        _trpa1_gKot.addexpr("_pysec.axonUnderSchwann[0].ko(.5)", 2, 2)
+    }
+    if (object_id(_trpa1_gPP)) {
+        _trpa1_gPP.erase_all()
+        _trpa1_setupRecording()
+    }
+    printf("TRPA1 graphs cleared.\n")
+}
+
+
+
+
+// -- Panel --
+
+proc trpa1_show() {
+
+    xpanel("TRPA1 KO Demyelination Experiment", 0)
+
+    xlabel("Presets  (Chow et al. Nat Commun 2026 + TRPA1 KO EM)")
+    xlabel("Readouts to match: CAP latency, amplitude, FWHM")
+    xlabel("")
+    xbutton("CONTROL  (g-ratio 0.79, intact nodes)",      "_trpa1_btnControl()")
+    xbutton("TRPA1-KO MILD   (g-ratio 0.74, leak x1.5)", "_trpa1_btnMild()")
+    xbutton("TRPA1-KO SEVERE (g-ratio 0.66, leak x3.0)", "_trpa1_btnSevere()")
+
+    xlabel("")
+    xlabel("--- Geometry ---")
+    xpvalue("diam_axon (um)",         &_p_diam_axon[0],          1)
+    xpvalue("diam_sheath (um)",       &_p_diam_sheath[0],        1)
+    xlabel("  g-ratio = diam_axon / diam_sheath")
+    xpvalue("numRadialShells",        &_p_numShells[0],          1)
+    xpvalue("maxNumSchwannCells",     &_p_maxNumSchwannCells[0], 1)
+    xpvalue("schwann1_start",         &_p_schwann1_start[0],     1)
+    xpvalue("schwann1_end",           &_p_schwann1_end[0],       1)
+    xpvalue("schwann2_start",         &_p_schwann2_start[0],     1)
+
+    xlabel("")
+    xlabel("--- Diffusion / concentrations ---")
+    xpvalue("Diff_k (um2/ms)",        &_p_Diff_k[0],             1)
+    xlabel("  Control 0.20  do NOT use 0.02 (10x too low)")
+    xpvalue("ko0 (mM)",               &_p_ko0[0],                1)
+    xlabel("  CNS ECS baseline 3.0 mM (not 2.5)")
+
+    xlabel("")
+    xlabel("--- Config B external shell ---")
+    xpvalue("Rmax (um)",              &_p_Rmax[0],               1)
+    xpvalue("alpha (D_ext=Diff_k/alpha)", &_p_alpha[0],          1)
+
+    xlabel("")
+    xlabel("--- Paranodal integrity ---")
+    xpvalue("paranodal_gL_scale (x)", &_p_paranodal_gL_scale[0], 1)
+    xlabel("  1.0 = intact node (CONTROL)")
+    xlabel("  1.5 = mild CASPR cluster phenotype (KO mild)")
+    xlabel("  3.0 = severe paranodal disruption  (KO severe)")
+    xlabel("  Sets g_pas on axonNodeOfRanvier sections")
+
+    xlabel("")
+    xbutton("Apply manual values", "_trpa1_btnApply()")
+    xlabel("  All params printed to terminal on Apply.")
+    xlabel("  Copy terminal output to lab notebook.")
+
+    xlabel("")
+    xlabel("--- Comparison graphs (open AFTER first run) ---")
+    xlabel("  Graph 1: V(t) at axonUnderSchwann[0](0.5)")
+    xlabel("  Graph 2: ko(t) at axonUnderSchwann[0](0.5)")
+    xlabel("  Graph 3: phase portrait dV/dt vs V (same site)")
+    xlabel("  After each run: click Update to add trajectory to Graph 3")
+    xbutton("Open comparison graphs",         "_trpa1_btnOpenGraphs()")
+    xbutton("Clear all graph lines",          "_trpa1_btnClearGraphs()")
+    xbutton("Update phase portrait",          "_trpa1_updatePhasePortrait()")
+
+    xlabel("")
+    xlabel("--- CAP targets from Chow 2026 Fig 3 ---")
+    xlabel("  Control:   P1 lat ~1ms,  amp ~8mV, FWHM ~0.8ms")
+    xlabel("  KO mild:   latency +30-50%,  amplitude -20-30%")
+    xlabel("  KO severe: latency ~2x,  amplitude ~half, FWHM ~2x")
+    xlabel("")
+    xlabel("  Ref: MyelinatedAxon_ControlParameters.md")
+
+    xpanel()
+
+}
+
+
+// -- Initialise on load --
+
+_trpa1_initControlValues()
+
+printf("\nTRPA1_KO_DemyelPanel loaded.\n")
+printf("  Open panel:  trpa1_show()\n\n")

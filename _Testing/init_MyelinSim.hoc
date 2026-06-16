@@ -30,3 +30,10 @@ simBox = new VBox()
 if (simIdx != -1) {
     simManager.programmaticClick(simIdx)
 }
+
+// ── TRPA1 KO experiment panel ────────────────────────────────────────────────
+// Defines trpa1Panel object but does NOT call show() automatically —
+// that would conflict with IClampHelper inside programmaticClick.
+// After BrainCell finishes loading, open the panel manually from the HOC console:
+//     trpa1Panel.show()
+{ load_file("_Testing/TRPA1_KO_DemyelPanel.hoc") }
