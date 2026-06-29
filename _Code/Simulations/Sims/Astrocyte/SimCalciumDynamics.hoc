@@ -7,7 +7,7 @@ begintemplate SimCalciumDynamics
     public biophysJsonFileNameOrEmpty, isCustomProcAdvance, isAltRunControl
     
     // Just a workaround to avoid the error in GraphUtils.parseVarsFromTheGraph
-    public BasicStimulus, Interval, ECaresting, Tau1St, Tau2St, NumberStim, Noise1_NoNoise0, NoiseCaBegin, ip3i, ActiveDendrite1, ActiveDendrite2
+    public BasicStimulus, Interval, ECaresting, Tau1St, Tau2St, NumberStim, Noise1_NoNoise0, NoiseCaBegin, Ip3Concentration, ActiveDendrite1, ActiveDendrite2
     
     external showCaParameters, closeFileAndShowCompleteMsg
     external vBoxCadifusParams
@@ -17,6 +17,7 @@ begintemplate SimCalciumDynamics
     external removeItemFromList, unmapIfNotNil
     external rngUtils
     external /* soma_ref, */ dendrite_ref
+    external eachSecInList
     external graphList, fast_flush_list
     
     strdef biophysJsonFileNameOrEmpty
@@ -67,7 +68,12 @@ begintemplate SimCalciumDynamics
     
     func preRun() {
         preContinue()
-        
+
+        // Make the UI value actually drive the computation: assign it to the GLOBAL initial
+        // IP3 concentration so that finitialize() (called by the run control after preRun)
+        // initialises every segment's ip3i (soma + dendrites) to Ip3Concentration.
+        ip3i0_ip3_ion = Ip3Concentration
+
         // !! it would be better to split "proc stimulCalcium" into two parts and move the first one to "proc show":
         //    part 1 - creation of all the objects (they will be destroyed in "proc simDismissHandler")
         //    part 2 - initialization of the objects based on GUI
@@ -84,6 +90,11 @@ begintemplate SimCalciumDynamics
     // Writes statistics to the file.
     proc advance() {
         fadvance()
+
+        // Keep the dendritic IP3 clamped at the user-set level throughout the run,
+        // so the value entered in the UI keeps driving the cadifus Ca release.
+        setIp3ToDendrites(Ip3Concentration)
+
         // Update plot view
         graphDendrites.exec_menu("View = plot")
         
@@ -212,6 +223,17 @@ begintemplate SimCalciumDynamics
         }
     }
     
+    // Sets the intracellular IP3 concentration (the cadifus RANGE variable "ip3i")
+    // on every dendritic section. Inside the section iterator, the bare "ip3i" refers
+    // to that section's RANGE variable (the template scalar is now "Ip3Concentration").
+    // $1 - IP3 concentration (mM)
+    proc setIp3ToDendrites() { local ip3Value
+        ip3Value = $1
+        for eachSecInList(dendrite_ref) {
+            ip3i = ip3Value
+        }
+    }
+
     // Sets initial UI and simulation params.
     proc initParamsCaDynamics() {
         BasicStimulus = 100         // 0 StrengthOfNetworkStimulus  for Basic calcium responses - noise
@@ -222,7 +244,7 @@ begintemplate SimCalciumDynamics
         NumberStim = 600            // Number of stimulus of noisy Ca 
         Noise1_NoNoise0 = 1         // 1  is noisy, 0 is constant Ca signal
         NoiseCaBegin = 7000         // ms, Interval of Ca signal
-        ip3i = 0.00001              // mM,  The ip3 intracellular concentration
+        Ip3Concentration = 0.00001  // mM,  The ip3 intracellular concentration (applied to ip3i during the run)
         tstop = 100000
         ActiveDendrite1 = 30
         ActiveDendrite2 = 31
@@ -281,8 +303,9 @@ begintemplate SimCalciumDynamics
             xlabel("Offset of first calcium  spike (ms) ") 
             xpvalue("NoiseCaBegin", &NoiseCaBegin, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
-            // !! is that correct that we expose a RANGE variable in UI?
-            xpvalue("ip3i Concentration (M)", &ip3i, 1)
+            // "Ip3Concentration" is a plain template scalar (NOT the cadifus RANGE variable "ip3i").
+            // Its value is pushed into the real ip3i during the run (see preRun / setIp3ToDendrites).
+            xpvalue("ip3i concentration (mM)", &Ip3Concentration, 1)
             xlabel("------------------------------------------------------------------------------------------------------------------------------")
             xpvalue("Active dendrite 1", &ActiveDendrite1, 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)")
             xpvalue("Active dendrite 2", &ActiveDendrite2, 1, "showDendritesGraph(ActiveDendrite1, ActiveDendrite2)")
