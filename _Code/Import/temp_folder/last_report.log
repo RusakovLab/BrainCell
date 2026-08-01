@@ -7,7 +7,11 @@ NLMorphologyConverter Report:
 Neuron Converter Log:
 ----------------------------------------------------
 Determined Input File Format: SWC
-Importing neuron data file: D:/GitHubRusakovLab/BrainCellDevelopment/Geometry/Neuron/Axonated/100312n5-A.CNG.swc....
+Importing neuron data file: D:/GitHubRusakovLab/BrainCellDevelopment/Geometry/Astrocyte/NewHumanMash/astro_864691135384083674.swc....
+Import warning: Found what is probably a branching root point: treating as separate trees.
+Import warning: Found what is probably a branching root point: treating as separate trees.
+Import warning: Found what is probably a branching root point: treating as separate trees.
+Import warning: Found what is probably a branching root point: treating as separate trees.
 ...successfully completed import.
 Applying modifiers...
 	none
@@ -16,151 +20,213 @@ Applying modifiers...
 ----------------------------------------------------
 Neuron Warnings (original, unmodified neuron):
 ----------------------------------------------------
-Warnings: 0
+Warnings: 47
+	Fault #  1: 	Samples very close together ------ Tree #01 Branch #1 Sample #1 (ref. sample: -4.147500, 0.619500, 6.268500, 0.577484)
+	Fault #  2: 	Samples very close together ------ Tree #02 Branch #1 Sample #1 (ref. sample: -6.247500, 1.585500, 3.958500, 0.230206)
+	Fault #  3: 	Samples very close together ------ Tree #03 Branch #1 Sample #1 (ref. sample: 3.622500, -2.257500, -6.247500, 1.765968)
+	Fault #  4: 	Samples very close together ------ Tree #04 Branch #1 Sample #1 (ref. sample: 2.740500, -6.961500, -0.766500, 1.423762)
+	Fault #  5: 	Branch Sample with zero diameter - Tree #05 Branch #7 Sample #113 (ref. sample: 31.426500, 6.625500, 2.845500, 0.047496)
+	Fault #  6: 	Branch Sample with zero diameter - Tree #05 Branch #8 Sample #3 (ref. sample: 24.202499, 6.604500, 6.919500, 0.048996)
+	Fault #  7: 	Branch Sample with zero diameter - Tree #05 Branch #17 Sample #27 (ref. sample: 14.584500, 13.618500, 13.408500, 0.046610)
+	Fault #  8: 	Branch Sample with zero diameter - Tree #05 Branch #35 Sample #38 (ref. sample: -7.654500, 15.088500, 4.189500, 0.049688)
+	Fault #  9: 	Branch Sample with zero diameter - Tree #05 Branch #43 Sample #41 (ref. sample: 19.897499, 8.179500, 19.246500, 0.014614)
+	Fault # 10: 	Branch Sample with zero diameter - Tree #05 Branch #49 Sample #27 (ref. sample: 17.230499, -5.323500, 8.200500, 0.036014)
+	Fault # 11: 	Branch Sample with zero diameter - Tree #05 Branch #51 Sample #61 (ref. sample: 28.045500, -10.972500, 6.814500, 0.032958)
+	Fault # 12: 	Branch Sample with zero diameter - Tree #05 Branch #52 Sample #114 (ref. sample: 20.380501, -8.389500, 9.481500, 0.034598)
+	Fault # 13: 	Branch Sample with zero diameter - Tree #05 Branch #58 Sample #86 (ref. sample: 12.463500, -12.316500, 12.379500, 0.024636)
+	Fault # 14: 	Branch Sample with zero diameter - Tree #05 Branch #61 Sample #46 (ref. sample: 13.051500, -4.042500, 5.911500, 0.035114)
+	Fault # 15: 	Branch Sample with zero diameter - Tree #05 Branch #96 Sample #1 (ref. sample: -3.622500, -11.371500, 18.280500, 0.025118)
+	Fault # 16: 	Branch Sample with zero diameter - Tree #05 Branch #97 Sample #51 (ref. sample: 0.031500, -9.061500, 18.511499, 0.002446)
+	Fault # 17: 	Branch Sample with zero diameter - Tree #05 Branch #100 Sample #103 (ref. sample: -14.647500, -18.007500, 20.716499, 0.049392)
+	Fault # 18: 	Branch Sample with zero diameter - Tree #05 Branch #101 Sample #138 (ref. sample: -13.261500, -5.491500, 21.493500, 0.014638)
+	Fault # 19: 	Branch Sample with zero diameter - Tree #05 Branch #102 Sample #104 (ref. sample: -11.056500, -15.592500, 11.770500, 0.043140)
+	Fault # 20: 	Branch Sample with zero diameter - Tree #05 Branch #102 Sample #106 (ref. sample: -11.119500, -15.529500, 11.686500, 0.037346)
+	Fault # 21: 	Branch Sample with zero diameter - Tree #05 Branch #102 Sample #108 (ref. sample: -11.266500, -15.613500, 11.686500, 0.032748)
+	Fault # 22: 	Branch Sample with zero diameter - Tree #05 Branch #115 Sample #16 (ref. sample: -18.175501, -10.300500, 1.648500, 0.039290)
+	Fault # 23: 	Branch Sample with zero diameter - Tree #05 Branch #121 Sample #20 (ref. sample: -22.711500, -8.746500, -3.076500, 0.034952)
+	Fault # 24: 	Branch Sample with zero diameter - Tree #05 Branch #128 Sample #47 (ref. sample: -10.699500, -4.168500, -3.559500, 0.042862)
+	Fault # 25: 	Branch Sample with zero diameter - Tree #05 Branch #136 Sample #145 (ref. sample: -6.604500, 0.976500, -1.900500, 0.049202)
+	Fault # 26: 	Branch Sample with zero diameter - Tree #05 Branch #137 Sample #47 (ref. sample: -5.890500, -9.859500, 6.562500, 0.033984)
+	Fault # 27: 	Branch Sample with zero diameter - Tree #05 Branch #146 Sample #160 (ref. sample: -23.761499, -10.006500, 17.923500, 0.032838)
+	Fault # 28: 	Branch Sample with zero diameter - Tree #05 Branch #149 Sample #61 (ref. sample: -17.650499, -3.874500, 12.820500, 0.047452)
+	Fault # 29: 	Branch Sample with zero diameter - Tree #05 Branch #151 Sample #33 (ref. sample: -16.285500, -2.803500, 9.649500, 0.033854)
+	Fault # 30: 	Branch Sample with zero diameter - Tree #05 Branch #151 Sample #34 (ref. sample: -16.243500, -2.803500, 9.607500, 0.047822)
+	Fault # 31: 	Branch Sample with zero diameter - Tree #05 Branch #163 Sample #43 (ref. sample: -12.484500, 9.187500, 16.033501, 0.046444)
+	Fault # 32: 	Branch Sample with zero diameter - Tree #05 Branch #164 Sample #64 (ref. sample: -1.417500, 8.935500, 15.487500, 0.040610)
+	Fault # 33: 	Branch Sample with zero diameter - Tree #07 Branch #8 Sample #63 (ref. sample: 8.242500, -3.223500, -22.795500, 0.042450)
+	Fault # 34: 	Branch Sample with zero diameter - Tree #07 Branch #9 Sample #12 (ref. sample: 8.389500, -2.509500, -24.160500, 0.046862)
+	Fault # 35: 	Branch Sample with zero diameter - Tree #07 Branch #14 Sample #25 (ref. sample: 12.106500, -2.845500, -18.553499, 0.026326)
+	Fault # 36: 	Branch Sample with zero diameter - Tree #07 Branch #22 Sample #125 (ref. sample: -2.236500, -13.891500, -19.561501, 0.049362)
+	Fault # 37: 	Branch Sample with zero diameter - Tree #07 Branch #23 Sample #70 (ref. sample: -6.688500, -11.728500, -17.146500, 0.020610)
+	Fault # 38: 	Branch Sample with zero diameter - Tree #07 Branch #27 Sample #21 (ref. sample: -8.956500, 0.871500, -23.257500, 0.028264)
+	Fault # 39: 	Branch Sample with zero diameter - Tree #07 Branch #36 Sample #71 (ref. sample: -26.890499, 0.745500, -12.820500, 0.039808)
+	Fault # 40: 	Branch Sample with zero diameter - Tree #07 Branch #37 Sample #74 (ref. sample: -22.711500, -4.252500, -17.629499, 0.042006)
+	Fault # 41: 	Branch Sample with zero diameter - Tree #07 Branch #46 Sample #103 (ref. sample: -22.186501, 5.344500, -13.555500, 0.012824)
+	Fault # 42: 	Branch Sample with zero diameter - Tree #07 Branch #62 Sample #30 (ref. sample: -6.793500, 16.012501, -18.154499, 0.007864)
+	Fault # 43: 	Branch Sample with zero diameter - Tree #07 Branch #66 Sample #100 (ref. sample: -16.558500, 21.892500, -17.230499, 0.028842)
+	Fault # 44: 	Branch Sample with zero diameter - Tree #07 Branch #67 Sample #85 (ref. sample: -13.513500, 13.975500, -18.721500, 0.045514)
+	Fault # 45: 	Branch Sample with zero diameter - Tree #07 Branch #73 Sample #61 (ref. sample: -17.293501, 16.432501, -10.678500, 0.024064)
+	Fault # 46: 	Branch Sample with zero diameter - Tree #07 Branch #73 Sample #64 (ref. sample: -17.377501, 16.306499, -10.636500, 0.041128)
+	Fault # 47: 	Branch Sample with zero diameter - Tree #07 Branch #74 Sample #44 (ref. sample: -18.973499, 20.422501, -12.106500, 0.044132)
 
 
 ----------------------------------------------------
 Neuron Statistics (original, unmodified neuron):
 ----------------------------------------------------
-Number of Axons:          1
-Number of Dends:          6
+Number of Axons:          0
+Number of Dends:          8
 Number of Somas:          1
 Number of Global Spines:  0
 Number of Global Markers: 0
 Tree Statistics Global:
-	Sample Points:                        1323
-	Branch Segments:                      63
-	BranchPoints:                         28
-	Branching Order:                      7
-	Terminals:                            35
+	Sample Points:                        23293
+	Branch Segments:                      266
+	BranchPoints:                         129
+	Branching Order:                      17
+	Terminals:                            137
 	Spines:                               0
 	Markers:                              0
-	Max. Terminal Path Distance (um):     834.323914
-	Max. Terminal Physical Distance (um): 625.724609
-	Min. Diameter (um):                   0.100000
-	Max. Diameter (um):                   10.240000
-	Total Tree Length (um):               2937.580322
-	Volume (um^3):                        1859.397095
-	Surface Area: (um^2)                  6941.174805
-Tree Statistics for AXON TREE #1
-	Sample Points:                        137
-	Branch Segments:                      5
-	BranchPoints:                         2
-	Branching Order:                      2
-	Terminals:                            3
-	Spines:                               0
-	Markers:                              0
-	Max. Terminal Path Distance (um):     237.734009
-	Max. Terminal Physical Distance (um): 188.642700
-	Min. Diameter (um):                   0.470000
-	Max. Diameter (um):                   1.140000
-	Total Tree Length (um):               284.666260
-	Volume (um^3):                        199.471054
-	Surface Area: (um^2)                  834.521240
-Tree Statistics for DEND TREE #2
-	Sample Points:                        14
-	Branch Segments:                      3
-	BranchPoints:                         1
-	Branching Order:                      1
-	Terminals:                            2
-	Spines:                               0
-	Markers:                              0
-	Max. Terminal Path Distance (um):     34.069160
-	Max. Terminal Physical Distance (um): 28.240131
-	Min. Diameter (um):                   0.780000
-	Max. Diameter (um):                   1.090000
-	Total Tree Length (um):               37.002026
-	Volume (um^3):                        24.551022
-	Surface Area: (um^2)                  106.266914
-Tree Statistics for DEND TREE #3
-	Sample Points:                        18
+	Max. Terminal Path Distance (um):     137.364441
+	Max. Terminal Physical Distance (um): 41.096336
+	Min. Diameter (um):                   0.002446
+	Max. Diameter (um):                   2.000000
+	Total Tree Length (um):               2407.873047
+	Volume (um^3):                        1613.716064
+	Surface Area: (um^2)                  5701.975586
+Tree Statistics for DEND TREE #1
+	Sample Points:                        2
 	Branch Segments:                      1
 	BranchPoints:                         0
 	Branching Order:                      0
 	Terminals:                            1
 	Spines:                               0
 	Markers:                              0
-	Max. Terminal Path Distance (um):     50.742428
-	Max. Terminal Physical Distance (um): 39.727406
-	Min. Diameter (um):                   0.470000
-	Max. Diameter (um):                   0.780000
-	Total Tree Length (um):               50.742428
-	Volume (um^3):                        18.465076
-	Surface Area: (um^2)                  106.106277
-Tree Statistics for DEND TREE #4
-	Sample Points:                        431
-	Branch Segments:                      21
-	BranchPoints:                         10
-	Branching Order:                      6
-	Terminals:                            11
+	Max. Terminal Path Distance (um):     0.000000
+	Max. Terminal Physical Distance (um): 0.000000
+	Min. Diameter (um):                   0.577484
+	Max. Diameter (um):                   0.577484
+	Total Tree Length (um):               0.000000
+	Volume (um^3):                        0.000000
+	Surface Area: (um^2)                  0.000000
+Tree Statistics for DEND TREE #2
+	Sample Points:                        2
+	Branch Segments:                      1
+	BranchPoints:                         0
+	Branching Order:                      0
+	Terminals:                            1
 	Spines:                               0
 	Markers:                              0
-	Max. Terminal Path Distance (um):     330.772644
-	Max. Terminal Physical Distance (um): 281.107361
-	Min. Diameter (um):                   0.360000
-	Max. Diameter (um):                   10.240000
-	Total Tree Length (um):               955.830200
-	Volume (um^3):                        894.252136
-	Surface Area: (um^2)                  2413.508301
+	Max. Terminal Path Distance (um):     0.000000
+	Max. Terminal Physical Distance (um): 0.000000
+	Min. Diameter (um):                   0.230206
+	Max. Diameter (um):                   0.230206
+	Total Tree Length (um):               0.000000
+	Volume (um^3):                        0.000000
+	Surface Area: (um^2)                  0.000000
+Tree Statistics for DEND TREE #3
+	Sample Points:                        2
+	Branch Segments:                      1
+	BranchPoints:                         0
+	Branching Order:                      0
+	Terminals:                            1
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     0.000000
+	Max. Terminal Physical Distance (um): 0.000000
+	Min. Diameter (um):                   1.765968
+	Max. Diameter (um):                   1.765968
+	Total Tree Length (um):               0.000000
+	Volume (um^3):                        0.000000
+	Surface Area: (um^2)                  0.000000
+Tree Statistics for DEND TREE #4
+	Sample Points:                        2
+	Branch Segments:                      1
+	BranchPoints:                         0
+	Branching Order:                      0
+	Terminals:                            1
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     0.000000
+	Max. Terminal Physical Distance (um): 0.000000
+	Min. Diameter (um):                   1.423762
+	Max. Diameter (um):                   1.423762
+	Total Tree Length (um):               0.000000
+	Volume (um^3):                        0.000000
+	Surface Area: (um^2)                  0.000000
 Tree Statistics for DEND TREE #5
-	Sample Points:                        134
+	Sample Points:                        15434
+	Branch Segments:                      173
+	BranchPoints:                         86
+	Branching Order:                      14
+	Terminals:                            87
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     137.364441
+	Max. Terminal Physical Distance (um): 38.827240
+	Min. Diameter (um):                   0.002446
+	Max. Diameter (um):                   2.000000
+	Total Tree Length (um):               1587.831787
+	Volume (um^3):                        1085.308960
+	Surface Area: (um^2)                  3770.442871
+Tree Statistics for DEND TREE #6
+	Sample Points:                        878
 	Branch Segments:                      7
 	BranchPoints:                         3
 	Branching Order:                      3
 	Terminals:                            4
 	Spines:                               0
 	Markers:                              0
-	Max. Terminal Path Distance (um):     199.037231
-	Max. Terminal Physical Distance (um): 145.307953
-	Min. Diameter (um):                   0.420000
-	Max. Diameter (um):                   3.320000
-	Total Tree Length (um):               252.565491
-	Volume (um^3):                        195.040436
-	Surface Area: (um^2)                  730.609009
-Tree Statistics for DEND TREE #6
-	Sample Points:                        179
-	Branch Segments:                      15
-	BranchPoints:                         7
-	Branching Order:                      7
-	Terminals:                            8
-	Spines:                               0
-	Markers:                              0
-	Max. Terminal Path Distance (um):     251.653381
-	Max. Terminal Physical Distance (um): 223.015152
-	Min. Diameter (um):                   0.520000
-	Max. Diameter (um):                   2.200000
-	Total Tree Length (um):               487.240875
-	Volume (um^3):                        264.293365
-	Surface Area: (um^2)                  1188.586304
+	Max. Terminal Path Distance (um):     53.702610
+	Max. Terminal Physical Distance (um): 37.735741
+	Min. Diameter (um):                   0.051974
+	Max. Diameter (um):                   2.000000
+	Total Tree Length (um):               106.330521
+	Volume (um^3):                        86.798355
+	Surface Area: (um^2)                  296.575012
 Tree Statistics for DEND TREE #7
-	Sample Points:                        410
-	Branch Segments:                      11
-	BranchPoints:                         5
-	Branching Order:                      5
-	Terminals:                            6
+	Sample Points:                        6914
+	Branch Segments:                      81
+	BranchPoints:                         40
+	Branching Order:                      17
+	Terminals:                            41
 	Spines:                               0
 	Markers:                              0
-	Max. Terminal Path Distance (um):     834.323914
-	Max. Terminal Physical Distance (um): 625.724609
-	Min. Diameter (um):                   0.100000
-	Max. Diameter (um):                   1.140000
-	Total Tree Length (um):               869.533020
-	Volume (um^3):                        263.324127
-	Surface Area: (um^2)                  1561.576538
+	Max. Terminal Path Distance (um):     108.200676
+	Max. Terminal Physical Distance (um): 41.096336
+	Min. Diameter (um):                   0.007864
+	Max. Diameter (um):                   2.000000
+	Total Tree Length (um):               708.857483
+	Volume (um^3):                        440.717346
+	Surface Area: (um^2)                  1629.159424
+Tree Statistics for DEND TREE #8
+	Sample Points:                        59
+	Branch Segments:                      1
+	BranchPoints:                         0
+	Branching Order:                      0
+	Terminals:                            1
+	Spines:                               0
+	Markers:                              0
+	Max. Terminal Path Distance (um):     4.853386
+	Max. Terminal Physical Distance (um): 2.625420
+	Min. Diameter (um):                   0.094588
+	Max. Diameter (um):                   1.526222
+	Total Tree Length (um):               4.853386
+	Volume (um^3):                        0.891412
+	Surface Area: (um^2)                  5.798183
 Soma Statistics Global:
-	Sample Points:                        8
+	Sample Points:                        1
 	Spines:                               0
 	Markers:                              0
-	Total Length (um):                    24.607765
-	Min. Diameter (um):                   7.544400
-	Max. Diameter (um):                   21.340000
+	Total Length (um):                    0.000000
+	Min. Diameter (um):                   2.000000
+	Max. Diameter (um):                   2.000000
 Soma Statistics for SOMA #1
-	Sample Points:                        8
+	Sample Points:                        1
 	Spines:                               0
 	Markers:                              0
-	Total Length (um):                    24.607765
-	Min. Diameter (um):                   7.544400
-	Max. Diameter (um):                   21.340000
+	Total Length (um):                    0.000000
+	Min. Diameter (um):                   2.000000
+	Max. Diameter (um):                   2.000000
 
 
 ------------------------------------------

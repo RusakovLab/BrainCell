@@ -79,6 +79,10 @@ proc showMainUi() { local minV1, minV2, maxV localobj vBox, plotShapeMainV, grap
                 //xvalue("Length x and Y","LengthXY", 1, "stretchXY(LengthXY, LengthZ)", 0, 1)
                 //xvalue("Length z","LengthZ", 1, "stretchXY(LengthXY, LengthZ)", 0, 1)
                 
+                xlabel("--------- Distance-from-soma metric for the plots below ---------")
+                xradiobutton("Straight-line 2D (XY)", "geomDistMode = 1", geomDistMode == 1)
+                xradiobutton("Path distance along arbor", "geomDistMode = 2", geomDistMode == 2)
+                xradiobutton("Straight-line 3D (XYZ)", "geomDistMode = 3", geomDistMode == 3)
                 xlabel("To display the radial distribution of: S/V ratio,")
                 xlabel("tissue volume fraction, volume, surface area, and branch diameter")
                 xlabel("Results are  saved to file VolumeFraction.txt")

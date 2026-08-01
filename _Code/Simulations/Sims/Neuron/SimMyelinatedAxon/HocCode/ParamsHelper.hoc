@@ -71,16 +71,16 @@ begintemplate SimMyelinatedAxonParamsHelper
         enumParamCats = pyObj.EnumParamCats
         
         diam_axon = -1          // um
-        diam_sheath = 3         // um (inner diam of Schwann cells, must be > diam_axon;
+        diam_sheath = 0.76      // um (inner diam of Schwann cells, must be > diam_axon;
                                 //     also, this diam specifies where we apply the Dirichlet boundary condition "conc = ko0" for non-myelinated segments of axon)
         
         L_axon = -1             // um (the region between end of AISDs and start of axon bifurcation)
         
-        schwann1_start = 0.1    // all unitless; 0 means axon trunk start, 1 means the trunk end; all must be in range [0, 1] and must be ascending;
-        schwann1_end = 0.15     // here we specify just 3 points for the first two Schwann cells,
-        schwann2_start = 0.152  // so all others points will be calculated periodically
+        schwann1_start = 0.03085  // all unitless; 0 means axon trunk start, 1 means the trunk end; all must be in range [0, 1] and must be ascending;
+        schwann1_end = 0.12708    // here we specify just 3 points for the first two Schwann cells,
+        schwann2_start = 0.12776  // so all others points will be calculated periodically
         
-        maxNumSchwannCells = 10 // we will add new Schwann cells until reaching axon end / bifurcation or exceeding maxNumSchwannCells
+        maxNumSchwannCells = 7  // we will add new Schwann cells until reaching axon end / bifurcation or exceeding maxNumSchwannCells
         
         nseg_axon = -1          // nseg_schwann{i} and nseg_ranvier{i} will depend on nseg_axon, schwann{i}_start and schwann{i}_end
         
@@ -90,10 +90,19 @@ begintemplate SimMyelinatedAxonParamsHelper
         Dt = 50 * dt            // ms (in model time, animation and printing period)
         
         // !! maybe use pyObj.ms_getDiff("Basic ions", "k_ion")
-        Diff_k = 0.02           // um2 / ms
+        // Diff_k: K+ diffusion coefficient in periaxonal space.
+        // Free aqueous D(K+) = 1.96 um2/ms (Sykova & Nicholson, Physiol.Rev. 2008).
+        // Brain ECS with tortuosity lambda=1.6: D* = 0.76 um2/ms.
+        // Additional confinement of 15 nm periaxonal spiral gap -> ~0.10-0.30 um2/ms.
+        // Control value 0.20 um2/ms; sensitivity sweep: {0.10, 0.20, 0.30}.
+        // Previous value 0.02 was ~10x too low (artefactual ~2s K+ recovery). DO NOT RESTORE.
+        Diff_k = 0.20           // um2 / ms  [CORRECTED from 0.02; see MyelinatedAxon_ControlParameters.md]
         
         // !! maybe read from JSON because we'll assign them to k*0_k_ion later
-        ko0 = ko0_k_ion                                     // mM
+        // ko0: resting extracellular [K+]. Standard CNS ECS baseline = 3.0 mM
+        // (Sykova & Nicholson 2008). Ensure ko0_k_ion is set to 3.0 mM in the
+        // ion initialisation (not 2.5 mM, which is a periaxonal patch-clamp artefact).
+        ko0 = ko0_k_ion                                     // mM  [target: 3.0 mM]
         ki0 = ki0_k_ion                                     // mM
         
         veryMinOuterConc = pyObj.ms_veryMinOuterConc        // mM (if we see that K+ conc drops below this threshold, then we replace the conc with this value)
